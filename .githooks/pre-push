@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Block the push when generated Codex files drift from their Claude sources.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$HOME/.claude/scripts/sync-to-codex.sh" \
+  --project "$REPO_ROOT" \
+  --allow-project-outside-root \
+  --check-drift \
+  --no-diff

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Regenerate the Codex runtime (AGENTS.md, .codex/**) when Claude sources are staged.
+# Calls the bash wrapper directly: the Python guard cannot spawn .sh scripts on Windows.
+if ! git diff --cached --quiet -- .claude CLAUDE.md; then
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  cd "$REPO_ROOT"
+
+  echo "Claude sources changed; syncing generated Codex runtime..."
+  "$HOME/.claude/scripts/sync-to-codex.sh" \
+    --project "$REPO_ROOT" \
+    --allow-project-outside-root \
+    --apply \
+    --no-diff
+
+  [ -e AGENTS.md ] && git add -- AGENTS.md
+  [ -d .codex ] && git add -- .codex
+fi

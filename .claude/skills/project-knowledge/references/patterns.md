@@ -1,0 +1,105 @@
+# Patterns & Conventions
+
+- [Project-Specific Code Patterns](#project-specific-code-patterns)
+- [Git Workflow](#git-workflow)
+- [Testing & Verification](#testing--verification)
+- [Business Rules](#business-rules)
+
+Coding conventions, development workflow, and project-specific practices.
+
+---
+
+## Project-Specific Code Patterns
+
+No app code yet. Agreed constraints:
+
+- Development happens on Windows; iOS builds go through EAS Build in the cloud. Do not rely on a
+  local Mac, Xcode, or the iOS Simulator.
+- Native iOS code (Screen Time extensions, Live Activity) is added through Expo config plugins so
+  the project stays buildable by EAS.
+- Every reading feature uses the shared "session with reading type" model; do not add separate
+  per-format tracking.
+
+---
+
+## Git Workflow
+
+### Branch Structure
+
+- **`main`** - Release-ready code (protected). Only merge from `dev` after full testing.
+- **`dev`** - Active development. All work happens here.
+
+### Testing Requirements
+
+- **On commit:** Run the smallest checks that cover the changed behavior. When there is no test
+  subject, use the relevant build, lint, render, or other executable check.
+- **On merge to dev:** Run the project's CI checks for the changed behavior.
+- **On merge to main:** Run the project's required CI checks, including selected critical E2E
+  flows when applicable.
+
+### Security & Quality Gates
+
+Git hooks in `.githooks/` regenerate and check the Codex runtime files (`AGENTS.md`, generated
+skills and agents) from the Claude sources. No CI or code-quality gates are configured yet.
+
+---
+
+## Testing & Verification
+
+### Test Infrastructure
+
+Not configured yet.
+
+### Agent Verification Methods
+
+None established yet.
+
+### User Verification Methods
+
+**Device-only behavior**
+- **What to check:** App blocking (Screen Time shields), face-down detection, Live Activity,
+  on-device OCR.
+- **How:** Install an EAS build on a physical iPhone (development build or TestFlight).
+- **Why agent can't:** Screen Time and sensors do not work in a simulator, and the agent has no
+  iPhone.
+
+---
+
+## Business Rules
+
+### Reading Session
+- Two modes, both recorded automatically:
+  - **Book in hands** (paper, Kindle, e-reader): the phone goes face down and the timer runs. This
+    is a start ritual, not a detector.
+  - **Reading on the phone** (Litres, Bookmate, PDF): social and other selected apps are blocked
+    for the session; the reader app stays open; the timer shows in a Live Activity.
+- Blocking is part of the session, not a separate feature. Free tier: blocking inside a session.
+  Pro features (schedule, strict mode, custom lists) are a proposal, not an MVP requirement.
+- Audiobooks count as reading and are shown with a separate icon.
+- A forgotten session can be added as "+N minutes" in one tap and is marked as added later.
+
+### Anti-Cheat (light)
+- A session longer than 3 hours asks the user before it is counted.
+- Session time is checked against server time.
+- Honest peeks at the phone are allowed and do not reset the session.
+- The main safeguard is social: friends see your reading.
+
+### Slumpy Mood
+- Mood reflects today's reading only; it is not a counter and does not accumulate.
+- Reactions are deadpan, e.g. picking up the phone mid-session gets a silent stony stare. A rare
+  smile is the reward. Specific reactions are defined during design.
+- Each user has their own Slumpy; there is no shared character.
+
+### Library
+- Books can be current, finished, set aside ("put aside" has no penalty), or queued in "read next".
+- The "read next" queue is the user's own plan and can be filled from friends' shelves; it is not
+  a recommendation engine.
+- A hidden book shows friends the minutes but not the title.
+- Quote cards always show author and title; sharing goes through the system share sheet.
+
+### Duel
+- A user challenges a friend; the stake is free text (dinner, coffee, gift, custom). The app never
+  processes money (244-FZ).
+- Participants choose the loss rule at creation: "first to miss a day" or "read less by the date".
+- A duel needs a second person, so it doubles as the built-in invitation and main growth channel.
+- Duration, result confirmation, draws, and 3+ participants are open decisions.
