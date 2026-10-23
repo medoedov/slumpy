@@ -41,8 +41,18 @@ No app code yet. Agreed constraints:
 
 ### Security & Quality Gates
 
-Git hooks in `.githooks/` regenerate and check the Codex runtime files (`AGENTS.md`, generated
-skills and agents) from the Claude sources. No CI or code-quality gates are configured yet.
+Git hooks in `.githooks/` regenerate and check the Codex runtime files (`AGENTS.md`,
+`.agents/skills/`, `.codex/agents/`) from the Claude sources. They call
+`~/.claude/scripts/sync-to-codex.sh` directly because the upstream Python guard cannot spawn `.sh`
+scripts on Windows. No CI or code-quality gates are configured yet.
+
+### Agent Framework
+
+The molyanov-ai-dev skills and reviewer agents are vendored in `.claude/skills/` and
+`.claude/agents/`, except `project-initialization`, which the Codex sync rejects in a project
+because its template holds MCP and settings files. The same version is installed globally in
+`~/.claude`; Claude Code prefers a global skill over a project skill with the same name, so update
+both copies together.
 
 ---
 

@@ -29,7 +29,7 @@ Knowledge; items marked "proposal" or listed as open in `mvp.md` are not decisio
 ## Behavior
 
 - No "Great question!", no filler, no water.
-- NEVER use plain chat question tool. Ask questions as plain text in chat instead.
+- NEVER use request_user_input tool. Ask questions as plain text in chat instead.
 - Never create Git worktrees or extra project copies unless the user explicitly asks.
 
 ## Task Scope
