@@ -145,4 +145,6 @@ Not decided yet; ask the founder instead of assuming:
 5. Which open book database to use.
 6. Name check (stores, domains, handles, FIPS).
 7. Public launch by January.
-8. Backend choice: self-hosted Supabase or PocketBase.
+8. Backend choice: self-hosted Supabase or PocketBase (from the stack section of mvp.md).
+
+Resolved since mvp.md v0.3: app code lives in this repository (2026-10-23).

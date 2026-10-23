@@ -46,9 +46,8 @@ anything like "your streak burned".
 ## Slumpy Character
 
 - Minimalist neutral face from the founder's mockup: a simple shape, two dot eyes, a line mouth.
-- Mood is "today": it brightens with today's reading.
-- Reactions are deadpan; specific reactions are defined during design.
 - Rendered with Rive.
+- Mood and reaction rules: [patterns.md](patterns.md#slumpy-mood).
 
 ---
 
@@ -60,7 +59,7 @@ anything like "your streak burned".
 - **Читаю с телефона** — session mode for reading apps on the phone with other apps blocked.
 - **Подглядывание** — an honest look at the phone mid-session; it does not reset the session.
 - **Что читать дальше** — the user's own queue of next books, not recommendations.
-- **Скрытая книга** — a book whose title friends cannot see; they see only the minutes.
+- **Скрытая книга** — a book hidden from friends (rule in [patterns.md](patterns.md#library)).
 - **Дуэль** — a reading challenge between friends with a stake and a loss rule.
 - **Ставка** — the non-monetary stake of a duel (dinner, coffee, gift, custom).
 

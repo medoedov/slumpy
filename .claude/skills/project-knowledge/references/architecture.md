@@ -39,8 +39,8 @@ Android-specific blocking is out of the MVP.
 
 ## Project Structure
 
-Not created yet. This repository holds the product docs and agent setup; whether app code lives
-here or in a separate repository is still open (see [project.md](project.md#open-decisions)).
+Not created yet. All app code lives in this repository, next to the product docs and agent setup
+(decided 2026-10-23).
 When the Expo app is scaffolded, record the actual directory map here, including where native
 iOS extensions and config plugins live.
 
@@ -65,11 +65,11 @@ The hardest part of the MVP and the main platform risk.
 - iOS uses the Screen Time API: Family Controls (app selection and authorization), DeviceActivity
   (session schedule and monitoring), ManagedSettings (shields).
 - Requires the Family Controls entitlement from Apple for every bundle ID, including extension
-  targets. Approval takes days to weeks; request it in the first week of development.
+  targets. Request order and timing: [deployment.md](deployment.md#required-manual-release-steps).
 - Requires native extensions (DeviceActivityMonitor and the shield screen) built by EAS through an
   Expo config plugin.
-- There is no public iOS API for the device lock state, so "face down" is a start ritual, not a
-  detector.
+- There is no public iOS API for the device lock state, which is why "face down" is a ritual (see
+  [patterns.md](patterns.md#reading-session)).
 
 ---
 
@@ -96,9 +96,9 @@ The hardest part of the MVP and the main platform risk.
 ## Data Flow
 
 The user starts a session on the device; the app runs the timer, applies shields for the selected
-apps, and shows a Live Activity. When the session ends, the app saves it locally, syncs it to the
-backend, which checks plausibility against server time, and updates today's Slumpy mood, library
-progress, friends' "reading now" status, and active duels.
+apps, and shows a Live Activity. The finished session reaches the backend, which checks it against
+server time; it then drives today's Slumpy mood, library progress, friends' "reading now" status,
+and active duels. Offline and sync strategy is not decided.
 
 ---
 
@@ -113,9 +113,8 @@ progress, friends' "reading now" status, and active duels.
 **ReadingSession**
 - Purpose: The core record. A session with a reading type so audio, longreads, and comics can be
   added without schema rework.
-- Key fields: user, book, start/end or duration, mode (`book_in_hands` / `on_phone`), reading
-  type (book, audiobook, later longread/comic), source (`timer` / `manual`), flags (e.g. added
-  later, peeks).
+- Key fields (names TBD): user, book, duration, mode (book in hands / reading on the phone),
+  reading type (book, audiobook; later longread, comic), whether it was added later.
 - Relationships: user, book.
 
 **Book and LibraryEntry**
@@ -134,12 +133,13 @@ progress, friends' "reading now" status, and active duels.
 
 **Duel**
 - Purpose: A challenge between friends with a stake and a loss rule.
-- Key fields: participants, stake (free text), loss rule, dates, result.
+- Key fields: participants, stake, loss rule, dates, result (rules in
+  [patterns.md](patterns.md#duel)).
 
 ### Key Constraints
 
-To be defined with the backend schema. Known rules: a hidden book exposes minutes but never its
-title to friends; a quote always references a book.
+To be defined with the backend schema. Visibility and library rules (such as hidden books) are in
+[patterns.md](patterns.md#library).
 
 ### Migration Strategy
 
@@ -148,5 +148,4 @@ TBD with the backend choice.
 ### Sensitive Data
 
 All data about Russian users is stored in Russia (152-FZ). PII: account identifiers and contact
-data, the friends graph, reading history and quotes. Screen Time app selections stay on device as
-opaque tokens provided by Family Controls.
+data, the friends graph, reading history and quotes.

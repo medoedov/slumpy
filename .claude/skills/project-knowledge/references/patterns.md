@@ -26,7 +26,8 @@ No app code yet. Agreed constraints:
 
 ### Branch Structure
 
-- **`main`** - Release-ready code (protected). Only merge from `dev` after full testing.
+- **`main`** - Release-ready code. Only merge from `dev` after full testing. No server-side
+  branch protection is configured; the CLAUDE.md rule to ask before pushing to `main` applies.
 - **`dev`** - Active development. All work happens here.
 
 ### Testing Requirements
@@ -79,7 +80,8 @@ None established yet.
 - A forgotten session can be added as "+N minutes" in one tap and is marked as added later.
 
 ### Anti-Cheat (light)
-- A session longer than 3 hours asks the user before it is counted.
+- Plausibility: a session runs no longer than 3 hours without asking the user; when and how the
+  question appears is not designed yet.
 - Session time is checked against server time.
 - Honest peeks at the phone are allowed and do not reset the session.
 - The main safeguard is social: friends see your reading.
@@ -98,8 +100,8 @@ None established yet.
 - Quote cards always show author and title; sharing goes through the system share sheet.
 
 ### Duel
-- A user challenges a friend; the stake is free text (dinner, coffee, gift, custom). The app never
-  processes money (244-FZ).
+- A user challenges a friend; the stake is dinner, coffee, a gift, or their own option. The app
+  never processes money (244-FZ).
 - Participants choose the loss rule at creation: "first to miss a day" or "read less by the date".
 - A duel needs a second person, so it doubles as the built-in invitation and main growth channel.
 - Duration, result confirmation, draws, and 3+ participants are open decisions.

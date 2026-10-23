@@ -31,8 +31,9 @@ storage (choice open).
 
 ## Accounts and Stores
 
-- Apple Developer Program: $99/year, paid with a foreign card in the founder's name; the app is
-  published under the founder's personal account (allowed for a free app).
+- Apple Developer Program: $99/year, paid with a foreign card in the founder's name. A free app
+  may be published under a personal account, but individual vs organization enrollment is not
+  decided; it sets the App Store seller name and is hard to change later.
 - Apple payouts to Russia are closed, so Pro is not sold through the App Store; paid features go
   through Google Play, RuStore, and the web later. A Russian sole proprietorship is needed once
   payments start.
@@ -76,9 +77,12 @@ the repository.
 
 ## Required Manual Release Steps
 
-- [ ] Request the Family Controls entitlement from Apple for the app bundle ID and every extension
-  bundle ID in the first week of development; approval takes days to weeks and blocks app blocking.
-- [ ] Enroll in the Apple Developer Program before the first TestFlight build.
+- [ ] Enroll in the paid Apple Developer Program first, before development starts. It is required
+  to register bundle IDs, request the Family Controls entitlement, and sign device builds; the
+  foreign card in the founder's name may take time to arrange.
+- [ ] Request the Family Controls entitlement for the app bundle ID and every extension bundle ID
+  in the first week of development. Approval takes days to weeks and blocks app blocking (see
+  [architecture.md](architecture.md#app-blocking)).
 
 ---
 
@@ -90,7 +94,7 @@ Not applicable yet: no production release or backend.
 
 ## Environments
 
-**Closed beta:** TestFlight, 50-150 testers for 2-4 weeks.
+**Closed beta:** TestFlight; size and duration in [project.md](project.md#mvp-scope).
 
 **Production:** App Store, after the beta; public launch date is open.
 
