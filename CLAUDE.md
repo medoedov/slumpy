@@ -35,14 +35,21 @@ Classify by the decision the change makes. When unsure, go higher.
   lightweight migration. A feature gets a short brief in plan.md (`engineering-design` skill); a
   bug gets a failing test first. Verify, reread your own diff against the brief. Run `reviewer`
   on the code when the change touches shared state or concurrency, or when you are unsure.
-- **T2 new irreversible decision** not covered by an existing ADR: a new persisted entity or
-  storage; a schema change that is not additive (rename, delete, type or relationship change); a
-  new module boundary or a change to the shared package's public contract; concurrency
-  architecture; a new extension, entitlement, or system service; network, backend, sign-in, money;
-  user data leaving the device; a new third-party dependency. Brief with two alternatives and cost
-  of change in a year, an ADR, `reviewer` on the decision before code and on the code. When it
-  touches Keychain, permissions, ATS, the Privacy Manifest, or user data leaving the device, ask
-  for a security pass with code round 1. Product consequences go to the owner.
+- **T2 new irreversible decision:** a new persisted entity or storage; a schema change that is
+  not additive (rename, delete, type or relationship change); a new module boundary or a breaking
+  change to the shared package's API; concurrency architecture; a new extension, entitlement, or
+  system service; network, backend, sign-in, money; user data leaving the device (user-initiated
+  system sharing does not count); a new third-party dependency. Each listed item is T2 the first
+  time; repeating a pattern that an ADR records in detail is T1. Brief with two alternatives and
+  cost of change in a year, an ADR, `reviewer` on the decision before code and on the code.
+  Product consequences go to the owner.
+
+Whatever the tier:
+
+- A change that touches Keychain, permissions, ATS, the Privacy Manifest (including
+  required-reason APIs), or user data leaving the device gets `reviewer` with a security pass.
+- A persisted schema change ships with a test that opens a store created by the previous schema
+  version.
 
 ## Scope
 
@@ -53,16 +60,16 @@ the user would notice them, instead of into this change.
 ## Review and lessons
 
 `reviewer` is the only review agent: give it the mode, tier, round, and the diff or document. Fix
-blocking findings yourself. Non-blocking and pre-existing findings go to `docs/tech-debt.md`, or to
+blocking findings yourself; a blocking finding you dispute gets a recheck, at any tier. Non-blocking and pre-existing findings go to `docs/tech-debt.md`, or to
 `backlog.md` in plain Russian when the user would notice them. A finding class that repeats is
 fixed at its source in the same task, preferring: compiler, lint rule, test, skill,
 `docs/lessons.md`, this file. At most two rounds per mode (spec, decision, code); log each review
 in plan.md (mode, round, verdict) and never start a fresh review to reset the count. On
 `fix and verify`, apply the listed fixes and verify them without another round. On
 `rethink approach`, revise the brief and review the new approach with a fresh pair of rounds, once
-per change; if it also ends with
-`rethink approach`, take the conservative option, record it in plan.md, and list it in the owner
-report as an open technical risk.
+per change. If that also ends with `rethink approach`, do not ship the part that carries the open
+blocking finding and keep the previous behavior; record it in plan.md and list it in the owner
+report. If the user would notice the missing part, that becomes a product question.
 
 ## Done
 
@@ -75,8 +82,8 @@ A finished feature also updates Project Knowledge as its "When finishing a featu
 
 In Russian, without code: what changed for the user; screenshots when there is UI (light and dark,
 large text, iOS 18 and current iOS); what was verified; decisions in plain words; deviations;
-changes to product facts or hypotheses in Project Knowledge, one line each; a manual iPhone
-checklist if a check needs the device.
+changes to product facts or hypotheses in Project Knowledge, one line each; parts left out because
+a review did not converge; a manual iPhone checklist if a check needs the device.
 
 ## Language and secrets
 

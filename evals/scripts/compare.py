@@ -2,7 +2,8 @@
 
 Usage: python3 -I scripts/compare.py <before result dir>... -- <after result dir>...
 Prints per-grader pass counts: before (with system), after (with system), and the without-system
-arm found in the "before" dirs for reference; then cost per group. Runs whose paid graders were
+arm found in the "before" dirs for reference; then cost per group, and cost on the cases present
+in both measurements (group means alone depend on each side's case mix). Runs whose paid graders were
 skipped by the cost ceiling count as not graded.
 """
 import collections

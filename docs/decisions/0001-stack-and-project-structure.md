@@ -111,14 +111,18 @@ the user sees.
   includes the sessions whose stored reading day equals that date.
 - "Today" changes at 04:00 local time. System day-change notifications are tied to midnight and
   give no timing guarantee, so recompute "today" when the app returns to the foreground, at 04:00,
-  and when the system time zone or clock changes (the system time zone is cached; re-read it), and
-  reload widget timelines at the same moments.
+  and when the system time zone or clock changes. Read the zone through
+  `TimeZone.autoupdatingCurrent`, or call `NSTimeZone.resetSystemTimeZone()` first: the system
+  zone is cached. The widget timeline includes an entry at the next 04:00, because the app is
+  usually not running then; the app reloads widget timelines on foreground and on a time zone or
+  clock change.
 - Tests cover: 23:30-00:40 counts to the start day; a start at 00:10 or 03:59 counts to the
   previous date; a start at 04:00 counts to the new date; a session read abroad keeps its day
   after returning; a session read in one time zone counts in "today" while the phone is in
   another zone on the same reading day; a daylight saving change does not move any session; the
-  time zone changes while the app is open; a session starting at 00:30 in a zone that moves its
-  clocks at midnight (for example America/Santiago).
+  time zone changes while the app is open; on 2026-09-06 in America/Santiago (clocks jump from
+  00:00 to 01:00) a session starting at 01:30 counts to 2026-09-05; the number of days between
+  consecutive reading days is 1 across 23- and 25-hour local days.
 
 The analysis the owner decided on follows.
 

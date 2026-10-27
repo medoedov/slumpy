@@ -100,17 +100,18 @@ Principles as trade-offs, not rules:
 - Round 2 in decision and code mode ends with one of:
   - `clean`;
   - `fix and verify`: the only blocking findings are small, local, and outside the round-1
-    classes. List the fixes; the author applies them and verifies them with tests or checks,
-    without another round;
-  - `rethink approach`: a round-1 finding is still open or a round-1 class recurs. Patching is not
+    classes. List the fixes; the author applies them and verifies them without another round:
+    with tests or checks in code mode; in decision mode, code round 1 checks them;
+  - `rethink approach` in every other case, for example a round-1 finding still open, a round-1
+    class recurring, or a blocking finding that is not small and local. Patching is not
     converging; the author goes back to the brief.
 - Round 2 in spec mode ends with `clean` or `owner questions`: the remaining findings become owner
   questions or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
   so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
 - A finding is disputed when the author objects with evidence or you are not sure of it; mark the
-  ones you are not sure of. On T2 the caller runs recheck on disputed findings; on T1 the author
-  decides and records the reason in plan.md.
+  ones you are not sure of. A disputed blocking finding gets a recheck at any tier; for a disputed
+  non-blocking finding the author decides and records the reason in plan.md.
 
 ## Output
 

@@ -35,7 +35,8 @@ features only after a review audit; until then there is no house pattern to copy
 - Building and testing happen only on a Mac with Xcode. Cloud sessions can review text, specs,
   and diffs but cannot build or run code.
 - Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
-  lint, format, gate-bypass scan, minimum risk tier from changed paths. Not created yet.
+  lint, format, gate-bypass scan. Changed sensitive paths require an ADR reference or a one-line T1
+  reason in plan.md; they do not set the tier. Not created yet.
 - Package logic is tested on the smallest reliable boundary (framework: working assumption Swift
   Testing, decided in the skeleton ADR).
 - Device-only checks (Family Controls blocking, motion sensors, Live Activity on the lock screen
