@@ -77,11 +77,8 @@ from the code. Verdict: confirmed or refuted, with the evidence.
 - ARC: reference cycles, closure captures.
 - Actor isolation and `Sendable`.
 - API availability for iOS 18 and soft deprecations the compiler does not flag.
-- Tests by the criterion in `.claude/rules/swift.md`, "Tests and fixes": each test fails when the
-  behavior breaks and survives a change of internals; deleting a line of new logic fails some
-  test; each "do not do X" rule has its input.
-- Fixes at the cause, same section: a guard or fallback where a bad state surfaced is not the fix
-  by itself; a state that can exist on devices is also handled where it is read.
+- Tests and fixes: check them against `.claude/rules/swift.md`, section "Tests and fixes", which
+  decides the criteria; a test or fix that misses one is a violation.
 - Gate bypass: new lint suppressions; removed or weakened tests or assertions without a stated
   reason; the constructs listed in `.claude/rules/swift.md` without the reason and invariant it
   requires.
