@@ -30,8 +30,7 @@ features only after a review audit; until then there is no house pattern to copy
   and diffs but cannot build or run code.
 - Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
   lint, format, gate-bypass scan, minimum risk tier from changed paths. Not created yet.
-- Package logic is tested with Swift Testing on the smallest reliable boundary: if deleting a line
-  of logic does not fail a test, the test does not protect it.
+- Package logic is tested with Swift Testing on the smallest reliable boundary.
 - Device-only checks (Family Controls blocking, motion sensors, Live Activity on the lock screen
   over time) go to the owner as a ready checklist.
 
@@ -46,7 +45,6 @@ Rules the code must keep regardless of feature:
   [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md#pending-owner-decision-attributing-minutes-to-a-day).
   Until it is decided, do not implement code that depends on it without recording the assumption.
 - **Session time** is stored with its time zone.
-- **The app never processes money** for duel stakes (244-FZ, from `mvp.md`).
 
 ---
 
@@ -67,5 +65,6 @@ building a feature on them.
 - **Library:** current, finished, set aside without penalty, own "read next" queue (not a
   recommendation engine); a hidden book shows friends minutes but not the title; quote cards show
   author and title; sharing through the system share sheet.
-- **Duel:** stake is free text; loss rule chosen at creation ("first to miss a day" or "read less
-  by the date"). Duration, result confirmation, draws, and 3+ participants are open.
+- **Duel:** stake is free text and the app never processes money (244-FZ); loss rule chosen at
+  creation ("first to miss a day" or "read less by the date"). Duration, result confirmation,
+  draws, and 3+ participants are open.

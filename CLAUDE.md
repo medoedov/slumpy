@@ -26,7 +26,7 @@ otherwise take the conservative option and log it in plan.md.
 
 ## Risk tiers
 
-Classify by what the change touches, not by how small the request sounds. When unsure, go higher.
+Classify by what the change touches. When unsure, go higher.
 
 - **T0 trivial:** text, color, a one-place edit without new types. Verify; no brief, no review.
 - **T1 normal:** feature or bug inside existing boundaries. Brief in plan.md (`engineering-design`
@@ -35,7 +35,8 @@ Classify by what the change touches, not by how small the request sounds. When u
   concurrency architecture; system services and extensions (entitlements, Info.plist, App Group);
   network, backend, sign-in, privacy, money; a new third-party dependency. Brief with two
   alternatives and cost of change in a year, an ADR, `reviewer` on the decision before code and on
-  the code, re-check of disputed findings. Product consequences go to the owner.
+  the code, re-check of disputed findings, a separate security pass when it touches Keychain, ATS,
+  Privacy Manifest, or user data. Product consequences go to the owner.
 
 ## Review and lessons
 

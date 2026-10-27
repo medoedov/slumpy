@@ -85,10 +85,14 @@ without recording the assumption.
 
 **Situations the rule must answer**
 1. A session starts at 23:30 and ends at 00:40.
-2. Daylight saving time changes during or between sessions.
-3. The user travels and changes time zone; past days must not move.
+2. The user travels and changes time zone.
+3. Daylight saving time changes during or between sessions.
 
-**Options**
+Technical facts that hold for any choice: each session stores its time zone, so either answer
+to question 2 can be implemented; durations are stored, so daylight saving time does not change
+minute totals.
+
+**Question 1: a session that crosses midnight**
 
 | Option | What the user sees | Cost |
 |---|---|---|
@@ -96,11 +100,16 @@ without recording the assumption.
 | B. Split at midnight | Minutes before midnight count to yesterday, after midnight to today; Slumpy's mood for "today" starts from the tail of last night's session | Most literal; feels wrong for night readers |
 | C. Reading day with a cutoff hour (e.g. 04:00): the whole session counts to the reading day it started in | A night of reading until 3 a.m. is one "evening"; the day switches while the user sleeps | One extra constant; the cutoff hour is a product choice |
 
-For all options, the day is computed in the time zone stored with the session, not the phone's
-current one. A trip does not move past sessions to other days. Daylight saving time does not
-change minute totals because durations are stored, not derived from wall-clock times.
+Recommendation: C with a 04:00 cutoff. The product is about evening reading instead of the feed;
+with A or B the most typical usage, reading past midnight, would split or jump days.
 
-**Recommendation:** C with a 04:00 cutoff. The product is about evening reading instead of the
-feed; with A or B the most typical usage, reading past midnight, would split or jump days.
+**Question 2: time zone after a trip**
 
-**Owner decides:** the option, and for C the cutoff hour.
+| Option | What the user sees | Cost |
+|---|---|---|
+| X. Each session keeps the day it had where it was read | History looks the same before and after the trip; on the travel day two "days" can overlap or one can be short | Days in history never change |
+| Y. All history is recomputed in the phone's current time zone | After a flight, a late-evening session can move to the next or previous day in history | Days in past history can change after every trip |
+
+Recommendation: X. History the user has already seen does not change on its own.
+
+**Owner decides:** question 1 (and for C the cutoff hour) and question 2.

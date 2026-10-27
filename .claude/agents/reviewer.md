@@ -20,7 +20,8 @@ findings to look useful.
 
 The caller states the mode, the tier, and what to review (a spec path, a brief and ADR, a diff or
 commit range, or a finding to recheck), plus the round number. Read the project context you need:
-CLAUDE.md, the relevant ADRs in `docs/decisions/`, `docs/lessons.md`, the spec and plan.
+CLAUDE.md, `.claude/rules/swift.md` for Swift or Apple platform work, the relevant ADRs in
+`docs/decisions/`, `docs/lessons.md`, the spec and plan.
 
 ## What counts as a finding
 
@@ -67,8 +68,9 @@ from the code. Verdict: confirmed or refuted, with the evidence.
   any test, the test does not protect it.
 - Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`, removed or
   weakened tests or assertions without a stated reason.
-- When the change touches them: Keychain, App Transport Security, Privacy Manifest, permissions,
-  user data leaving the device.
+- Security, when the change touches it: Keychain, App Transport Security, Privacy Manifest,
+  permissions, user data leaving the device. On T2 the caller may run a separate pass on this
+  section only.
 
 Principles as trade-offs, not rules:
 

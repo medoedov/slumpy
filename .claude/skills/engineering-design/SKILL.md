@@ -4,10 +4,9 @@ description: |
   Technical brief before code: data model, boundaries and contracts, scenarios, assumptions, what
   else is affected, alternatives for irreversible choices, and the engineering question menu; plus
   a domain blind-spot pass for areas new to the project. Use before writing code for any T1 or T2
-  change: a feature, a bug fix that crosses boundaries, a design or "how should this work"
-  discussion, and any change that touches persisted data, module boundaries, concurrency, system
-  services or extensions, network, privacy, money, or dependencies, even when it is phrased as a
-  small edit.
+  change: a feature, a bug fix that crosses boundaries, a design discussion, and any change that
+  touches persisted data, module boundaries, concurrency, system services or extensions, network,
+  privacy, money, or dependencies; the tier follows from what the change touches.
 ---
 
 # Engineering design
@@ -18,7 +17,8 @@ explicit so the `reviewer` can check them against the code later.
 ## 1. Tier
 
 Classify with the tiers in CLAUDE.md. T0 needs no brief. T1 gets a short brief. T2 gets the full
-brief, an ADR, and a `reviewer` run in decision mode before any code.
+brief, an ADR, and a `reviewer` run in decision mode before any code. For Swift or Apple platform
+work, read `.claude/rules/swift.md` first: it loads on its own only when a `.swift` file is opened.
 
 ## 2. Domain blind-spot pass (first serious decision in a new area)
 
