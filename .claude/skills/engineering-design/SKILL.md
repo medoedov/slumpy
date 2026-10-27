@@ -17,7 +17,7 @@ explicit so the `reviewer` can check them against the code later.
 ## 1. Tier
 
 Classify with the tiers in CLAUDE.md. T0 needs no brief. A T1 feature gets a short brief; a T1 bug
-gets a failing test instead. T2 gets the full brief, an ADR, and a `reviewer` run in decision mode
+gets the failing test CLAUDE.md describes instead. T2 gets the full brief, an ADR, and a `reviewer` run in decision mode
 before any code. For Swift or Apple platform work, read `.claude/rules/swift.md` first: it loads on
 its own only when a `.swift` file is read, created, or edited.
 

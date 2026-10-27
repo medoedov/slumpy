@@ -37,10 +37,15 @@ paths:
   test must fail; restructure the internals with the same observable result and it must still
   pass. Every behavior a change adds needs such a test: deleting a line of new logic fails at least
   one test. A rule of the form "do not do X" needs a test input on which X gives a different answer.
-- A crash or wrong state is fixed where the state was produced. A `guard`, `??`, early return,
-  retry, or clamp where it surfaced hides the cause and is not the fix by itself. If the state can
-  exist (data already on devices from an older version, written by another process, or left by a
-  crash), the code that reads it handles it or a migration repairs it, with a test, as part of the
-  fix.
+  When no automated test can honestly observe the behavior (layout, system UI, an effect only a
+  device shows), do not write one pinned to the implementation; the check goes to the screenshots
+  or the device checklist (`patterns.md`, Verification).
+- Fix a crash or wrong state at its first cause. First decide whether the state is legitimate: the
+  system may be in it (written by another process, left by a crash or a killed extension, a
+  permission the user revoked). If it is, the code that broke on it is the cause, and handling it
+  there is the fix. If it should never exist, fix the code that produced it; a `guard`, `??`, early
+  return, retry, or clamp where it surfaced hides the cause and is not the fix by itself. If an
+  older version already stored it on devices, the reading code also handles it or a migration
+  repairs it. Each part gets a test.
 - If two fixes that rest on the same premise fail the same check, write the premise in one
   sentence and test it directly before a third fix.

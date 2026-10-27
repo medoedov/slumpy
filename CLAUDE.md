@@ -32,11 +32,11 @@ Classify by the decision the change makes. When unsure, go higher.
 
 - **T0 trivial:** text, color, a one-place edit without new types. Verify; no brief, no review.
 - **T1 normal:** work inside decisions already made, including an additive optional field with a
-  lightweight migration. A feature gets a short brief in plan.md (`engineering-design` skill); a
-  bug gets a failing test first, failing because of the bug (a build or setup error does not
-  count; a cloud session, which cannot run it, names it in the commit's `Unverified:` line).
-  Verify, reread your own diff against the brief. Run
-  `reviewer` on the code when the change touches shared state or concurrency, or when unsure.
+  lightweight migration. A feature gets a short brief in plan.md (`engineering-design` skill); a bug
+  a test can observe gets a failing test first, failing because of the bug (a build or setup error
+  does not count; a cloud session, which cannot run it, names it in the commit's `Unverified:`
+  line). Verify, reread your own diff against the brief. Run `reviewer` on the code when the change
+  touches shared state or concurrency, or when unsure.
 - **T2 new irreversible decision:** a new persisted entity or storage; a schema change that is
   not additive (rename, delete, type or relationship change); a new module boundary or a breaking
   change to the shared package's API; concurrency architecture; a new extension, entitlement, or
