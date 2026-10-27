@@ -46,9 +46,9 @@ Classify by the decision the change makes. When unsure, go higher.
 
 Whatever the tier:
 
-- A change that touches Keychain, permissions, ATS, or user data leaving the device, or adds a
-  required-reason API category or reason not yet declared in the Privacy Manifest, gets `reviewer`
-  with a security pass.
+- A change that touches Keychain, permissions, ATS, or user data leaving the device, edits the
+  Privacy Manifest, or starts using a required-reason API whose category or reason the Privacy
+  Manifest does not declare yet gets `reviewer` with a security pass.
 - A persisted schema change ships with a test that opens a store created by the previous schema
   version.
 

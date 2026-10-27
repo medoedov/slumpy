@@ -9,7 +9,7 @@ description: |
 # Project Knowledge
 
 Each fact has one owner file below; update that file instead of repeating the fact elsewhere.
-When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md) for other
+When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md, `.claude/`) for other
 copies and update them or replace them with a link to the section that states the fact, keeping
 its status (hypothesis or approved).
 

@@ -82,8 +82,8 @@ from the code. Verdict: confirmed or refuted, with the evidence.
   which X gives a different answer.
 - Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`, removed or
   weakened tests or assertions without a stated reason.
-- Security, when the caller asks for a security pass or the change touches Keychain, permissions,
-  App Transport Security, the Privacy Manifest, or user data leaving the device.
+- Security, when the caller asks for a security pass or the change meets the security-pass trigger
+  in CLAUDE.md ("Whatever the tier").
 
 Principles as trade-offs, not rules:
 
