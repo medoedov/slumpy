@@ -27,14 +27,15 @@ Nothing is built or deployed yet. The path below is from
 
 ## Accounts and Stores
 
-- **Apple Developer Program:** not enrolled yet. Enroll first, before development starts: it is
-  required to register bundle IDs, request the Family Controls entitlement, and sign device builds
-  (blocking check on an iPhone, TestFlight). Paid with a foreign card in the founder's name, which
+- **Apple Developer Program:** not enrolled yet. Development and the simulator do not need it; the
+  blocking check on an iPhone (the Family Controls capability), the entitlement request, and
+  TestFlight do. Paid with a foreign card in the founder's name, which
   may take time to arrange. Individual vs organization enrollment is an open owner decision: it
   sets the App Store seller name and is hard to change later.
 - **Family Controls distribution entitlement:** requested by the Account Holder for the app bundle
   ID and separately for each Screen Time extension bundle ID (DeviceActivity monitor, shield),
-  right after the blocking check on an iPhone; approval time is unpredictable.
+  right after the blocking check on an iPhone; approval time is unpredictable. Check the current
+  request form when submitting: developers report it may have changed.
 - **Payments outside the App Store** (hypothesis from `mvp.md`: Apple payouts to Russia are
   closed, Pro sold through Google Play, RuStore, web): App Review Guideline 3.1.1 risk; decided
   together with monetization.

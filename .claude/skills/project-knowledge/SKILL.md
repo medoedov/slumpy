@@ -9,7 +9,7 @@ description: |
 # Project Knowledge
 
 Each fact has one owner file below; update that file instead of repeating the fact elsewhere.
-When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md) for other
+When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md, `.claude/`) for other
 copies and update them or replace them with a link to the section that states the fact, keeping
 its status (hypothesis or approved).
 
@@ -40,4 +40,6 @@ ADR disagree, the ADR wins and this skill is fixed.
 ## When finishing a feature
 
 Update the architecture map in [architecture.md](references/architecture.md), the decision index,
-and any business invariant the feature changed. Move `work/{feature}/` to `work/completed/`.
+and any business invariant the feature changed. Move the owner's decisions from the spec into the
+file that owns each fact, marked as confirmed with the date, so the owner is not asked again. Move
+`work/{feature}/` to `work/completed/`.

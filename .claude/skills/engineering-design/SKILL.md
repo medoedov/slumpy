@@ -3,10 +3,10 @@ name: engineering-design
 description: |
   Technical brief before code: data model, boundaries and contracts, scenarios, assumptions, what
   else is affected, alternatives for irreversible choices, and the engineering question menu; plus
-  a domain blind-spot pass for areas new to the project. Use before writing code for any T1 or T2
-  change: a feature, a bug fix that crosses boundaries, a design discussion, and any change that
-  touches persisted data, module boundaries, concurrency, system services or extensions, network,
-  privacy, money, or dependencies; the tier follows from what the change touches.
+  a domain blind-spot pass for areas new to the project. Use before writing code for a feature or
+  a design discussion, and before any new irreversible decision: storage or schema, module
+  boundaries, concurrency, system services or extensions, network, sign-in, money, user data
+  leaving the device, or a new dependency.
 ---
 
 # Engineering design
@@ -16,9 +16,10 @@ explicit so the `reviewer` can check them against the code later.
 
 ## 1. Tier
 
-Classify with the tiers in CLAUDE.md. T0 needs no brief. T1 gets a short brief. T2 gets the full
-brief, an ADR, and a `reviewer` run in decision mode before any code. For Swift or Apple platform
-work, read `.claude/rules/swift.md` first: it loads on its own only when a `.swift` file is opened.
+Classify with the tiers in CLAUDE.md. T0 needs no brief. A T1 feature gets a short brief; a T1 bug
+gets a failing test instead. T2 gets the full brief, an ADR, and a `reviewer` run in decision mode
+before any code. For Swift or Apple platform work, read `.claude/rules/swift.md` first: it loads on
+its own only when a `.swift` file is read, created, or edited.
 
 ## 2. Domain blind-spot pass (first serious decision in a new area)
 
@@ -75,5 +76,6 @@ owner as a product question; technical choices you make yourself.
 
 - T2: write the ADR in `docs/decisions/` (format in its README), then run `reviewer` in decision
   mode on the brief and ADR before writing code.
-- Keep a log at the bottom of `plan.md`: each step with its verification result, and each
-  deviation from the brief with the reason and the conservative choice taken.
+- Keep a log at the bottom of `plan.md`: each step with its verification result, each review with
+  its mode, round, and verdict, and each deviation from the brief with the reason and the
+  conservative choice taken.

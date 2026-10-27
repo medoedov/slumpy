@@ -30,8 +30,9 @@ through a question. List every open point in the request.
 
 ## 3. Ask
 
-One question per message, highest impact first, in Russian and in the owner's terms, without
-technical vocabulary. Each question has:
+All questions in one message, numbered, highest impact first, in Russian and in the owner's
+terms, without technical vocabulary. End the message with: «Можно ответить „по рекомендациям“ или
+назвать только пункты, где вы не согласны». Each question has:
 
 - **Суть:** the question itself, one sentence.
 - **Почему важно:** what depends on it.

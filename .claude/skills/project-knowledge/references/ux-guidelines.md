@@ -57,12 +57,14 @@ prototype comes first.
 
 ## Domain Glossary
 
+Terms come from the draft `mvp.md`. The rules inside them are hypotheses until the owner confirms
+them; see [patterns.md](patterns.md#product-rules-hypotheses).
+
 - **Сессия** — one timed reading session in either mode.
 - **Книга в руках** — mode for paper books and e-readers; the phone lies face down.
 - **Читаю с телефона** — mode for reading apps on the phone with other apps blocked.
 - **Подглядывание** — an honest look at the phone mid-session; it does not reset the session.
 - **Что читать дальше** — the user's own queue of next books, not recommendations.
-- **Скрытая книга** — a book whose title friends cannot see (hypothesis; rule in
-  [patterns.md](patterns.md#product-rules-hypotheses)).
+- **Скрытая книга** — a book whose title friends cannot see; they see only the minutes.
 - **Дуэль** — a reading challenge between friends with a stake and a loss rule.
 - **Ставка** — the non-monetary stake of a duel.

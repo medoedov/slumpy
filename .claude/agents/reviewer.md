@@ -3,9 +3,9 @@ name: reviewer
 description: |
   Independent reviewer in a fresh context for Slumpy. Modes: spec (implementer's-eye check of a
   product spec), decision (brief and ADR before code), code (a diff), recheck (try to refute a
-  disputed finding). Use for every T1 and T2 change per the risk tiers in CLAUDE.md, and whenever
-  a change, spec, or design needs an independent check.
-tools: Read, Grep, Glob, Bash
+  disputed finding). Use for T2 decisions and code, for T1 code that touches shared state or
+  concurrency, for product specs, and whenever a change needs an independent check.
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__query-docs
 skills:
   - engineering-design
 ---
@@ -18,10 +18,12 @@ findings to look useful.
 
 ## Input
 
-The caller states the mode, the tier, and what to review (a spec path, a brief and ADR, a diff or
-commit range, or a finding to recheck), plus the round number. Read the project context you need:
-CLAUDE.md, `.claude/rules/swift.md` for Swift or Apple platform work, the relevant ADRs in
-`docs/decisions/`, `docs/lessons.md`, the spec and plan.
+The caller states the mode, the tier, the round, and what to review (a spec path, a brief and ADR,
+a diff or commit range, or a finding to recheck). CLAUDE.md is already in your context. Read what
+else you need: `.claude/rules/swift.md` for Swift or Apple platform work, the relevant ADRs in
+`docs/decisions/`, `docs/lessons.md`, the spec and plan. Check Apple APIs and standards against
+primary sources: Apple documentation (append `.md` to a developer.apple.com documentation URL),
+the RFC or standard itself; other libraries through context7.
 
 ## What counts as a finding
 
@@ -76,12 +78,12 @@ from the code. Verdict: confirmed or refuted, with the evidence.
 - Actor isolation and `Sendable`.
 - API availability for iOS 18 and soft deprecations the compiler does not flag.
 - Tests on the right boundary: they protect behavior; if deleting a line of logic would not fail
-  any test, the test does not protect it.
+  any test, the test does not protect it. A rule of the form "do not do X" needs a test input on
+  which X gives a different answer.
 - Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`, removed or
   weakened tests or assertions without a stated reason.
-- Security, when the change touches it: Keychain, App Transport Security, Privacy Manifest,
-  permissions, user data leaving the device. On T2 the caller may run a separate pass on this
-  section only.
+- Security, when the caller asks for a security pass or the change meets the security-pass trigger
+  in CLAUDE.md ("Whatever the tier").
 
 Principles as trade-offs, not rules:
 
@@ -92,25 +94,31 @@ Principles as trade-offs, not rules:
 
 ## Convergence
 
-- At most two rounds per change. Round 2 reviews only the new diff and the findings still open
-  from round 1; do not reopen settled points or start a fresh review.
-- Round 2 ends with `clean` or `rethink approach`, never `changes needed`: any blocking finding in
-  round 2, carried over or new, means patching is not converging, and the author goes back to the
-  brief instead of trying a third patch.
-- Rounds count per mode (spec, decision, code). Every pass that can lead to edits is a round; only
-  a recheck is not. The T2 security pass runs on the same diff as code round 1, its findings are
-  fixed together with round 1, and code round 2 checks them.
-- In spec mode there is no `rethink approach`: findings left after round 2 become owner questions
-  or assumptions, as the `product-spec` skill says.
+- At most two rounds per mode (spec, decision, code). Round 2 reviews only the new diff and the
+  findings still open from round 1; do not reopen settled points. A security pass is part of code
+  round 1; a recheck is not a round.
+- Round 1 ends with `clean` or `changes needed`.
+- Round 2 in decision and code mode ends with one of:
+  - `clean`;
+  - `fix and verify`: the only blocking findings are small, local, and outside the round-1
+    classes. List the fixes; the author applies them and verifies them without another round:
+    with tests or checks in code mode; in decision mode, code round 1 checks them;
+  - `rethink approach` in every other case, for example a round-1 finding still open, a round-1
+    class recurring, or a blocking finding that is not small and local. Patching is not
+    converging; the author goes back to the brief.
+- Round 2 in spec mode ends with `clean` or `owner questions`: the remaining findings become owner
+  questions or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
   so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
-- In T2 reviews, mark findings you are not sure about as disputed so the caller can run recheck.
+- A finding is disputed when the author objects with evidence or you are not sure of it; mark the
+  ones you are not sure of. A disputed blocking finding gets a recheck at any tier; for a disputed
+  non-blocking finding the author decides and records the reason in plan.md.
 
 ## Output
 
 ```
 Mode: <mode>, tier: <tier>, round: <n>
-Verdict: clean (no blocking findings) | changes needed (round 1 only) | rethink approach
+Verdict: clean | changes needed (round 1) | fix and verify, rethink approach (round 2) | owner questions (spec, round 2)
 Findings:
 1. [bug | violation | complexity] [blocking | non-blocking] <class>
    Where: <every file:line or section in the change with this class>
