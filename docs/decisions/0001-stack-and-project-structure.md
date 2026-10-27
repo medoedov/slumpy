@@ -95,6 +95,13 @@ the user sees.
 - Reading day of a session: take its start in its stored time zone; if the local time is before
   04:00, the reading day is the previous calendar date, otherwise the same date. Compare wall-clock
   time instead of subtracting four hours, so daylight saving changes cannot shift the result.
+- Compute the reading day once, when the session starts, and store it with the session. Time zone
+  rules change with system updates, and the owner decided that history never changes on its own;
+  only a stored value guarantees that.
+- Do date arithmetic ("previous date", "days between") on year, month, and day components in a
+  Gregorian calendar set to UTC, never on local `Date` values: in zones that switch clocks at
+  midnight a local midnight may not exist. Build the `YYYY-MM-DD` string from integer components,
+  never with a locale-dependent formatter.
 - The reading day is a calendar date without a time zone: Gregorian year, month, and day (ISO 8601
   `YYYY-MM-DD`), computed with `Calendar(identifier: .gregorian)` set to the session's stored IANA
   time zone. Never store or compare it as a `Date`: midnight in one zone is a different instant
@@ -102,12 +109,16 @@ the user sees.
   `Calendar.current`: it follows the user's calendar setting (Buddhist, Japanese, and others).
 - "Today" for Slumpy's mood is the current reading day in the phone's current time zone; it
   includes the sessions whose stored reading day equals that date.
-- "Today" changes at 04:00 local time. System day-change notifications fire at midnight, so the
-  mood screen and widgets schedule their own refresh at 04:00.
+- "Today" changes at 04:00 local time. System day-change notifications are tied to midnight and
+  give no timing guarantee, so recompute "today" when the app returns to the foreground, at 04:00,
+  and when the system time zone or clock changes (the system time zone is cached; re-read it), and
+  reload widget timelines at the same moments.
 - Tests cover: 23:30-00:40 counts to the start day; a start at 00:10 or 03:59 counts to the
   previous date; a start at 04:00 counts to the new date; a session read abroad keeps its day
   after returning; a session read in one time zone counts in "today" while the phone is in
-  another zone on the same reading day; a daylight saving change does not move any session.
+  another zone on the same reading day; a daylight saving change does not move any session; the
+  time zone changes while the app is open; a session starting at 00:30 in a zone that moves its
+  clocks at midnight (for example America/Santiago).
 
 The analysis the owner decided on follows.
 

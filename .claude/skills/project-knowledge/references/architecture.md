@@ -4,6 +4,7 @@
 - [Stack](#stack)
 - [Targets and Package](#targets-and-package)
 - [Architecture Map](#architecture-map)
+- [Deferred Decisions](#deferred-decisions)
 - [Data Rules](#data-rules)
 - [Planned Entities](#planned-entities)
 - [App Blocking](#app-blocking)
@@ -47,6 +48,24 @@ integrations come from the draft [mvp.md](../../../../mvp.md) and are product hy
 Not created yet. When the project skeleton exists, record here the real directory map, which
 target owns which state, and how the app and extensions exchange data. Keep it current at feature
 finalization.
+
+---
+
+## Deferred Decisions
+
+Deliberately not decided yet; each is decided at the step named.
+
+- **Skeleton ADR (first step on the Mac):**
+  - how the agent changes the Xcode project: folders that Xcode syncs without editing
+    `project.pbxproj`, or a project generated from a description (XcodeGen, Tuist). Hand edits of
+    `project.pbxproj` are a known trap for agents: merge conflicts, lost files, a broken project;
+  - default actor isolation and Approachable Concurrency for each target and the logic package,
+    including the DeviceActivity monitor (see the Swift rule);
+  - the test framework (working assumption: Swift Testing for the logic package);
+  - `.gitignore` entries for Xcode (`DerivedData`, `xcuserdata`, `.build`).
+- **Storage:** ADR-0002 before the reading-session model.
+- **Sync and conflict resolution:** together with accounts and the backend.
+- **Codex option B or C:** after hypothesis H8 in the audit plan.
 
 ---
 

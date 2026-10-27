@@ -25,7 +25,7 @@ What forces the decision now; constraints; what is known and unknown.
 What we do, specific enough to check in code.
 
 ## Rejected alternatives
-At least two, each with why it lost.
+The alternatives from the brief that lost, at least one, each with why it lost.
 
 ## Consequences
 What gets easier, what gets harder, what the user notices (product consequences go to the owner).

@@ -5,11 +5,12 @@
 *.key
 *.pem
 credentials.json
+client_secret*.json
 secrets/
 .secrets/
-*api-key*
-*apikey*
-*secret*
+*.p8
+*.p12
+Secrets.xcconfig
 
 # Local settings (not shared)
 .claude/settings.local.json

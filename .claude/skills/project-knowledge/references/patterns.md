@@ -18,11 +18,12 @@ features only after a review audit; until then there is no house pattern to copy
 ## Git Workflow
 
 - **`dev`** - default branch, active development.
-- **`main`** - release-ready code. Pushing or merging to `main` is an owner decision. GitHub has
-  no branch protection and its default branch is `main`. `.claude/settings.json` denies pushes
-  that name `main` and pushes that name no branch, so agents always push with an explicit branch.
-  This is not a security boundary: other command forms are not matched; a hook on the Mac closes
-  the rest.
+- **`main`** - release-ready code, not used until release builds start. Pushing or merging to
+  `main` is an owner decision. `.claude/settings.json` denies pushes that name `main` and pushes
+  that name no branch, so agents push with an explicit branch name. This is not a security
+  boundary (other command forms are not matched). Real protection comes when `main` starts
+  producing builds: a GitHub branch rule (for a private repository it needs a paid GitHub plan) or
+  a PreToolUse hook, decided then.
 - `AGENTS.md`, `.agents/`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
   regenerated, hooks not enabled, not a source of project facts. The hooks call scripts outside
   the repository and would fail.
@@ -35,7 +36,8 @@ features only after a review audit; until then there is no house pattern to copy
   and diffs but cannot build or run code.
 - Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
   lint, format, gate-bypass scan, minimum risk tier from changed paths. Not created yet.
-- Package logic is tested with Swift Testing on the smallest reliable boundary.
+- Package logic is tested on the smallest reliable boundary (framework: working assumption Swift
+  Testing, decided in the skeleton ADR).
 - Device-only checks (Family Controls blocking, motion sensors, Live Activity on the lock screen
   over time) go to the owner as a ready checklist.
 
@@ -49,6 +51,7 @@ Rules the code must keep regardless of feature:
   reading day in which it started, computed in the time zone stored with the session and never
   recomputed after a trip. One implementation in the logic package, covered by tests; details in
   [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md#owner-decision-attributing-minutes-to-a-day).
+  Owner decision, confirmed 2026-10-27.
 - **Session time** is stored with its time zone.
 
 ---
