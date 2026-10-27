@@ -42,7 +42,10 @@ Classify by what the change touches. When unsure, go higher.
 
 `reviewer` is the only review agent: give it the tier and the diff or document. Fix valid findings
 yourself. A finding class that repeats is fixed at its source in the same task, preferring:
-compiler, lint rule, test, skill, `docs/lessons.md`, this file.
+compiler, lint rule, test, skill, `docs/lessons.md`, this file. Rounds count per change: never
+start a fresh review to reset them. On `rethink approach`, revise the brief; if the new approach
+also ends round 2 with a blocking finding, stop and report it to the owner as unresolved.
+Pre-existing findings do not block: add each to `backlog.md` under «Баги» in plain Russian.
 
 ## Done
 

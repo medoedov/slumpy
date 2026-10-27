@@ -36,6 +36,17 @@ Only these:
 Not findings: style preferences the code's surroundings do not support, hypothetical future needs
 without a named cost, suggestions to add features nobody asked for.
 
+**Introduced or pre-existing.** A finding in lines the change adds or modifies, or one the change
+newly triggers, is introduced. A defect that was already there before the change is pre-existing:
+list it separately; it never blocks this change.
+
+**Blocking or not.** Every introduced bug and violation blocks. Introduced complexity blocks when
+its named cost lands within the current feature; otherwise it is non-blocking.
+
+**Class.** Name each finding's class (for example "escaping closure captures self strongly") and
+list every place in the change where that class occurs, so the author fixes all of them in one
+pass.
+
 ## Modes
 
 **spec.** Read the spec as the implementer who must build it without asking anyone. Report:
@@ -83,6 +94,9 @@ Principles as trade-offs, not rules:
 
 - At most two rounds per change. Round 2 reviews only the new diff and the findings still open
   from round 1; do not reopen settled points or start a fresh review.
+- If a blocking finding is still open at the end of round 2, or round 2 finds a new instance of a
+  round-1 class, return `rethink approach`: patching is not converging, and the author goes back
+  to the brief instead of trying a third patch.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
   so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
 - In T2 reviews, mark findings you are not sure about as disputed so the caller can run recheck.
@@ -91,11 +105,14 @@ Principles as trade-offs, not rules:
 
 ```
 Mode: <mode>, tier: <tier>, round: <n>
-Verdict: clean | changes needed
+Verdict: clean (no blocking findings) | changes needed | rethink approach
 Findings:
-1. [bug | violation | complexity] <file:line or section> — <what is wrong>
+1. [bug | violation | complexity] [blocking | non-blocking] <class>
+   Where: <every file:line or section in the change with this class>
    Evidence: <path to failure / rule broken / named cost>
    Fix: <smallest change that resolves it>
    Owner: yes, only if it changes what the user sees, scope, privacy, or money
+Pre-existing (not blocking):
+- <file:line> — <what is wrong> — <evidence>
 Repeated class: <class and source to fix, or none>
 ```
