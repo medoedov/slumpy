@@ -70,6 +70,30 @@ for group in sorted({g for g, _ in cases}):
             cost = sum((r["costUsd"] or 0) + (r["judgeCostUsd"] or 0) for r in sel)
             print(f"| {group} | {label} | {len(sel)} | {cost:.2f} | {cost / len(sel):.3f} |")
 
+# Group means above depend on the case mix of each side. Compare cost on the cases present in
+# both "with" arms: the mean over cases of each case's mean cost per run.
+def case_cost(side, arm, case):
+    sel = [r for r in data[side] if r["arm"] == arm and r["case"] == case]
+    if not sel:
+        return None
+    return sum((r["costUsd"] or 0) + (r["judgeCostUsd"] or 0) for r in sel) / len(sel)
+
+
+print("\n| Group | Cases in both | Before $/run | After $/run | Change | Without $/run |")
+print("|---|---|---|---|---|---|")
+for group in sorted({g for g, _ in cases}):
+    both = [c for g, c in cases if g == group
+            and case_cost("before", "with", c) is not None
+            and case_cost("after", "with", c) is not None]
+    if not both:
+        continue
+    before = sum(case_cost("before", "with", c) for c in both) / len(both)
+    after = sum(case_cost("after", "with", c) for c in both) / len(both)
+    bare = [case_cost("before", "without", c) for c in both]
+    bare = [b for b in bare if b is not None]
+    bare_txt = f"{sum(bare) / len(bare):.3f}" if len(bare) == len(both) else "—"
+    print(f"| {group} | {len(both)} | {before:.3f} | {after:.3f} | {after / before - 1:+.0%} | {bare_txt} |")
+
 skills = collections.Counter()
 agents = collections.Counter()
 for r in data["after"]:
