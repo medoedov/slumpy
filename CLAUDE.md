@@ -36,8 +36,9 @@ Classify by what the change touches. When unsure, go higher.
   concurrency architecture; system services and extensions (entitlements, Info.plist, App Group);
   network, backend, sign-in, privacy, money; a new third-party dependency. Brief with two
   alternatives and cost of change in a year, an ADR, `reviewer` on the decision before code and on
-  the code, re-check of disputed findings, a separate security pass when it touches Keychain, ATS,
-  Privacy Manifest, or user data. Product consequences go to the owner.
+  the code, a security pass on the same diff as code round 1 when it touches Keychain, ATS,
+  Privacy Manifest, or user data, re-check of disputed findings. Product consequences go to the
+  owner.
 
 ## Scope
 
@@ -47,11 +48,12 @@ adjacent code. Problems noticed along the way go to `backlog.md` instead of into
 ## Review and lessons
 
 `reviewer` is the only review agent: give it the tier and the diff or document. Fix blocking
-findings yourself; non-blocking and pre-existing ones go to `backlog.md` under «Баги» in plain
-Russian instead of into this change. A finding class that repeats is fixed at its source in the
-same task, preferring: compiler, lint rule, test, skill, `docs/lessons.md`, this file. Rounds count
-per change and per mode (spec, decision, code), at most two; recheck and the T2 security pass are
-not rounds; never start a fresh review to reset them. On `rethink approach`, revise the brief; if
+findings yourself; non-blocking and pre-existing ones go to `backlog.md` in plain Russian instead
+of into this change. A finding class that repeats is fixed at its source in the same task,
+preferring: compiler, lint rule, test, skill, `docs/lessons.md`, this file. Rounds count per change
+and per mode (spec, decision, code), at most two. Every review pass that can lead to edits is a
+round, only a recheck is not; the security pass is part of code round 1. Never start a fresh
+review to reset rounds. On `rethink approach`, revise the brief; if
 the new approach also ends round 2 with a blocking finding, stop and report it to the owner as
 unresolved.
 

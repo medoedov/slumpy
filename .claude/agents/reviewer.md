@@ -97,7 +97,9 @@ Principles as trade-offs, not rules:
 - Round 2 ends with `clean` or `rethink approach`, never `changes needed`: any blocking finding in
   round 2, carried over or new, means patching is not converging, and the author goes back to the
   brief instead of trying a third patch.
-- Rounds count per mode (spec, decision, code). Recheck and the T2 security pass are not rounds.
+- Rounds count per mode (spec, decision, code). Every pass that can lead to edits is a round; only
+  a recheck is not. The T2 security pass runs on the same diff as code round 1, its findings are
+  fixed together with round 1, and code round 2 checks them.
 - In spec mode there is no `rethink approach`: findings left after round 2 become owner questions
   or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say

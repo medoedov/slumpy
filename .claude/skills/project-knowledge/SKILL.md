@@ -10,7 +10,8 @@ description: |
 
 Each fact has one owner file below; update that file instead of repeating the fact elsewhere.
 When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md) for other
-copies and update them or replace them with a link.
+copies and update them or replace them with a link to the section that states the fact, keeping
+its status (hypothesis or approved).
 
 **Status of facts.** Product content comes from the draft [mvp.md](../../../mvp.md). Everything
 taken from it is a product hypothesis, marked as such, until the owner approves it. Technical
