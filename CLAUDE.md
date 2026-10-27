@@ -33,8 +33,9 @@ Classify by the decision the change makes. When unsure, go higher.
 - **T0 trivial:** text, color, a one-place edit without new types. Verify; no brief, no review.
 - **T1 normal:** work inside decisions already made, including an additive optional field with a
   lightweight migration. A feature gets a short brief in plan.md (`engineering-design` skill); a
-  bug gets a failing test first. Verify, reread your own diff against the brief. Run `reviewer`
-  on the code when the change touches shared state or concurrency, or when you are unsure.
+  bug gets a failing test first, failing because of the bug (a build or setup error does not
+  count; a cloud session marks it unrun). Verify, reread your own diff against the brief. Run
+  `reviewer` on the code when the change touches shared state or concurrency, or when unsure.
 - **T2 new irreversible decision:** a new persisted entity or storage; a schema change that is
   not additive (rename, delete, type or relationship change); a new module boundary or a breaking
   change to the shared package's API; concurrency architecture; a new extension, entitlement, or
@@ -78,6 +79,7 @@ report. If the user would notice the missing part, that becomes a product questi
 "Done" needs evidence from the current state: verification output for the latest commit
 (`scripts/check` once it exists). Say what could not be verified and why. Never weaken a test or
 disable a check to get green; if one must change, state the reason where the reviewer sees it.
+Each commit message has a line `Verified: <command and result>` or `Unverified: <why>`.
 A finished feature also updates Project Knowledge as its "When finishing a feature" section says.
 
 ## Owner report

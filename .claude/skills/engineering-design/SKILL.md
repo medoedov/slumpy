@@ -64,9 +64,9 @@ owner as a product question; technical choices you make yourself.
 | Decision type | Questions |
 |---|---|
 | New abstraction, type, module, or boundary | What leaks out: storage errors, async, threads, time, network? What happens with a second implementation? Who owns the state? What is the contract: inputs, outputs, errors, ordering, thread safety? |
-| Data and growth | What happens at 10x and 100x: memory, launch time, scrolling, database size, migration time? How does the migration run? How reversible is it, what does replacing it cost in a year? |
-| Interaction between parts, services, extensions | What is the exchange contract? What if the other side fails or is late? Is ordering guaranteed? Can duplicates happen? |
-| Concurrent code | Where is the isolation, what is `Sendable`, who owns the state? What about cancellation? What runs on the main thread? |
+| Data and growth | Which field combinations do the types allow that the domain forbids? What happens at 10x and 100x: memory, launch time, scrolling, database size, migration time? How does the migration run? How reversible is it, what does replacing it cost in a year? |
+| Interaction between parts, services, extensions | What is the exchange contract? What if the other side fails or is late? Is ordering guaranteed? What if an operation runs twice, or again after a crash at any point: does it end in the same state, and does the next run recognize what a crashed run left behind? |
+| Concurrent code | Where is the isolation, what is `Sendable`, who owns the state? Which writers share it, including the app and extensions through the App Group (Swift 6 checks races only inside one process)? First give each writer its own target and merge on read; if one shared target is required, enforce one writer or an order in the structure. What about cancellation? What runs on the main thread? |
 | System service or external API | What if permission is denied? What differs across iOS versions? What are the background limits? What without network? What do App Review and privacy rules require? |
 | Standard or protocol | Which standard applies and what does it require? Read the primary source: RFC, ISO 8601, IANA time zones, HTTP semantics, OAuth and Sign in with Apple, APNs, Unicode, WCAG and Apple HIG, App Store Review Guidelines. Do not answer from memory |
 | Interface | Dynamic Type, VoiceOver, dark theme, small screens, list performance |

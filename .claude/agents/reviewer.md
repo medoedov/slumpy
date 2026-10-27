@@ -77,11 +77,14 @@ from the code. Verdict: confirmed or refuted, with the evidence.
 - ARC: reference cycles, closure captures.
 - Actor isolation and `Sendable`.
 - API availability for iOS 18 and soft deprecations the compiler does not flag.
-- Tests on the right boundary: they protect behavior; if deleting a line of logic would not fail
-  any test, the test does not protect it. A rule of the form "do not do X" needs a test input on
-  which X gives a different answer.
-- Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`, removed or
-  weakened tests or assertions without a stated reason.
+- Tests by the criterion in `.claude/rules/swift.md`, "Tests and fixes": each test fails when the
+  behavior breaks and survives a change of internals; each "do not do X" rule has its input.
+- Fixes at the cause: a guard or fallback where a bad state surfaced is not the fix, same section.
+- Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`,
+  `@preconcurrency import`, `MainActor.assumeIsolated`, removed or weakened tests or assertions
+  without a stated reason.
+- One business rule or constant decided in two places (app, extension, widget, package) is a
+  violation; code that only looks alike is not, see the principles below.
 - Security, when the caller asks for a security pass or the change meets the security-pass trigger
   in CLAUDE.md ("Whatever the tier").
 
