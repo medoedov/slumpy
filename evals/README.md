@@ -62,3 +62,19 @@ python3 -I evals/scripts/summarize.py evals/results/baseline/*/
 ```
 
 `--max-cost-usd` is the tool's list-price estimate ceiling per invocation.
+
+Two settings are environment variables of `run.sh` because they change which arms run and the
+wall time, not how a single run behaves (added in session B, defaults unchanged):
+
+- `ABLATION=none` runs only the with-system arm and reuses an earlier without-system arm for
+  comparison (default `with-without`).
+- `CONCURRENCY=1` launches runs one at a time, so the cost ceiling is checked before each run and
+  is not overrun by parallel expensive cases (default `4`).
+
+```bash
+ABLATION=none CONCURRENCY=1 evals/scripts/run.sh repo after --tag traps --max-cost-usd 8
+python3 -I evals/scripts/compare.py evals/results/baseline/*/ -- evals/results/after/*/
+```
+
+`compare.py` puts the with-system arm of the "before" result dirs next to the with-system arm of
+the "after" ones, per grader, plus the baseline without-system arm for reference.

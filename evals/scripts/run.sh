@@ -7,11 +7,16 @@
 #
 # Results: evals/results/<label>/<timestamp>/ (aggregate-result.json + runs.jsonl).
 # Pinned settings below must stay identical between the "before" and "after" measurements.
+# Not pinned (they change which arms run and wall time, not how a run behaves):
+#   ABLATION=with-without|none  (default with-without; none = only the with-system arm)
+#   CONCURRENCY=1..8            (default 4)
 set -euo pipefail
 
 VARIANT="${1:?variant: v0 | repo}"
 LABEL="${2:?label}"
 shift 2
+ABLATION="${ABLATION:-with-without}"
+CONCURRENCY="${CONCURRENCY:-4}"
 
 EVALS="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="$EVALS/.build/$VARIANT"
@@ -25,10 +30,10 @@ export CLAUDE_CODE_EFFORT_LEVEL=high
 set +e
 (cd "$BUILD" && claude plugin eval . \
   --trust-plugin \
-  --ablation with-without \
+  --ablation "$ABLATION" \
   --model claude-opus-5-5 \
   --judge-model claude-sonnet-5-5 \
-  --concurrency 4 \
+  --concurrency "$CONCURRENCY" \
   --keep-temp \
   --no-publish \
   --output-dir "$OUT" \

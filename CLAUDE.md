@@ -30,7 +30,7 @@ Classify by what the change touches, not by how small the request sounds. When u
 
 - **T0 trivial:** text, color, a one-place edit without new types. Verify; no brief, no review.
 - **T1 normal:** feature or bug inside existing boundaries. Brief in plan.md (`engineering-design`
-  skill), verify, one `reviewer` run, at most two review rounds.
+  skill), verify, `reviewer` on the code, at most two review rounds.
 - **T2 irreversible:** persisted model or migration; module boundaries or the shared package;
   concurrency architecture; system services and extensions (entitlements, Info.plist, App Group);
   network, backend, sign-in, privacy, money; a new third-party dependency. Brief with two

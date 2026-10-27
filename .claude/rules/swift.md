@@ -11,9 +11,8 @@ paths:
 - Swift 6 language mode, strict concurrency. App and extension targets use default MainActor
   isolation (SE-0466). `@unchecked Sendable` and `nonisolated(unsafe)` need a comment with the
   reason and the invariant that makes them safe; the reviewer treats them as findings otherwise.
-- Toolchain as of 2026-10-26: Xcode 27.1, iOS 27, Swift 6.4. Your training data ends around June
-  2026, so anything from iOS 27 / Xcode 27 / Swift 6.4, or any API you are unsure about, is read
-  in the docs before use.
+- Toolchain as of 2026-10-26: Xcode 27.1, iOS 27, Swift 6.4. Anything newer than your training
+  data, and any API you are unsure about, is read in the docs before use.
 - Apple docs recipe: append `.md` to a developer.apple.com documentation URL to get markdown,
   e.g. `https://developer.apple.com/documentation/familycontrols.md`.
 - Built with the Xcode 27 SDK, iOS 26+ always renders Liquid Glass (`UIDesignRequiresCompatibility`
