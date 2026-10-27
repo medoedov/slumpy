@@ -11,7 +11,7 @@
 
 ## Status
 
-App code does not exist yet. The stack and structure below are decided in
+App code does not exist yet; all of it will live in this repository (decided 2026-10-23). The stack and structure below are decided in
 [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md). Entities and
 integrations come from the draft [mvp.md](../../../../mvp.md) and are product hypotheses.
 

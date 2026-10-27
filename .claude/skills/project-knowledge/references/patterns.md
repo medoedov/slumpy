@@ -18,7 +18,8 @@ features only after a review audit; until then there is no house pattern to copy
 ## Git Workflow
 
 - **`dev`** - default branch, active development.
-- **`main`** - release-ready code. Pushing or merging to `main` is an owner decision.
+- **`main`** - release-ready code. Pushing or merging to `main` is an owner decision. GitHub has
+  no branch protection; `.claude/settings.json` denies agent pushes to `main`.
 - `AGENTS.md`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
   regenerated, hooks not enabled. The hooks call scripts outside the repository and would fail.
 
@@ -59,12 +60,13 @@ building a feature on them.
   proposal.
 - **Audiobooks** count as reading with a separate icon.
 - **Forgotten session** added as "+N minutes" in one tap, marked as added later.
-- **Light anti-cheat:** a session over 3 hours asks before counting; honest peeks do not reset the
+- **Light anti-cheat:** a session over 3 hours asks before counting (when and how is not designed); honest peeks do not reset the
   session; time checked against server time once a server exists.
 - **Slumpy mood** reflects today's reading only, does not accumulate; reactions are deadpan.
 - **Library:** current, finished, set aside without penalty, own "read next" queue (not a
   recommendation engine); a hidden book shows friends minutes but not the title; quote cards show
   author and title; sharing through the system share sheet.
-- **Duel:** stake is free text and the app never processes money (244-FZ); loss rule chosen at
+- **Duel:** stake is dinner, coffee, a gift, or the user's own option; the app never processes
+  money (244-FZ); loss rule chosen at
   creation ("first to miss a day" or "read less by the date"). Duration, result confirmation,
   draws, and 3+ participants are open.

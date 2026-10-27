@@ -27,8 +27,11 @@ Nothing is built or deployed yet. The path below is from
 
 ## Accounts and Stores
 
-- **Apple Developer Program:** not enrolled yet, enrollment in progress. It blocks the Family
-  Controls check on an iPhone and TestFlight.
+- **Apple Developer Program:** not enrolled yet. Enroll first, before development starts: it is
+  required to register bundle IDs, request the Family Controls entitlement, and sign device builds
+  (blocking check on an iPhone, TestFlight). Paid with a foreign card in the founder's name, which
+  may take time to arrange. Individual vs organization enrollment is an open owner decision: it
+  sets the App Store seller name and is hard to change later.
 - **Family Controls distribution entitlement:** requested from Apple right after enrollment;
   approval time is unpredictable.
 - **Payments outside the App Store** (hypothesis from `mvp.md`: Apple payouts to Russia are

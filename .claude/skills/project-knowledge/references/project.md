@@ -129,3 +129,5 @@ Owner decisions not taken yet:
 5. Store tagline; name checks.
 6. Monetization and Pro.
 7. Public launch date.
+8. Apple Developer enrollment as an individual or an organization (sets the App Store seller
+   name, hard to change later).
