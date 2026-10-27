@@ -1,102 +1,58 @@
 # Deployment & Operations
 
-- [Purpose](#purpose)
-- [Deployment Platform](#deployment-platform)
+- [Status](#status)
+- [Build and Delivery](#build-and-delivery)
 - [Accounts and Stores](#accounts-and-stores)
-- [Operating Model](#operating-model)
-- [Environment Variables](#environment-variables)
-- [Deployment Triggers](#deployment-triggers)
-- [Required Manual Release Steps](#required-manual-release-steps)
-- [Emergency Recovery](#emergency-recovery)
 - [Environments](#environments)
-- [Monitoring & Observability](#monitoring--observability)
+- [Secrets](#secrets)
+- [Monitoring](#monitoring)
 
-## Purpose
-Delivery, infrastructure, and operations for AI agents. Nothing is deployed yet; this file records
-the agreed plan from [mvp.md](../../../../mvp.md).
+## Status
+
+Nothing is built or deployed yet. The path below is from
+[ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md); items from the draft
+`mvp.md` are marked as hypotheses.
 
 ---
 
-## Deployment Platform
+## Build and Delivery
 
-**Mobile:** iOS app built by EAS Build (Expo cloud) and distributed through TestFlight for the
-closed beta, then the App Store.
-
-**Backend:** Self-hosted Supabase or PocketBase in a Russian cloud with Russian S3-compatible
-storage (choice open).
-
-**Why this platform:** EAS builds iOS without a Mac; Russian hosting satisfies 152-FZ.
+- **Development host:** a dedicated Mac (planned, not yet set up). Builds, tests, simulators, and
+  device installs run there with Apple's command-line tools.
+- **CI and distribution:** Xcode Cloud, then TestFlight, then the App Store.
+- **External actions** - App Store Connect, TestFlight uploads, any publication - are owner
+  decisions and need explicit approval each time.
 
 ---
 
 ## Accounts and Stores
 
-- Apple Developer Program: $99/year, paid with a foreign card in the founder's name; the app is
-  published under the founder's personal account (allowed for a free app).
-- Apple payouts to Russia are closed, so Pro is not sold through the App Store; paid features go
-  through Google Play, RuStore, and the web later. A Russian sole proprietorship is needed once
-  payments start.
-- Google Play ($25) is needed only for the deferred Android version.
-
----
-
-## Operating Model
-
-**Routine delivery:** Not set up yet. Planned: EAS Build for iOS builds and EAS Submit or manual
-upload to TestFlight.
-
-**Direct target operations:** Not applicable until the backend exists.
-
-**Agent/operations host:** Not applicable yet.
-
-**Environment strategy:** TBD with the backend.
-
-**Production authorization:** Any App Store Connect / TestFlight submission and any production
-backend change require the user's explicit approval.
-
----
-
-## Environment Variables
-
-**See:** [.env.example](../../../../.env.example) in project root. No variables defined yet;
-backend URLs and keys will be added with the backend choice. EAS build secrets live in EAS, not in
-the repository.
-
----
-
-## Deployment Triggers
-
-**Production:** Not configured.
-
-**Staging:** Not configured.
-
-**Preview:** Not configured.
-
----
-
-## Required Manual Release Steps
-
-- [ ] Request the Family Controls entitlement from Apple for the app bundle ID and every extension
-  bundle ID in the first week of development; approval takes days to weeks and blocks app blocking.
-- [ ] Enroll in the Apple Developer Program before the first TestFlight build.
-
----
-
-## Emergency Recovery
-
-Not applicable yet: no production release or backend.
+- **Apple Developer Program:** not enrolled yet, enrollment in progress. It blocks the Family
+  Controls check on an iPhone and TestFlight.
+- **Family Controls distribution entitlement:** requested from Apple right after enrollment;
+  approval time is unpredictable.
+- **Payments outside the App Store** (hypothesis from `mvp.md`: Apple payouts to Russia are
+  closed, Pro sold through Google Play, RuStore, web): App Review Guideline 3.1.1 risk; decided
+  together with monetization.
+- **Android:** no date; possible later.
 
 ---
 
 ## Environments
 
-**Closed beta:** TestFlight, 50-150 testers for 2-4 weeks.
-
-**Production:** App Store, after the beta; public launch date is open.
+- **Closed beta (hypothesis from `mvp.md`):** TestFlight, 50-150 testers, 2-4 weeks.
+- **Production:** App Store; launch date open.
 
 ---
 
-## Monitoring & Observability
+## Secrets
 
-No logging, error tracking, or analytics configured yet. The beta must measure the success metrics
-in [project.md](project.md#success-metrics); the analytics tool is not chosen.
+No secrets exist yet. Never in the repository or chat: local `.env` (git-ignored) on the Mac or
+Xcode Cloud environment secrets.
+
+---
+
+## Monitoring
+
+Nothing configured. No analytics until the first tester build; the analytics service and its
+privacy impact are decided before that build.

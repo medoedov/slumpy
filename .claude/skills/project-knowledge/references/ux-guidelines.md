@@ -1,86 +1,66 @@
 # UX Guidelines
 
-- [Purpose](#purpose)
+- [Status](#status)
 - [Interface Language](#interface-language)
+- [Accessibility Baseline](#accessibility-baseline)
+- [Design Source and Acceptance](#design-source-and-acceptance)
 - [Tone of Voice](#tone-of-voice)
 - [Slumpy Character](#slumpy-character)
 - [Domain Glossary](#domain-glossary)
-- [Copy Reference](#copy-reference)
-- [Design System](#design-system)
-- [Accessibility](#accessibility)
 
-## Purpose
-UX standards and user-facing communication for AI agents. Text patterns, palette, and components
-are not designed yet; fill them during design instead of inventing them.
+## Status
+
+Text patterns, palette, and components are not designed yet; fill them from the design instead of
+inventing them. Tone and character come from the draft `mvp.md` and are hypotheses.
 
 ---
 
 ## Interface Language
 
-**Primary language:** Russian (the audience is in Russia).
+Russian only for now. All user-facing strings go through a String Catalog from the first screen
+(ADR-0001), so adding a language later does not mean rewriting views.
 
-**Localization:** Not decided.
+---
+
+## Accessibility Baseline
+
+From the first screen (ADR-0001): Dynamic Type, VoiceOver labels, dark theme.
+
+---
+
+## Design Source and Acceptance
+
+- Visual design comes from Claude Design as web mockups and a design system. The agent translates
+  colors, type, and components to SwiftUI; Claude Design does not produce SwiftUI.
+- Design-system constraints for iOS: system font, Dynamic Type scale, minimum tap target size,
+  light and dark themes.
+- The owner accepts simulator screenshots on iOS 18 and on the current iOS (two visual styles,
+  see the Swift rule), not the source HTML.
 
 ---
 
 ## Tone of Voice
 
-**Overall tone:** Calm, concrete, with dry deadpan humor carried by Slumpy.
-
-**Writing style:** Concrete statements about books, minutes, and friends; no abstractions or
-motivational slogans. No guilt or loss framing: the product has no streaks, so never write
-anything like "your streak burned".
-
-**Voice characteristics:**
-- **Formality level:** Informal "ты", short phrases.
-- **Emotional tone:** Understated; joy is rare and therefore valuable.
-- **Humor:** Deadpan, mostly through Slumpy's reactions rather than copy.
-
-**Example phrases by context:**
-
-- ✅ Good: "Slumpy: читай, а не листай" (tagline candidate)
-- ❌ Avoid: "Серия сгорела!", "+50 XP"
+Hypothesis from `mvp.md`: calm, concrete, dry deadpan humor carried by Slumpy; informal "ты",
+short phrases; no guilt or loss framing, never anything like "Серия сгорела!" or "+50 XP".
 
 ---
 
 ## Slumpy Character
 
-- Minimalist neutral face from the founder's mockup: a simple shape, two dot eyes, a line mouth.
-- Mood is "today": it brightens with today's reading.
-- Reactions are deadpan; specific reactions are defined during design.
-- Rendered with Rive.
+Hypothesis from `mvp.md`: minimalist neutral face (simple shape, two dot eyes, a line mouth); mood
+is "today"; reactions are deadpan and defined during design. Rendering is not chosen; a SwiftUI
+prototype comes first.
 
 ---
 
 ## Domain Glossary
 
 - **Сессия** — one timed reading session in either mode.
-  *UI example: start screen, session timer, Live Activity*
-- **Книга в руках** — session mode for paper books and e-readers; the phone lies face down.
-- **Читаю с телефона** — session mode for reading apps on the phone with other apps blocked.
+- **Книга в руках** — mode for paper books and e-readers; the phone lies face down.
+- **Читаю с телефона** — mode for reading apps on the phone with other apps blocked.
 - **Подглядывание** — an honest look at the phone mid-session; it does not reset the session.
 - **Что читать дальше** — the user's own queue of next books, not recommendations.
 - **Скрытая книга** — a book whose title friends cannot see; they see only the minutes.
 - **Дуэль** — a reading challenge between friends with a stake and a loss rule.
-- **Ставка** — the non-monetary stake of a duel (dinner, coffee, gift, custom).
-
----
-
-## Copy Reference
-
-N/A - no UI copy yet.
-
----
-
-## Design System
-
-**Design files:** Founder's mockup of Slumpy's face; no full design system yet.
-
-**Direction:** Visual quality on par with the best apps: clean minimalism, smooth animation,
-a beautiful library with covers, spines, and a shelf. Do not overload screens with features.
-
----
-
-## Accessibility
-
-No project-specific requirements agreed yet.
+- **Ставка** — the non-monetary stake of a duel.
