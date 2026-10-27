@@ -38,6 +38,11 @@ Classify by what the change touches. When unsure, go higher.
   the code, re-check of disputed findings, a separate security pass when it touches Keychain, ATS,
   Privacy Manifest, or user data. Product consequences go to the owner.
 
+## Scope
+
+Change only what the task needs: no unrequested features, layers, settings, or rewrites of
+adjacent code. Problems noticed along the way go to `backlog.md` instead of into this change.
+
 ## Review and lessons
 
 `reviewer` is the only review agent: give it the tier and the diff or document. Fix valid findings
@@ -52,6 +57,7 @@ Pre-existing findings do not block: add each to `backlog.md` under «Баги» 
 "Done" needs evidence from the current state: verification output for the latest commit
 (`scripts/check` once it exists). Say what could not be verified and why. Never weaken a test or
 disable a check to get green; if one must change, state the reason where the reviewer sees it.
+A finished feature also updates Project Knowledge as its "When finishing a feature" section says.
 
 ## Owner report
 
