@@ -1,0 +1,1181 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.311",
+  "startedAt": "2026-10-27T04:19:21.399Z",
+  "durationSeconds": 186,
+  "costUsd": 3.0875689999999993,
+  "partial": false,
+  "suite": {
+    "root": "/home/user/slumpy/evals/.build/repo",
+    "ablation": "none",
+    "modelOverride": "claude-opus-5-5",
+    "judgeModel": "claude-sonnet-5-5",
+    "tagFilters": [
+      "triggers",
+      "product"
+    ],
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "sys",
+        "version": "0.0.0",
+        "path": "/home/user/slumpy/evals/.build/repo"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "p1-streak",
+      "dir": "evals/product/p1-streak",
+      "source": "prose",
+      "promptMarkdown": "Хочу, чтобы Slumpy хвалил меня за серию дней чтения подряд. Код пока не пиши, сначала договоримся, что именно делаем.\n\nКонтекст для тебя: iOS-приложение на SwiftUI. Есть сессии чтения с датой, длительностью и часовым поясом, есть персонаж Slumpy с невозмутимыми репликами. Я владелец продукта, не программист.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "ind-spec-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design|methodology)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "key-ambiguity",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if the response resolves (by a question with a recommendation or by an explicit assumption) what counts as a \"reading day\" for the streak (for example a minimum number of minutes or any session) AND what happens when a day is missed (reset, grace day, freeze).\nFAIL if either of these two points is not addressed.",
+          "config": {
+            "criteria": "PASS if the response resolves (by a question with a recommendation or by an explicit assumption) what counts as a \"reading day\" for the streak (for example a minimum number of minutes or any session) AND what happens when a day is missed (reset, grace day, freeze).\nFAIL if either of these two points is not addressed.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "product-only",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+          "config": {
+            "criteria": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "question-count",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+          "config": {
+            "criteria": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "recommendations",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+          "config": {
+            "criteria": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "russian",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "[А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+            "flags": "",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.2735404,
+            "judgeCostUsd": 0.08190800000000001,
+            "durationSeconds": 47,
+            "startedAt": "2026-10-27T04:19:21.553Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-1aDXVM/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Прежде чем что-то писать, я сверился с описанием продукта. Нашлось противоречие, его нужно решить первым.\n\nВ черновике продукта (`mvp.md`) записаны два принципа, с которыми серия спорит:\n- **«Никаких механик Duolingo: ни серий, ни очков, ни „серия сгорела“».** Серии там прямо названы тем, чего в Slumpy нет.\n- **Настроение Slumpy зависит только от сегодняшнего чтения и не накапливается.** Похвала за серию добавляет ему память о прошлых днях.\n\nЭто гипотезы, а не утверждённые решения, так что вы вправе их поменять. Но менять стоит осознанно. Вопросов будет не больше пяти, по одному за раз. Мелочи вроде точных формулировок я возьму на себя и запишу как допущения, вы сможете их поправить.\n\n---\n\n**Вопрос 1 из ≤5: как серия выглядит для пользователя?**\n\n**Суть:** серия будет тихим поводом для похвалы или видимым счётчиком?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления» или в нём появится то, что жалко потерять. Это самое заметное решение во всей фиче.\n\n**Варианты:**\n- **А. Только похвала, без счётчика.** Slumpy сам замечает, что вы читаете несколько дней подряд, и говорит об этом. Цифры на экране нет. Если серия прервалась, Slumpy ничего не говорит.\n- **Б. Видимый счётчик и похвала.** На главном экране всегда видно «5 дней подряд», Slumpy комментирует круглые числа. Если серия прервалась, счётчик тихо обнуляется.\n- **В. Похвала за регулярность вместо «подряд».** Slumpy хвалит, например, за «4 дня чтения на этой неделе». Пропущенный день ничего не обнуляет.\n\n**Рекомендация: А.** Вы получаете то, что просили: Slumpy хвалит за серию. При этом не появляется цифра, которую страшно потерять, и не нарушается принцип «без давления и чувства вины». Если на бета-тесте окажется, что людям не хватает цифры, счётчик легко добавить позже. Убрать его, когда люди к нему привыкли, гораздо болезненнее.\n\n**Что изменится для пользователя:**\n- **А:** однажды после сессии Slumpy невозмутимо говорит что-то вроде «Третий день подряд. Подозрительно стабильно». Больше ничего не меняется. Пропуск дня проходит молча.\n- **Б:** на экране постоянно видна цифра. Появляется мотивация «не порвать серию», а вместе с ней и разочарование, когда она рвётся, даже если Slumpy об этом молчит.\n- **В:** похвала приходит чаще и мягче, но это уже не совсем «дни подряд». Тот, кто читает каждый день, не услышит про свою непрерывность.\n\nКакой вариант выбираете? Можно и свой."
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем что-то писать, я сверился с описанием продукта. Нашлось противоречие, его нужно решить первым.\n\nВ черновике продукта (`mvp.md`) записаны два принципа, с которыми серия спорит:\n- **«Никаких механик Duolingo: ни серий, ни очков, ни „серия сгорела“».** Серии там прямо названы тем, чего в Slumpy нет.\n- **Настроение Slumpy зависит только от сегодняшнего чтения и не накапливается.** Похвала за серию добавляет ему память о прошлых днях.\n\nЭто гипотезы, а не утверждённые решения, так что вы вправе их поменять. Но менять стоит осознанно. Вопросов будет не больше пяти, по одному за раз. Мелочи вроде точных формулировок я возьму на себя и запишу как допущения, вы сможете их поправить.\n\n---\n\n**Вопрос 1 из ≤5: как серия выглядит для пользователя?**\n\n**Суть:** серия будет тихим поводом для похвалы или видимым счётчиком?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления» или в нём появится то, что жалко потерять. Это самое заметное решение во всей фиче.\n\n**Варианты:**\n- **А. Только похвала, без счётчика.** Slumpy сам замечает, что вы читаете несколько дней подряд, и говорит об этом. Цифры на экране нет. Если серия прервалась, Slumpy ничего не говорит.\n- **Б. Видимый счётчик и похвала.** На главном экране всегда видно «5 дней подряд», Slumpy комментирует круглые числа. Если серия прервалась, счётчик тихо обнуляется.\n- **В. Похвала за регулярность вместо «подряд».** Slumpy хвалит, например, за «4 дня чтения на этой неделе». Пропущенный день ничего не обнуляет.\n\n**Рекомендация: А.** Вы получаете то, что просили: Slumpy хвалит за серию. При этом не появляется цифра, которую страшно потерять, и не нарушается принцип «без давления и чувства вины». Если на бета-тесте окажется, что людям не хватает цифры, счётчик легко добавить позже. Убрать его, когда люди к нему привыкли, гораздо болезненнее.\n\n**Что изменится для пользователя:**\n- **А:** однажды после сессии Slumpy невозмутимо говорит что-то вроде «Третий день подряд. Подозрительно стабильно». Больше ничего не меняется. Пропуск дня проходит молча.\n- **Б:** на экране постоянно видна цифра. Появляется мотивация «не порвать серию», а вместе с ней и разочарование, когда она рвётся, даже если Slumpy об этом молчит.\n- **В:** похвала приходит чаще и мягче, но это уже не совсем «дни подряд». Тот, кто читает каждый день, не услышит про свою непрерывность.\n\nКакой вариант выбираете? Можно и свой."
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем что-то писать, я сверился с описанием продукта. Нашлось противоречие, его нужно решить первым.\n\nВ черновике продукта (`mvp.md`) записаны два принципа, с которыми серия спорит:\n- **«Никаких механик Duolingo: ни серий, ни очков, ни „серия сгорела“».** Серии там прямо названы тем, чего в Slumpy нет.\n- **Настроение Slumpy зависит только от сегодняшнего чтения и не накапливается.** Похвала за серию добавляет ему память о прошлых днях.\n\nЭто гипотезы, а не утверждённые решения, так что вы вправе их поменять. Но менять стоит осознанно. Вопросов будет не больше пяти, по одному за раз. Мелочи вроде точных формулировок я возьму на себя и запишу как допущения, вы сможете их поправить.\n\n---\n\n**Вопрос 1 из ≤5: как серия выглядит для пользователя?**\n\n**Суть:** серия будет тихим поводом для похвалы или видимым счётчиком?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления» или в нём появится то, что жалко потерять. Это самое заметное решение во всей фиче.\n\n**Варианты:**\n- **А. Только похвала, без счётчика.** Slumpy сам замечает, что вы читаете несколько дней подряд, и говорит об этом. Цифры на экране нет. Если серия прервалась, Slumpy ничего не говорит.\n- **Б. Видимый счётчик и похвала.** На главном экране всегда видно «5 дней подряд», Slumpy комментирует круглые числа. Если серия прервалась, счётчик тихо обнуляется.\n- **В. Похвала за регулярность вместо «подряд».** Slumpy хвалит, например, за «4 дня чтения на этой неделе». Пропущенный день ничего не обнуляет.\n\n**Рекомендация: А.** Вы получаете то, что просили: Slumpy хвалит за серию. При этом не появляется цифра, которую страшно потерять, и не нарушается принцип «без давления и чувства вины». Если на бета-тесте окажется, что людям не хватает цифры, счётчик легко добавить позже. Убрать его, когда люди к нему привыкли, гораздо болезненнее.\n\n**Что изменится для пользователя:**\n- **А:** однажды после сессии Slumpy невозмутимо говорит что-то вроде «Третий день подряд. Подозрительно стабильно». Больше ничего не меняется. Пропуск дня проходит молча.\n- **Б:** на экране постоянно видна цифра. Появляется мотивация «не порвать серию», а вместе с ней и разочарование, когда она рвётся, даже если Slumpy об этом молчит.\n- **В:** похвала приходит чаще и мягче, но это уже не совсем «дни подряд». Тот, кто читает каждый день, не услышит про свою непрерывность.\n\nКакой вариант выбираете? Можно и свой."
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем что-то писать, я сверился с описанием продукта. Нашлось противоречие, его нужно решить первым.\n\nВ черновике продукта (`mvp.md`) записаны два принципа, с которыми серия спорит:\n- **«Никаких механик Duolingo: ни серий, ни очков, ни „серия сгорела“».** Серии там прямо названы тем, чего в Slumpy нет.\n- **Настроение Slumpy зависит только от сегодняшнего чтения и не накапливается.** Похвала за серию добавляет ему память о прошлых днях.\n\nЭто гипотезы, а не утверждённые решения, так что вы вправе их поменять. Но менять стоит осознанно. Вопросов будет не больше пяти, по одному за раз. Мелочи вроде точных формулировок я возьму на себя и запишу как допущения, вы сможете их поправить.\n\n---\n\n**Вопрос 1 из ≤5: как серия выглядит для пользователя?**\n\n**Суть:** серия будет тихим поводом для похвалы или видимым счётчиком?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления» или в нём появится то, что жалко потерять. Это самое заметное решение во всей фиче.\n\n**Варианты:**\n- **А. Только похвала, без счётчика.** Slumpy сам замечает, что вы читаете несколько дней подряд, и говорит об этом. Цифры на экране нет. Если серия прервалась, Slumpy ничего не говорит.\n- **Б. Видимый счётчик и похвала.** На главном экране всегда видно «5 дней подряд», Slumpy комментирует круглые числа. Если серия прервалась, счётчик тихо обнуляется.\n- **В. Похвала за регулярность вместо «подряд».** Slumpy хвалит, например, за «4 дня чтения на этой неделе». Пропущенный день ничего не обнуляет.\n\n**Рекомендация: А.** Вы получаете то, что просили: Slumpy хвалит за серию. При этом не появляется цифра, которую страшно потерять, и не нарушается принцип «без давления и чувства вины». Если на бета-тесте окажется, что людям не хватает цифры, счётчик легко добавить позже. Убрать его, когда люди к нему привыкли, гораздо болезненнее.\n\n**Что изменится для пользователя:**\n- **А:** однажды после сессии Slumpy невозмутимо говорит что-то вроде «Третий день подряд. Подозрительно стабильно». Больше ничего не меняется. Пропуск дня проходит молча.\n- **Б:** на экране постоянно видна цифра. Появляется мотивация «не порвать серию», а вместе с ней и разочарование, когда она рвётся, даже если Slumpy об этом молчит.\n- **В:** похвала приходит чаще и мягче, но это уже не совсем «дни подряд». Тот, кто читает каждый день, не услышит про свою непрерывность.\n\nКакой вариант выбираете? Можно и свой."
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.2773888,
+            "judgeCostUsd": 0.08187799999999999,
+            "durationSeconds": 52,
+            "startedAt": "2026-10-27T04:19:21.553Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-yYU6E5/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Прочитал описание продукта, прежде чем задавать вопросы. Нашёл одно противоречие, его нужно решить первым.\n\n**Что мешает.** В черновике MVP записаны два принципа, которые этой фиче противоречат:\n- «Никаких механик Duolingo: никаких серий, очков, „твоя серия сгорела“». Серии там прямо вынесены в «не делаем».\n- Настроение Slumpy зависит только от сегодняшнего чтения и не копится.\n\nЭто пока гипотезы, а не утверждённые решения, так что поменять их можно. Но это решаете вы, сознательно, а не я молча. Поэтому первый вопрос про это.\n\n---\n\n**Вопрос 1 из ~4**\n\n**Суть:** насколько заметной делаем серию: как тихую похвалу от Slumpy или как настоящий счётчик дней?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления». И чувствует ли человек вину, когда серия прерывается. Видимый счётчик удерживает сильнее, но именно он создаёт ощущение «сгорело», от которого вы хотели уйти.\n\n**Варианты:**\n- **А. Тихая серия.** Отдельного счётчика на экране нет. Slumpy сам замечает серию и невозмутимо хвалит в особые дни, например на 3-й, 7-й, 14-й и 30-й день подряд. Если день пропущен, ничего не происходит: ни упрёка, ни потерянной цифры. Через несколько дней серия просто начинается заново.\n- **Б. Видимый счётчик.** На главном экране всегда цифра «N дней подряд», и Slumpy хвалит на рубежах. Если день пропущен, цифра становится нулём.\n- **В. Прощающая серия.** Считаем не строго подряд, а «дни чтения за неделю» («4 из 7»). Похвала за хорошую неделю. Пропуск одного дня ничего не ломает.\n\n**Рекомендация:** **А.** Вы получаете то, что хотели (Slumpy хвалит за регулярность), и не нарушаете принцип «без вины и потерь». Если на бете станет видно, что людям нужна цифра перед глазами, счётчик добавить легко. А если сначала его показать, а потом убрать, пользователи воспримут это как потерю.\n\n**Что изменится для пользователя:**\n- А: в обычный день всё как сейчас. Время от времени Slumpy говорит что-нибудь вроде «Седьмой день подряд. Я не впечатлён. Ладно, немного впечатлён». Пропуск проходит незаметно.\n- Б: цифра всегда перед глазами. Это мотивирует, но пропуск ощущается как проигрыш.\n- В: нет напряжения «только не прервать», но и азарта «подряд» меньше.\n\n---\n\nДальше будет ещё два-три коротких вопроса: где и когда звучит похвала, и что считается «днём чтения» (сколько минут нужно и к какому дню относить чтение после полуночи). Последнее и так висит среди ваших открытых решений, заодно его закроем."
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал описание продукта, прежде чем задавать вопросы. Нашёл одно противоречие, его нужно решить первым.\n\n**Что мешает.** В черновике MVP записаны два принципа, которые этой фиче противоречат:\n- «Никаких механик Duolingo: никаких серий, очков, „твоя серия сгорела“». Серии там прямо вынесены в «не делаем».\n- Настроение Slumpy зависит только от сегодняшнего чтения и не копится.\n\nЭто пока гипотезы, а не утверждённые решения, так что поменять их можно. Но это решаете вы, сознательно, а не я молча. Поэтому первый вопрос про это.\n\n---\n\n**Вопрос 1 из ~4**\n\n**Суть:** насколько заметной делаем серию: как тихую похвалу от Slumpy или как настоящий счётчик дней?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления». И чувствует ли человек вину, когда серия прерывается. Видимый счётчик удерживает сильнее, но именно он создаёт ощущение «сгорело», от которого вы хотели уйти.\n\n**Варианты:**\n- **А. Тихая серия.** Отдельного счётчика на экране нет. Slumpy сам замечает серию и невозмутимо хвалит в особые дни, например на 3-й, 7-й, 14-й и 30-й день подряд. Если день пропущен, ничего не происходит: ни упрёка, ни потерянной цифры. Через несколько дней серия просто начинается заново.\n- **Б. Видимый счётчик.** На главном экране всегда цифра «N дней подряд», и Slumpy хвалит на рубежах. Если день пропущен, цифра становится нулём.\n- **В. Прощающая серия.** Считаем не строго подряд, а «дни чтения за неделю» («4 из 7»). Похвала за хорошую неделю. Пропуск одного дня ничего не ломает.\n\n**Рекомендация:** **А.** Вы получаете то, что хотели (Slumpy хвалит за регулярность), и не нарушаете принцип «без вины и потерь». Если на бете станет видно, что людям нужна цифра перед глазами, счётчик добавить легко. А если сначала его показать, а потом убрать, пользователи воспримут это как потерю.\n\n**Что изменится для пользователя:**\n- А: в обычный день всё как сейчас. Время от времени Slumpy говорит что-нибудь вроде «Седьмой день подряд. Я не впечатлён. Ладно, немного впечатлён». Пропуск проходит незаметно.\n- Б: цифра всегда перед глазами. Это мотивирует, но пропуск ощущается как проигрыш.\n- В: нет напряжения «только не прервать», но и азарта «подряд» меньше.\n\n---\n\nДальше будет ещё два-три коротких вопроса: где и когда звучит похвала, и что считается «днём чтения» (сколько минут нужно и к какому дню относить чтение после полуночи). Последнее и так висит среди ваших открытых решений, заодно его закроем."
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал описание продукта, прежде чем задавать вопросы. Нашёл одно противоречие, его нужно решить первым.\n\n**Что мешает.** В черновике MVP записаны два принципа, которые этой фиче противоречат:\n- «Никаких механик Duolingo: никаких серий, очков, „твоя серия сгорела“». Серии там прямо вынесены в «не делаем».\n- Настроение Slumpy зависит только от сегодняшнего чтения и не копится.\n\nЭто пока гипотезы, а не утверждённые решения, так что поменять их можно. Но это решаете вы, сознательно, а не я молча. Поэтому первый вопрос про это.\n\n---\n\n**Вопрос 1 из ~4**\n\n**Суть:** насколько заметной делаем серию: как тихую похвалу от Slumpy или как настоящий счётчик дней?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления». И чувствует ли человек вину, когда серия прерывается. Видимый счётчик удерживает сильнее, но именно он создаёт ощущение «сгорело», от которого вы хотели уйти.\n\n**Варианты:**\n- **А. Тихая серия.** Отдельного счётчика на экране нет. Slumpy сам замечает серию и невозмутимо хвалит в особые дни, например на 3-й, 7-й, 14-й и 30-й день подряд. Если день пропущен, ничего не происходит: ни упрёка, ни потерянной цифры. Через несколько дней серия просто начинается заново.\n- **Б. Видимый счётчик.** На главном экране всегда цифра «N дней подряд», и Slumpy хвалит на рубежах. Если день пропущен, цифра становится нулём.\n- **В. Прощающая серия.** Считаем не строго подряд, а «дни чтения за неделю» («4 из 7»). Похвала за хорошую неделю. Пропуск одного дня ничего не ломает.\n\n**Рекомендация:** **А.** Вы получаете то, что хотели (Slumpy хвалит за регулярность), и не нарушаете принцип «без вины и потерь». Если на бете станет видно, что людям нужна цифра перед глазами, счётчик добавить легко. А если сначала его показать, а потом убрать, пользователи воспримут это как потерю.\n\n**Что изменится для пользователя:**\n- А: в обычный день всё как сейчас. Время от времени Slumpy говорит что-нибудь вроде «Седьмой день подряд. Я не впечатлён. Ладно, немного впечатлён». Пропуск проходит незаметно.\n- Б: цифра всегда перед глазами. Это мотивирует, но пропуск ощущается как проигрыш.\n- В: нет напряжения «только не прервать», но и азарта «подряд» меньше.\n\n---\n\nДальше будет ещё два-три коротких вопроса: где и когда звучит похвала, и что считается «днём чтения» (сколько минут нужно и к какому дню относить чтение после полуночи). Последнее и так висит среди ваших открытых решений, заодно его закроем."
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал описание продукта, прежде чем задавать вопросы. Нашёл одно противоречие, его нужно решить первым.\n\n**Что мешает.** В черновике MVP записаны два принципа, которые этой фиче противоречат:\n- «Никаких механик Duolingo: никаких серий, очков, „твоя серия сгорела“». Серии там прямо вынесены в «не делаем».\n- Настроение Slumpy зависит только от сегодняшнего чтения и не копится.\n\nЭто пока гипотезы, а не утверждённые решения, так что поменять их можно. Но это решаете вы, сознательно, а не я молча. Поэтому первый вопрос про это.\n\n---\n\n**Вопрос 1 из ~4**\n\n**Суть:** насколько заметной делаем серию: как тихую похвалу от Slumpy или как настоящий счётчик дней?\n\n**Почему важно:** от этого зависит, останется ли Slumpy «приложением без давления». И чувствует ли человек вину, когда серия прерывается. Видимый счётчик удерживает сильнее, но именно он создаёт ощущение «сгорело», от которого вы хотели уйти.\n\n**Варианты:**\n- **А. Тихая серия.** Отдельного счётчика на экране нет. Slumpy сам замечает серию и невозмутимо хвалит в особые дни, например на 3-й, 7-й, 14-й и 30-й день подряд. Если день пропущен, ничего не происходит: ни упрёка, ни потерянной цифры. Через несколько дней серия просто начинается заново.\n- **Б. Видимый счётчик.** На главном экране всегда цифра «N дней подряд», и Slumpy хвалит на рубежах. Если день пропущен, цифра становится нулём.\n- **В. Прощающая серия.** Считаем не строго подряд, а «дни чтения за неделю» («4 из 7»). Похвала за хорошую неделю. Пропуск одного дня ничего не ломает.\n\n**Рекомендация:** **А.** Вы получаете то, что хотели (Slumpy хвалит за регулярность), и не нарушаете принцип «без вины и потерь». Если на бете станет видно, что людям нужна цифра перед глазами, счётчик добавить легко. А если сначала его показать, а потом убрать, пользователи воспримут это как потерю.\n\n**Что изменится для пользователя:**\n- А: в обычный день всё как сейчас. Время от времени Slumpy говорит что-нибудь вроде «Седьмой день подряд. Я не впечатлён. Ладно, немного впечатлён». Пропуск проходит незаметно.\n- Б: цифра всегда перед глазами. Это мотивирует, но пропуск ощущается как проигрыш.\n- В: нет напряжения «только не прервать», но и азарта «подряд» меньше.\n\n---\n\nДальше будет ещё два-три коротких вопроса: где и когда звучит похвала, и что считается «днём чтения» (сколько минут нужно и к какому дню относить чтение после полуночи). Последнее и так висит среди ваших открытых решений, заодно его закроем."
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "p2-share-quotes",
+      "dir": "evals/product/p2-share-quotes",
+      "source": "prose",
+      "promptMarkdown": "Добавь возможность делиться цитатами с друзьями. Код пока не пиши, сначала договоримся, что именно делаем.\n\nКонтекст для тебя: iOS-приложение на SwiftUI. Цитаты пользователь сохраняет из книг, текст распознаётся с фото страницы. Друзей и аккаунтов в приложении пока нет, сервера тоже. Я владелец продукта, не программист.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "ind-spec-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design|methodology)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "key-ambiguity",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if the response notices that friends/accounts/server do not exist yet and resolves this product scope point (for example sharing through the system share sheet as an image or text now, with in-app friends later) by a question with a recommendation or an explicit assumption.\nFAIL if the response plans in-app friend sharing as if friends existed, or ignores that friends do not exist.",
+          "config": {
+            "criteria": "PASS if the response notices that friends/accounts/server do not exist yet and resolves this product scope point (for example sharing through the system share sheet as an image or text now, with in-app friends later) by a question with a recommendation or an explicit assumption.\nFAIL if the response plans in-app friend sharing as if friends existed, or ignores that friends do not exist.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "product-only",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+          "config": {
+            "criteria": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "question-count",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+          "config": {
+            "criteria": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "recommendations",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+          "config": {
+            "criteria": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "russian",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "[А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+            "flags": "",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.251173,
+            "judgeCostUsd": 0.04881799999999999,
+            "durationSeconds": 41,
+            "startedAt": "2026-10-27T04:19:21.554Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-cJSlj9/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта. В черновике MVP уже есть подходящая мысль: карточка цитаты с автором и названием книги, которой можно поделиться через стандартное меню iPhone «Поделиться». Технические детали я решу сам. Тебе задам несколько продуктовых вопросов, по одному за раз. Первый вопрос главный.\n\n---\n\n**Вопрос 1 из 3–4**\n\n**Суть:** с кем и как делиться, если друзей внутри приложения пока нет?\n\n**Почему важно:** от этого зависит, можно ли выпустить функцию сейчас. Для друзей внутри приложения нужны аккаунты, сервер и юридическая часть по персональным данным (152-ФЗ). Это отдельный большой этап.\n\n**Варианты:**\n1. **Сейчас только через меню «Поделиться».** Пользователь отправляет цитату куда угодно: в Telegram, WhatsApp, iMessage, сторис. Получатель видит её, даже если Slumpy у него не установлен.\n2. **Ждать друзей внутри приложения.** Цитата появляется у друга в Slumpy, например в ленте «что читают друзья». Функция выйдет вместе с друзьями и не раньше.\n3. **Сначала вариант 1, потом добавить вариант 2.** Сейчас меню «Поделиться», а когда появятся друзья, к нему добавится кнопка «Отправить другу в Slumpy».\n\n**Рекомендация:** вариант 3. Так функция доступна с первой версии и не ждёт сервера. Каждая отправленная карточка бесплатно показывает приложение тем, у кого его ещё нет. Так же предполагает и черновик MVP. Когда в приложении появятся друзья, добавить вторую кнопку будет несложно.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 3:** на экране цитаты есть кнопка «Поделиться». Открывается привычное меню iPhone, пользователь выбирает чат и отправляет.\n- **Вариант 2:** до появления друзей кнопки нет совсем. Потом цитата уходит только тем, кто уже пользуется Slumpy и добавлен в друзья.\n\nКакой вариант выбираешь?"
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта. В черновике MVP уже есть подходящая мысль: карточка цитаты с автором и названием книги, которой можно поделиться через стандартное меню iPhone «Поделиться». Технические детали я решу сам. Тебе задам несколько продуктовых вопросов, по одному за раз. Первый вопрос главный.\n\n---\n\n**Вопрос 1 из 3–4**\n\n**Суть:** с кем и как делиться, если друзей внутри приложения пока нет?\n\n**Почему важно:** от этого зависит, можно ли выпустить функцию сейчас. Для друзей внутри приложения нужны аккаунты, сервер и юридическая часть по персональным данным (152-ФЗ). Это отдельный большой этап.\n\n**Варианты:**\n1. **Сейчас только через меню «Поделиться».** Пользователь отправляет цитату куда угодно: в Telegram, WhatsApp, iMessage, сторис. Получатель видит её, даже если Slumpy у него не установлен.\n2. **Ждать друзей внутри приложения.** Цитата появляется у друга в Slumpy, например в ленте «что читают друзья». Функция выйдет вместе с друзьями и не раньше.\n3. **Сначала вариант 1, потом добавить вариант 2.** Сейчас меню «Поделиться», а когда появятся друзья, к нему добавится кнопка «Отправить другу в Slumpy».\n\n**Рекомендация:** вариант 3. Так функция доступна с первой версии и не ждёт сервера. Каждая отправленная карточка бесплатно показывает приложение тем, у кого его ещё нет. Так же предполагает и черновик MVP. Когда в приложении появятся друзья, добавить вторую кнопку будет несложно.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 3:** на экране цитаты есть кнопка «Поделиться». Открывается привычное меню iPhone, пользователь выбирает чат и отправляет.\n- **Вариант 2:** до появления друзей кнопки нет совсем. Потом цитата уходит только тем, кто уже пользуется Slumpy и добавлен в друзья.\n\nКакой вариант выбираешь?"
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта. В черновике MVP уже есть подходящая мысль: карточка цитаты с автором и названием книги, которой можно поделиться через стандартное меню iPhone «Поделиться». Технические детали я решу сам. Тебе задам несколько продуктовых вопросов, по одному за раз. Первый вопрос главный.\n\n---\n\n**Вопрос 1 из 3–4**\n\n**Суть:** с кем и как делиться, если друзей внутри приложения пока нет?\n\n**Почему важно:** от этого зависит, можно ли выпустить функцию сейчас. Для друзей внутри приложения нужны аккаунты, сервер и юридическая часть по персональным данным (152-ФЗ). Это отдельный большой этап.\n\n**Варианты:**\n1. **Сейчас только через меню «Поделиться».** Пользователь отправляет цитату куда угодно: в Telegram, WhatsApp, iMessage, сторис. Получатель видит её, даже если Slumpy у него не установлен.\n2. **Ждать друзей внутри приложения.** Цитата появляется у друга в Slumpy, например в ленте «что читают друзья». Функция выйдет вместе с друзьями и не раньше.\n3. **Сначала вариант 1, потом добавить вариант 2.** Сейчас меню «Поделиться», а когда появятся друзья, к нему добавится кнопка «Отправить другу в Slumpy».\n\n**Рекомендация:** вариант 3. Так функция доступна с первой версии и не ждёт сервера. Каждая отправленная карточка бесплатно показывает приложение тем, у кого его ещё нет. Так же предполагает и черновик MVP. Когда в приложении появятся друзья, добавить вторую кнопку будет несложно.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 3:** на экране цитаты есть кнопка «Поделиться». Открывается привычное меню iPhone, пользователь выбирает чат и отправляет.\n- **Вариант 2:** до появления друзей кнопки нет совсем. Потом цитата уходит только тем, кто уже пользуется Slumpy и добавлен в друзья.\n\nКакой вариант выбираешь?"
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта. В черновике MVP уже есть подходящая мысль: карточка цитаты с автором и названием книги, которой можно поделиться через стандартное меню iPhone «Поделиться». Технические детали я решу сам. Тебе задам несколько продуктовых вопросов, по одному за раз. Первый вопрос главный.\n\n---\n\n**Вопрос 1 из 3–4**\n\n**Суть:** с кем и как делиться, если друзей внутри приложения пока нет?\n\n**Почему важно:** от этого зависит, можно ли выпустить функцию сейчас. Для друзей внутри приложения нужны аккаунты, сервер и юридическая часть по персональным данным (152-ФЗ). Это отдельный большой этап.\n\n**Варианты:**\n1. **Сейчас только через меню «Поделиться».** Пользователь отправляет цитату куда угодно: в Telegram, WhatsApp, iMessage, сторис. Получатель видит её, даже если Slumpy у него не установлен.\n2. **Ждать друзей внутри приложения.** Цитата появляется у друга в Slumpy, например в ленте «что читают друзья». Функция выйдет вместе с друзьями и не раньше.\n3. **Сначала вариант 1, потом добавить вариант 2.** Сейчас меню «Поделиться», а когда появятся друзья, к нему добавится кнопка «Отправить другу в Slumpy».\n\n**Рекомендация:** вариант 3. Так функция доступна с первой версии и не ждёт сервера. Каждая отправленная карточка бесплатно показывает приложение тем, у кого его ещё нет. Так же предполагает и черновик MVP. Когда в приложении появятся друзья, добавить вторую кнопку будет несложно.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 3:** на экране цитаты есть кнопка «Поделиться». Открывается привычное меню iPhone, пользователь выбирает чат и отправляет.\n- **Вариант 2:** до появления друзей кнопки нет совсем. Потом цитата уходит только тем, кто уже пользуется Slumpy и добавлен в друзья.\n\nКакой вариант выбираешь?"
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.2888144,
+            "judgeCostUsd": 0.07733400000000001,
+            "durationSeconds": 55,
+            "startedAt": "2026-10-27T04:19:21.554Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-vwtEzJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем писать описание фичи, задам несколько вопросов по одному, самый важный первый. Технические детали решу сам, а мелочи с разумным вариантом по умолчанию запишу в допущения. Все допущения вы увидите в итоговом документе и сможете поменять любое.\n\nВажная деталь: внутри приложения друзей пока нет. «Поделиться с другом» сейчас может значить только «отправить в мессенджер или соцсеть», либо сначала придётся делать аккаунты и друзей.\n\n---\n\n**Вопрос 1 из 4. Куда уходит цитата**\n\n**Суть:** цитата уходит через обычное меню «Поделиться» в любой мессенджер или соцсеть, или делаем ленту цитат друзей внутри Slumpy?\n\n**Почему важно:** от ответа зависит, когда фича появится. Обычное меню работает уже сейчас. Для ленты внутри Slumpy сначала нужны аккаунты, вход, список друзей и хранение данных на сервере, это отдельный большой этап. К тому же данные пользователей тогда хранятся у нас, и по закону о персональных данных их нужно хранить в России.\n\n**Варианты:**\n1. **Только через меню «Поделиться»:** Telegram, WhatsApp, Instagram, заметки, почта и так далее.\n2. **Меню «Поделиться» сейчас, лента у друзей потом:** лента появится, когда в Slumpy будут друзья, а в этой фиче её нет.\n3. **Сразу лента у друзей внутри Slumpy:** придётся ждать аккаунтов и друзей.\n\n**Рекомендация:** вариант 2. Пользователь получает возможность делиться почти сразу и без регистрации. Друзья в любом случае сидят в мессенджерах, а не в Slumpy. Ленту цитат логично обсуждать вместе с друзьями и дуэлями, когда до них дойдёт очередь.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 2:** на цитате есть кнопка «Поделиться». Пользователь нажимает её, видит привычное меню iPhone, выбирает мессенджер и друга. Друг получает цитату, даже если у него нет Slumpy. В варианте 2 позже добавится ещё и лента внутри приложения.\n- **Вариант 3:** пока нет друзей, кнопки нет. Потом пользователь заводит аккаунт, добавляет друзей, и цитаты видны только тем, у кого есть Slumpy.\n\n---\n\nСледующие вопросы будут о том, что именно получает друг: красивая карточка-картинка или простой текст, и стоит ли на карточке значок Slumpy. Последний вопрос будет о «скрытых книгах»: показывать ли название такой книги на карточке, которую человек отправил сам."
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем писать описание фичи, задам несколько вопросов по одному, самый важный первый. Технические детали решу сам, а мелочи с разумным вариантом по умолчанию запишу в допущения. Все допущения вы увидите в итоговом документе и сможете поменять любое.\n\nВажная деталь: внутри приложения друзей пока нет. «Поделиться с другом» сейчас может значить только «отправить в мессенджер или соцсеть», либо сначала придётся делать аккаунты и друзей.\n\n---\n\n**Вопрос 1 из 4. Куда уходит цитата**\n\n**Суть:** цитата уходит через обычное меню «Поделиться» в любой мессенджер или соцсеть, или делаем ленту цитат друзей внутри Slumpy?\n\n**Почему важно:** от ответа зависит, когда фича появится. Обычное меню работает уже сейчас. Для ленты внутри Slumpy сначала нужны аккаунты, вход, список друзей и хранение данных на сервере, это отдельный большой этап. К тому же данные пользователей тогда хранятся у нас, и по закону о персональных данных их нужно хранить в России.\n\n**Варианты:**\n1. **Только через меню «Поделиться»:** Telegram, WhatsApp, Instagram, заметки, почта и так далее.\n2. **Меню «Поделиться» сейчас, лента у друзей потом:** лента появится, когда в Slumpy будут друзья, а в этой фиче её нет.\n3. **Сразу лента у друзей внутри Slumpy:** придётся ждать аккаунтов и друзей.\n\n**Рекомендация:** вариант 2. Пользователь получает возможность делиться почти сразу и без регистрации. Друзья в любом случае сидят в мессенджерах, а не в Slumpy. Ленту цитат логично обсуждать вместе с друзьями и дуэлями, когда до них дойдёт очередь.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 2:** на цитате есть кнопка «Поделиться». Пользователь нажимает её, видит привычное меню iPhone, выбирает мессенджер и друга. Друг получает цитату, даже если у него нет Slumpy. В варианте 2 позже добавится ещё и лента внутри приложения.\n- **Вариант 3:** пока нет друзей, кнопки нет. Потом пользователь заводит аккаунт, добавляет друзей, и цитаты видны только тем, у кого есть Slumpy.\n\n---\n\nСледующие вопросы будут о том, что именно получает друг: красивая карточка-картинка или простой текст, и стоит ли на карточке значок Slumpy. Последний вопрос будет о «скрытых книгах»: показывать ли название такой книги на карточке, которую человек отправил сам."
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем писать описание фичи, задам несколько вопросов по одному, самый важный первый. Технические детали решу сам, а мелочи с разумным вариантом по умолчанию запишу в допущения. Все допущения вы увидите в итоговом документе и сможете поменять любое.\n\nВажная деталь: внутри приложения друзей пока нет. «Поделиться с другом» сейчас может значить только «отправить в мессенджер или соцсеть», либо сначала придётся делать аккаунты и друзей.\n\n---\n\n**Вопрос 1 из 4. Куда уходит цитата**\n\n**Суть:** цитата уходит через обычное меню «Поделиться» в любой мессенджер или соцсеть, или делаем ленту цитат друзей внутри Slumpy?\n\n**Почему важно:** от ответа зависит, когда фича появится. Обычное меню работает уже сейчас. Для ленты внутри Slumpy сначала нужны аккаунты, вход, список друзей и хранение данных на сервере, это отдельный большой этап. К тому же данные пользователей тогда хранятся у нас, и по закону о персональных данных их нужно хранить в России.\n\n**Варианты:**\n1. **Только через меню «Поделиться»:** Telegram, WhatsApp, Instagram, заметки, почта и так далее.\n2. **Меню «Поделиться» сейчас, лента у друзей потом:** лента появится, когда в Slumpy будут друзья, а в этой фиче её нет.\n3. **Сразу лента у друзей внутри Slumpy:** придётся ждать аккаунтов и друзей.\n\n**Рекомендация:** вариант 2. Пользователь получает возможность делиться почти сразу и без регистрации. Друзья в любом случае сидят в мессенджерах, а не в Slumpy. Ленту цитат логично обсуждать вместе с друзьями и дуэлями, когда до них дойдёт очередь.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 2:** на цитате есть кнопка «Поделиться». Пользователь нажимает её, видит привычное меню iPhone, выбирает мессенджер и друга. Друг получает цитату, даже если у него нет Slumpy. В варианте 2 позже добавится ещё и лента внутри приложения.\n- **Вариант 3:** пока нет друзей, кнопки нет. Потом пользователь заводит аккаунт, добавляет друзей, и цитаты видны только тем, у кого есть Slumpy.\n\n---\n\nСледующие вопросы будут о том, что именно получает друг: красивая карточка-картинка или простой текст, и стоит ли на карточке значок Slumpy. Последний вопрос будет о «скрытых книгах»: показывать ли название такой книги на карточке, которую человек отправил сам."
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прежде чем писать описание фичи, задам несколько вопросов по одному, самый важный первый. Технические детали решу сам, а мелочи с разумным вариантом по умолчанию запишу в допущения. Все допущения вы увидите в итоговом документе и сможете поменять любое.\n\nВажная деталь: внутри приложения друзей пока нет. «Поделиться с другом» сейчас может значить только «отправить в мессенджер или соцсеть», либо сначала придётся делать аккаунты и друзей.\n\n---\n\n**Вопрос 1 из 4. Куда уходит цитата**\n\n**Суть:** цитата уходит через обычное меню «Поделиться» в любой мессенджер или соцсеть, или делаем ленту цитат друзей внутри Slumpy?\n\n**Почему важно:** от ответа зависит, когда фича появится. Обычное меню работает уже сейчас. Для ленты внутри Slumpy сначала нужны аккаунты, вход, список друзей и хранение данных на сервере, это отдельный большой этап. К тому же данные пользователей тогда хранятся у нас, и по закону о персональных данных их нужно хранить в России.\n\n**Варианты:**\n1. **Только через меню «Поделиться»:** Telegram, WhatsApp, Instagram, заметки, почта и так далее.\n2. **Меню «Поделиться» сейчас, лента у друзей потом:** лента появится, когда в Slumpy будут друзья, а в этой фиче её нет.\n3. **Сразу лента у друзей внутри Slumpy:** придётся ждать аккаунтов и друзей.\n\n**Рекомендация:** вариант 2. Пользователь получает возможность делиться почти сразу и без регистрации. Друзья в любом случае сидят в мессенджерах, а не в Slumpy. Ленту цитат логично обсуждать вместе с друзьями и дуэлями, когда до них дойдёт очередь.\n\n**Что изменится для пользователя:**\n- **Варианты 1 и 2:** на цитате есть кнопка «Поделиться». Пользователь нажимает её, видит привычное меню iPhone, выбирает мессенджер и друга. Друг получает цитату, даже если у него нет Slumpy. В варианте 2 позже добавится ещё и лента внутри приложения.\n- **Вариант 3:** пока нет друзей, кнопки нет. Потом пользователь заводит аккаунт, добавляет друзей, и цитаты видны только тем, у кого есть Slumpy.\n\n---\n\nСледующие вопросы будут о том, что именно получает друг: красивая карточка-картинка или простой текст, и стоит ли на карточке значок Slumpy. Последний вопрос будет о «скрытых книгах»: показывать ли название такой книги на карточке, которую человек отправил сам."
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "p3-pause-session",
+      "dir": "evals/product/p3-pause-session",
+      "source": "prose",
+      "promptMarkdown": "Сделай, чтобы сессию чтения можно было поставить на паузу. Код пока не пиши, сначала договоримся, что именно делаем.\n\nКонтекст для тебя: iOS-приложение на SwiftUI. Во время сессии идёт таймер, отвлекающие приложения заблокированы, на экране блокировки Live Activity. Минуты сессии идут в дневную цель. Я владелец продукта, не программист.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "ind-spec-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design|methodology)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "key-ambiguity",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if the response recognizes the product trade-off that pausing can undermine the anti-distraction purpose and resolves at least two of these points by questions with recommendations or explicit assumptions: whether blocking stays on during a pause, a limit on pause length or count, whether paused time counts toward the daily goal, what the Live Activity shows during a pause.\nFAIL if fewer than two of these points are addressed or the trade-off is not noticed.",
+          "config": {
+            "criteria": "PASS if the response recognizes the product trade-off that pausing can undermine the anti-distraction purpose and resolves at least two of these points by questions with recommendations or explicit assumptions: whether blocking stays on during a pause, a limit on pause length or count, whether paused time counts toward the daily goal, what the Live Activity shows during a pause.\nFAIL if fewer than two of these points are addressed or the trade-off is not noticed.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "product-only",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+          "config": {
+            "criteria": "The user is a non-programmer product owner. Product questions are about what the user sees or feels, scope, feature rules, privacy and data shown to others, and money. Technical questions are about storage, frameworks, architecture, APIs, data formats, background execution mechanics, libraries, or implementation approach.\n\nPASS if every question asked to the user is a product question (a question may mention a technical constraint as context, as long as the user is asked to choose product behavior).\nFAIL if at least one question asks the user to make a technical/implementation choice.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "question-count",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+          "config": {
+            "criteria": "Count the distinct questions the response asks the user (numbered items or sentences that require the user's answer; a question with several options counts once).\n\nPASS if the response asks between 1 and 5 questions, or asks none but states explicit assumptions for the open points and proposes a concrete scope for the user to confirm.\nFAIL if it asks more than 5 questions, or neither asks questions nor states assumptions (for example it silently specifies everything as decided).",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "recommendations",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+          "config": {
+            "criteria": "PASS if each question asked to the user comes with a recommended answer or a default the assistant proposes (for example \"Рекомендую: ...\" or \"Предлагаю ...\"), so the user can simply agree. If the response asks no questions, PASS if it proposes a concrete default for each open point.\nFAIL if at least one question is asked without any recommendation or proposed default.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "russian",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "[А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+            "flags": "",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.26449519999999993,
+            "judgeCostUsd": 0.06746999999999997,
+            "durationSeconds": 53,
+            "startedAt": "2026-10-27T04:20:02.983Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-dGPmx1/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта и правила сессий. Большую часть мелочей можно решить разумным решением по умолчанию, их я внесу в спецификацию, и вы сможете их поменять. Требуют вашего решения три вопроса. Буду задавать их по одному, начиная с самого важного.\n\nЧтобы было видно, что я решаю сам, вот эти решения по умолчанию:\n- Время на паузе не идёт в дневную цель, в дуэли и в настроение Slumpy. Считаются только минуты чтения.\n- Пауза есть в обоих режимах: «Книга в руках» и «Читаю с телефона».\n- На экране блокировки Live Activity показывает «На паузе» и сколько уже прочитано. Продолжить можно прямо оттуда.\n- Slumpy реагирует на паузу спокойно, без упрёков, как и везде.\n- Ставить на паузу можно сколько угодно раз. Одна сессия остаётся одной сессией, а не дробится на куски.\n\n---\n\n**Вопрос 1 из 3: что происходит с блокировкой приложений на паузе**\n\n**Суть:** когда сессия на паузе, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** от этого зависит, чем станет пауза: передышкой посреди чтения или законной дверью в ленту. Сейчас это самое сильное обещание продукта: «телефон тебя не утянет».\n\n**Варианты:**\n1. **Блокировка остаётся.** Пауза только останавливает таймер. Чтобы зайти в заблокированное приложение, сессию нужно завершить.\n2. **Блокировка снимается на паузе.** При продолжении включается снова.\n3. **Блокировка снимается, но пауза ограничена по времени.** Например, на 5 минут, после этого блокировка возвращается сама.\n\n**Рекомендация:** вариант 1. Обычно паузу ставят, чтобы налить чай, ответить ребёнку или открыть дверь, и заблокированные приложения для этого не нужны. Если же нужен мессенджер, проще завершить сессию: уже прочитанные минуты всё равно засчитаются. Варианты 2 и 3 превращают паузу в лазейку к ленте, а именно от неё приложение и защищает. Если на бете окажется, что людям этого не хватает, ослабить правило потом несложно.\n\n**Что изменится для пользователя:**\n- Вариант 1: нажал паузу, таймер остановился, Instagram по-прежнему закрыт. Для ленты нужно нажать «Завершить».\n- Вариант 2: нажал паузу, и все приложения сразу открыты. Можно залипнуть в ленту, не завершая сессию.\n- Вариант 3: нажал паузу, приложения открыты, через 5 минут закрываются снова, даже если человек не вернулся к книге.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта и правила сессий. Большую часть мелочей можно решить разумным решением по умолчанию, их я внесу в спецификацию, и вы сможете их поменять. Требуют вашего решения три вопроса. Буду задавать их по одному, начиная с самого важного.\n\nЧтобы было видно, что я решаю сам, вот эти решения по умолчанию:\n- Время на паузе не идёт в дневную цель, в дуэли и в настроение Slumpy. Считаются только минуты чтения.\n- Пауза есть в обоих режимах: «Книга в руках» и «Читаю с телефона».\n- На экране блокировки Live Activity показывает «На паузе» и сколько уже прочитано. Продолжить можно прямо оттуда.\n- Slumpy реагирует на паузу спокойно, без упрёков, как и везде.\n- Ставить на паузу можно сколько угодно раз. Одна сессия остаётся одной сессией, а не дробится на куски.\n\n---\n\n**Вопрос 1 из 3: что происходит с блокировкой приложений на паузе**\n\n**Суть:** когда сессия на паузе, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** от этого зависит, чем станет пауза: передышкой посреди чтения или законной дверью в ленту. Сейчас это самое сильное обещание продукта: «телефон тебя не утянет».\n\n**Варианты:**\n1. **Блокировка остаётся.** Пауза только останавливает таймер. Чтобы зайти в заблокированное приложение, сессию нужно завершить.\n2. **Блокировка снимается на паузе.** При продолжении включается снова.\n3. **Блокировка снимается, но пауза ограничена по времени.** Например, на 5 минут, после этого блокировка возвращается сама.\n\n**Рекомендация:** вариант 1. Обычно паузу ставят, чтобы налить чай, ответить ребёнку или открыть дверь, и заблокированные приложения для этого не нужны. Если же нужен мессенджер, проще завершить сессию: уже прочитанные минуты всё равно засчитаются. Варианты 2 и 3 превращают паузу в лазейку к ленте, а именно от неё приложение и защищает. Если на бете окажется, что людям этого не хватает, ослабить правило потом несложно.\n\n**Что изменится для пользователя:**\n- Вариант 1: нажал паузу, таймер остановился, Instagram по-прежнему закрыт. Для ленты нужно нажать «Завершить».\n- Вариант 2: нажал паузу, и все приложения сразу открыты. Можно залипнуть в ленту, не завершая сессию.\n- Вариант 3: нажал паузу, приложения открыты, через 5 минут закрываются снова, даже если человек не вернулся к книге.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта и правила сессий. Большую часть мелочей можно решить разумным решением по умолчанию, их я внесу в спецификацию, и вы сможете их поменять. Требуют вашего решения три вопроса. Буду задавать их по одному, начиная с самого важного.\n\nЧтобы было видно, что я решаю сам, вот эти решения по умолчанию:\n- Время на паузе не идёт в дневную цель, в дуэли и в настроение Slumpy. Считаются только минуты чтения.\n- Пауза есть в обоих режимах: «Книга в руках» и «Читаю с телефона».\n- На экране блокировки Live Activity показывает «На паузе» и сколько уже прочитано. Продолжить можно прямо оттуда.\n- Slumpy реагирует на паузу спокойно, без упрёков, как и везде.\n- Ставить на паузу можно сколько угодно раз. Одна сессия остаётся одной сессией, а не дробится на куски.\n\n---\n\n**Вопрос 1 из 3: что происходит с блокировкой приложений на паузе**\n\n**Суть:** когда сессия на паузе, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** от этого зависит, чем станет пауза: передышкой посреди чтения или законной дверью в ленту. Сейчас это самое сильное обещание продукта: «телефон тебя не утянет».\n\n**Варианты:**\n1. **Блокировка остаётся.** Пауза только останавливает таймер. Чтобы зайти в заблокированное приложение, сессию нужно завершить.\n2. **Блокировка снимается на паузе.** При продолжении включается снова.\n3. **Блокировка снимается, но пауза ограничена по времени.** Например, на 5 минут, после этого блокировка возвращается сама.\n\n**Рекомендация:** вариант 1. Обычно паузу ставят, чтобы налить чай, ответить ребёнку или открыть дверь, и заблокированные приложения для этого не нужны. Если же нужен мессенджер, проще завершить сессию: уже прочитанные минуты всё равно засчитаются. Варианты 2 и 3 превращают паузу в лазейку к ленте, а именно от неё приложение и защищает. Если на бете окажется, что людям этого не хватает, ослабить правило потом несложно.\n\n**Что изменится для пользователя:**\n- Вариант 1: нажал паузу, таймер остановился, Instagram по-прежнему закрыт. Для ленты нужно нажать «Завершить».\n- Вариант 2: нажал паузу, и все приложения сразу открыты. Можно залипнуть в ленту, не завершая сессию.\n- Вариант 3: нажал паузу, приложения открыты, через 5 минут закрываются снова, даже если человек не вернулся к книге.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Я прочитал описание продукта и правила сессий. Большую часть мелочей можно решить разумным решением по умолчанию, их я внесу в спецификацию, и вы сможете их поменять. Требуют вашего решения три вопроса. Буду задавать их по одному, начиная с самого важного.\n\nЧтобы было видно, что я решаю сам, вот эти решения по умолчанию:\n- Время на паузе не идёт в дневную цель, в дуэли и в настроение Slumpy. Считаются только минуты чтения.\n- Пауза есть в обоих режимах: «Книга в руках» и «Читаю с телефона».\n- На экране блокировки Live Activity показывает «На паузе» и сколько уже прочитано. Продолжить можно прямо оттуда.\n- Slumpy реагирует на паузу спокойно, без упрёков, как и везде.\n- Ставить на паузу можно сколько угодно раз. Одна сессия остаётся одной сессией, а не дробится на куски.\n\n---\n\n**Вопрос 1 из 3: что происходит с блокировкой приложений на паузе**\n\n**Суть:** когда сессия на паузе, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** от этого зависит, чем станет пауза: передышкой посреди чтения или законной дверью в ленту. Сейчас это самое сильное обещание продукта: «телефон тебя не утянет».\n\n**Варианты:**\n1. **Блокировка остаётся.** Пауза только останавливает таймер. Чтобы зайти в заблокированное приложение, сессию нужно завершить.\n2. **Блокировка снимается на паузе.** При продолжении включается снова.\n3. **Блокировка снимается, но пауза ограничена по времени.** Например, на 5 минут, после этого блокировка возвращается сама.\n\n**Рекомендация:** вариант 1. Обычно паузу ставят, чтобы налить чай, ответить ребёнку или открыть дверь, и заблокированные приложения для этого не нужны. Если же нужен мессенджер, проще завершить сессию: уже прочитанные минуты всё равно засчитаются. Варианты 2 и 3 превращают паузу в лазейку к ленте, а именно от неё приложение и защищает. Если на бете окажется, что людям этого не хватает, ослабить правило потом несложно.\n\n**Что изменится для пользователя:**\n- Вариант 1: нажал паузу, таймер остановился, Instagram по-прежнему закрыт. Для ленты нужно нажать «Завершить».\n- Вариант 2: нажал паузу, и все приложения сразу открыты. Можно залипнуть в ленту, не завершая сессию.\n- Вариант 3: нажал паузу, приложения открыты, через 5 минут закрываются снова, даже если человек не вернулся к книге.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.24160099999999998,
+            "judgeCostUsd": 0.06184399999999998,
+            "durationSeconds": 46,
+            "startedAt": "2026-10-27T04:20:08.730Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-VhyCKZ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "ind-spec-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "key-ambiguity",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал контекст продукта. Сначала разделил открытые вопросы на две группы: то, что решу сам и запишу допущением, и то, что решать вам. Ваших вопросов будет немного, задаю по одному, начиная с самого важного.\n\n**Что возьму по умолчанию (поменяете, если не согласны):**\n- Минуты на паузе не идут в дневную цель и не идут в счёт сессии.\n- На экране блокировки Live Activity пишет «На паузе», таймер стоит, рядом кнопка «Продолжить».\n- Пауза работает одинаково в обоих режимах, «книга в руках» и «читаю с телефона». Ставится кнопкой, телефон сам ничего не распознаёт.\n- Slumpy на паузу не реагирует, без упрёков. Это соответствует принципу «никаких механик Duolingo».\n\n---\n\n**Вопрос 1 из ~3. Что происходит с блокировкой приложений во время паузы?**\n\n**Суть:** когда человек ставит сессию на паузу, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** это самый чувствительный вопрос во всей фиче. Если на паузе всё открывается, пауза становится законным способом «на минутку» залезть в ленту, и смысл блокировки теряется. Если всё остаётся заблокированным, пауза может раздражать: человек поставил паузу, чтобы ответить в мессенджере, а тот закрыт.\n\n**Варианты:**\n- **А. Приложения открываются на паузе** и снова блокируются, когда сессия продолжается.\n- **Б. Приложения остаются заблокированными.** Пауза только останавливает таймер. Чтобы выйти из блокировки, надо завершить сессию.\n- **В. Открываются, но ненадолго.** Например, на 5 минут. Потом блокировка возвращается сама, а сессия продолжает стоять на паузе или завершается.\n\n**Рекомендация: Б.** Пауза нужна для жизни вокруг книги: позвали ужинать, чайник, ребёнок. Для этого лента не нужна. Мы обещаем человеку заменить вечернюю ленту книгой, и пауза не должна стать лазейкой в эту ленту. А звонки и то, что человек сам не добавлял в список блокировки, и так остаются доступны.\n\n**Что изменится для пользователя:**\n- **А:** пауза ощущается свободной, но после «быстро гляну ленту» человек часто к книге не возвращается.\n- **Б:** на паузе телефон ведёт себя так же, как во время чтения, только таймер стоит. Нужен Instagram — завершаешь сессию, начатые минуты при этом сохраняются.\n- **В:** компромисс. Немного свободы, но через несколько минут приложения снова закрываются. Правило сложнее объяснить, и тот, кто на паузе ушёл в ленту, может удивиться, что его оттуда выкинуло.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "product-only",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал контекст продукта. Сначала разделил открытые вопросы на две группы: то, что решу сам и запишу допущением, и то, что решать вам. Ваших вопросов будет немного, задаю по одному, начиная с самого важного.\n\n**Что возьму по умолчанию (поменяете, если не согласны):**\n- Минуты на паузе не идут в дневную цель и не идут в счёт сессии.\n- На экране блокировки Live Activity пишет «На паузе», таймер стоит, рядом кнопка «Продолжить».\n- Пауза работает одинаково в обоих режимах, «книга в руках» и «читаю с телефона». Ставится кнопкой, телефон сам ничего не распознаёт.\n- Slumpy на паузу не реагирует, без упрёков. Это соответствует принципу «никаких механик Duolingo».\n\n---\n\n**Вопрос 1 из ~3. Что происходит с блокировкой приложений во время паузы?**\n\n**Суть:** когда человек ставит сессию на паузу, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** это самый чувствительный вопрос во всей фиче. Если на паузе всё открывается, пауза становится законным способом «на минутку» залезть в ленту, и смысл блокировки теряется. Если всё остаётся заблокированным, пауза может раздражать: человек поставил паузу, чтобы ответить в мессенджере, а тот закрыт.\n\n**Варианты:**\n- **А. Приложения открываются на паузе** и снова блокируются, когда сессия продолжается.\n- **Б. Приложения остаются заблокированными.** Пауза только останавливает таймер. Чтобы выйти из блокировки, надо завершить сессию.\n- **В. Открываются, но ненадолго.** Например, на 5 минут. Потом блокировка возвращается сама, а сессия продолжает стоять на паузе или завершается.\n\n**Рекомендация: Б.** Пауза нужна для жизни вокруг книги: позвали ужинать, чайник, ребёнок. Для этого лента не нужна. Мы обещаем человеку заменить вечернюю ленту книгой, и пауза не должна стать лазейкой в эту ленту. А звонки и то, что человек сам не добавлял в список блокировки, и так остаются доступны.\n\n**Что изменится для пользователя:**\n- **А:** пауза ощущается свободной, но после «быстро гляну ленту» человек часто к книге не возвращается.\n- **Б:** на паузе телефон ведёт себя так же, как во время чтения, только таймер стоит. Нужен Instagram — завершаешь сессию, начатые минуты при этом сохраняются.\n- **В:** компромисс. Немного свободы, но через несколько минут приложения снова закрываются. Правило сложнее объяснить, и тот, кто на паузе ушёл в ленту, может удивиться, что его оттуда выкинуло.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "question-count",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал контекст продукта. Сначала разделил открытые вопросы на две группы: то, что решу сам и запишу допущением, и то, что решать вам. Ваших вопросов будет немного, задаю по одному, начиная с самого важного.\n\n**Что возьму по умолчанию (поменяете, если не согласны):**\n- Минуты на паузе не идут в дневную цель и не идут в счёт сессии.\n- На экране блокировки Live Activity пишет «На паузе», таймер стоит, рядом кнопка «Продолжить».\n- Пауза работает одинаково в обоих режимах, «книга в руках» и «читаю с телефона». Ставится кнопкой, телефон сам ничего не распознаёт.\n- Slumpy на паузу не реагирует, без упрёков. Это соответствует принципу «никаких механик Duolingo».\n\n---\n\n**Вопрос 1 из ~3. Что происходит с блокировкой приложений во время паузы?**\n\n**Суть:** когда человек ставит сессию на паузу, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** это самый чувствительный вопрос во всей фиче. Если на паузе всё открывается, пауза становится законным способом «на минутку» залезть в ленту, и смысл блокировки теряется. Если всё остаётся заблокированным, пауза может раздражать: человек поставил паузу, чтобы ответить в мессенджере, а тот закрыт.\n\n**Варианты:**\n- **А. Приложения открываются на паузе** и снова блокируются, когда сессия продолжается.\n- **Б. Приложения остаются заблокированными.** Пауза только останавливает таймер. Чтобы выйти из блокировки, надо завершить сессию.\n- **В. Открываются, но ненадолго.** Например, на 5 минут. Потом блокировка возвращается сама, а сессия продолжает стоять на паузе или завершается.\n\n**Рекомендация: Б.** Пауза нужна для жизни вокруг книги: позвали ужинать, чайник, ребёнок. Для этого лента не нужна. Мы обещаем человеку заменить вечернюю ленту книгой, и пауза не должна стать лазейкой в эту ленту. А звонки и то, что человек сам не добавлял в список блокировки, и так остаются доступны.\n\n**Что изменится для пользователя:**\n- **А:** пауза ощущается свободной, но после «быстро гляну ленту» человек часто к книге не возвращается.\n- **Б:** на паузе телефон ведёт себя так же, как во время чтения, только таймер стоит. Нужен Instagram — завершаешь сессию, начатые минуты при этом сохраняются.\n- **В:** компромисс. Немного свободы, но через несколько минут приложения снова закрываются. Правило сложнее объяснить, и тот, кто на паузе ушёл в ленту, может удивиться, что его оттуда выкинуло.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "recommendations",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Прочитал контекст продукта. Сначала разделил открытые вопросы на две группы: то, что решу сам и запишу допущением, и то, что решать вам. Ваших вопросов будет немного, задаю по одному, начиная с самого важного.\n\n**Что возьму по умолчанию (поменяете, если не согласны):**\n- Минуты на паузе не идут в дневную цель и не идут в счёт сессии.\n- На экране блокировки Live Activity пишет «На паузе», таймер стоит, рядом кнопка «Продолжить».\n- Пауза работает одинаково в обоих режимах, «книга в руках» и «читаю с телефона». Ставится кнопкой, телефон сам ничего не распознаёт.\n- Slumpy на паузу не реагирует, без упрёков. Это соответствует принципу «никаких механик Duolingo».\n\n---\n\n**Вопрос 1 из ~3. Что происходит с блокировкой приложений во время паузы?**\n\n**Суть:** когда человек ставит сессию на паузу, отвлекающие приложения остаются заблокированными или открываются?\n\n**Почему важно:** это самый чувствительный вопрос во всей фиче. Если на паузе всё открывается, пауза становится законным способом «на минутку» залезть в ленту, и смысл блокировки теряется. Если всё остаётся заблокированным, пауза может раздражать: человек поставил паузу, чтобы ответить в мессенджере, а тот закрыт.\n\n**Варианты:**\n- **А. Приложения открываются на паузе** и снова блокируются, когда сессия продолжается.\n- **Б. Приложения остаются заблокированными.** Пауза только останавливает таймер. Чтобы выйти из блокировки, надо завершить сессию.\n- **В. Открываются, но ненадолго.** Например, на 5 минут. Потом блокировка возвращается сама, а сессия продолжает стоять на паузе или завершается.\n\n**Рекомендация: Б.** Пауза нужна для жизни вокруг книги: позвали ужинать, чайник, ребёнок. Для этого лента не нужна. Мы обещаем человеку заменить вечернюю ленту книгой, и пауза не должна стать лазейкой в эту ленту. А звонки и то, что человек сам не добавлял в список блокировки, и так остаются доступны.\n\n**Что изменится для пользователя:**\n- **А:** пауза ощущается свободной, но после «быстро гляну ленту» человек часто к книге не возвращается.\n- **Б:** на паузе телефон ведёт себя так же, как во время чтения, только таймер стоит. Нужен Instagram — завершаешь сессию, начатые минуты при этом сохраняются.\n- **В:** компромисс. Немного свободы, но через несколько минут приложения снова закрываются. Правило сложнее объяснить, и тот, кто на паузе ушёл в ленту, может удивиться, что его оттуда выкинуло.\n\nКакой вариант выбираете?"
+              },
+              {
+                "name": "russian",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [А-Яа-яЁё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}[ ,]+[а-яё]{2,}",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "s1-review-casual",
+      "dir": "evals/triggers/s1-review-casual",
+      "source": "prose",
+      "promptMarkdown": "Глянь, пожалуйста, нормально ли я тут поменял? Это iOS-приложение на SwiftUI.\n\n```diff\n--- a/Slumpy/Home/GreetingView.swift\n+++ b/Slumpy/Home/GreetingView.swift\n@@ -4,7 +4,9 @@ struct GreetingView: View {\n     let name: String\n \n     var body: some View {\n-        Text(\"Привет, \\(name)\")\n+        Text(\"Привет, \\(name)\")\n+            .font(.title2)\n+            .accessibilityAddTraits(.isHeader)\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.1080928,
+            "judgeCostUsd": 0,
+            "durationSeconds": 20,
+            "startedAt": "2026-10-27T04:20:13.926Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-Y9M4zG/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.1044396,
+            "judgeCostUsd": 0,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-27T04:20:16.233Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-39kcDR/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s2-feature-thinking",
+      "dir": "evals/triggers/s2-feature-thinking",
+      "source": "prose",
+      "promptMarkdown": "Хочу добавить в Slumpy цели чтения: дочитать книгу к дате и прочитать N книг за сезон. Давай продумаем, как это должно работать.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.2020032,
+            "judgeCostUsd": 0,
+            "durationSeconds": 34,
+            "startedAt": "2026-10-27T04:20:33.480Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-XW6jKR/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 14,
+            "costUsd": 0.2654706,
+            "judgeCostUsd": 0,
+            "durationSeconds": 65,
+            "startedAt": "2026-10-27T04:20:34.858Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-uRFN83/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "s3-risky-model-change",
+      "dir": "evals/triggers/s3-risky-model-change",
+      "source": "prose",
+      "promptMarkdown": "Добавь в модель книги поле «число страниц». Хранение в SwiftData, сборка уже у тестировщиков. Файлов у тебя нет, просто покажи, что поменять.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-writing|engineering-design)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.128467,
+            "judgeCostUsd": 0,
+            "durationSeconds": 35,
+            "startedAt": "2026-10-27T04:20:54.441Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-zpoWmY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.139987,
+            "judgeCostUsd": 0,
+            "durationSeconds": 40,
+            "startedAt": "2026-10-27T04:20:56.481Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-HE7JUu/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s4-tests-request",
+      "dir": "evals/triggers/s4-tests-request",
+      "source": "prose",
+      "promptMarkdown": "Покрой тестами вот эту функцию. Тесты на Swift Testing, файлов у тебя нет, просто покажи код тестов.\n\n```swift\npublic enum DailyProgress {\n    public static func minutesToday(_ sessions: [ReadingSession], now: Date, calendar: Calendar) -> Int {\n        let total = sessions\n            .filter { calendar.isDate($0.startedAt, inSameDayAs: now) }\n            .reduce(0) { $0 + $1.duration }\n        return Int(total / 60)\n    }\n}\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(test-master|engineering-design|code-writing)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.21722300000000003,
+            "judgeCostUsd": 0,
+            "durationSeconds": 68,
+            "startedAt": "2026-10-27T04:21:07.352Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6Vqv4Y/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.183131,
+            "judgeCostUsd": 0,
+            "durationSeconds": 58,
+            "startedAt": "2026-10-27T04:21:29.875Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-kviYYb/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s5-trivial-no-ceremony",
+      "dir": "evals/triggers/s5-trivial-no-ceremony",
+      "source": "prose",
+      "promptMarkdown": "Поменяй текст кнопки «Начать» на «Погнали». Кнопка выглядит так: `Button(\"Начать\", action: start)`. Файлов у тебя нет, просто покажи новую строку.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "answered",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "Button\\(\"Погнали\"",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "no-ceremony",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design|methodology)\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.071471,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-27T04:21:36.008Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-guXV1N/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answered",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched Button\\(\"Погнали\"",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-ceremony",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.070271,
+            "judgeCostUsd": 0,
+            "durationSeconds": 4,
+            "startedAt": "2026-10-27T04:21:39.629Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-s8GZul/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answered",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched Button\\(\"Погнали\"",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-ceremony",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 8,
+    "casesPassed": 4,
+    "overallScore": 0.6041666666666667,
+    "overallPassRate": 0.5
+  }
+}
