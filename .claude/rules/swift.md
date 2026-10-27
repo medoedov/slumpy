@@ -13,10 +13,11 @@ paths:
   the logic package, and the Approachable Concurrency build setting (it changes where nonisolated
   async code runs), are decided in the skeleton ADR; keep them consistent across modules.
   DeviceActivityMonitor callbacks come from the SDK without main-actor isolation.
-- `@unchecked Sendable`, `nonisolated(unsafe)`, `@preconcurrency import`, and
+- `@unchecked Sendable`, `nonisolated(unsafe)`, `@preconcurrency` (imports and conformances), and
   `MainActor.assumeIsolated` need a comment with the reason and the invariant that makes them safe;
-  the reviewer treats them as findings otherwise. `assumeIsolated` traps at runtime off the main
-  actor, for example in DeviceActivityMonitor callbacks.
+  the reviewer treats them as findings otherwise. `assumeIsolated` and `@preconcurrency`
+  conformances trap at runtime when called off their actor (SE-0423); the DeviceActivityMonitor
+  callbacks above are not main-actor isolated.
 - Toolchain: the latest stable Xcode; on 2026-10-27 that is Xcode 27.1 with Swift 6.4 and the iOS
   27 SDK. Any API released after mid-2026, and any API you are unsure about, is read in the docs
   before use.
@@ -34,9 +35,12 @@ paths:
 - A test calls the code the way its caller does and checks what the caller observes. Judge it by
   two imagined edits: break the behavior (a wrong value, an effect skipped or done twice) and the
   test must fail; restructure the internals with the same observable result and it must still
-  pass. A rule of the form "do not do X" needs a test input on which X gives a different answer.
+  pass. Every behavior a change adds needs such a test: deleting a line of new logic fails at least
+  one test. A rule of the form "do not do X" needs a test input on which X gives a different answer.
 - A crash or wrong state is fixed where the state was produced. A `guard`, `??`, early return,
-  retry, or clamp where it surfaced may stay as protection but is not the fix, unless the state is
-  legitimate and a test shows the new behavior is right for the user.
+  retry, or clamp where it surfaced hides the cause and is not the fix by itself. If the state can
+  exist (data already on devices from an older version, written by another process, or left by a
+  crash), the code that reads it handles it or a migration repairs it, with a test, as part of the
+  fix.
 - If two fixes that rest on the same premise fail the same check, write the premise in one
   sentence and test it directly before a third fix.
