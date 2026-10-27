@@ -7,7 +7,7 @@ place with its status changed and a link to the one that replaces it.
 
 | ADR | Decision | Status |
 |---|---|---|
-| [0001](0001-stack-and-project-structure.md) | SwiftUI, iOS 18, Swift 6 strict; one app target, extension targets, one local package; data rules | Accepted; "today" rule pending owner |
+| [0001](0001-stack-and-project-structure.md) | SwiftUI, iOS 18, Swift 6 strict; one app target, extension targets, one local package; data rules | Accepted; "today" rule decided by the owner 2026-10-27 |
 
 ## Format
 

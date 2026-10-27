@@ -57,8 +57,8 @@ From ADR-0001:
 - Everything works on the device without network.
 - Identifiers are created on the phone.
 - Each session stores its time together with its time zone.
-- Attributing minutes to a day follows one explicit rule covered by tests. The rule itself is a
-  product decision pending the owner, see ADR-0001.
+- Attributing minutes to a day follows one explicit rule covered by tests: a reading day with a
+  04:00 cutoff, kept per session in its own time zone (owner decision, ADR-0001).
 
 ---
 

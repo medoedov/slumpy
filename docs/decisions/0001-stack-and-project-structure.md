@@ -1,7 +1,8 @@
 # ADR-0001: Stack, project structure, and baseline data rules
 
-- **Status:** Accepted as the working stack (owner can override). One section is **pending the
-  owner's product decision**: [attributing minutes to a day](#pending-owner-decision-attributing-minutes-to-a-day).
+- **Status:** Accepted as the working stack (owner can override). The rule for
+  [attributing minutes to a day](#owner-decision-attributing-minutes-to-a-day) was decided by the
+  owner on 2026-10-27.
 - **Date:** 2026-10-27
 - **Tier:** T2
 - **Source:** `work/agent-system-audit/audit-and-plan.md`, sections 11 and 12.
@@ -37,7 +38,7 @@ device is an iPhone 15 on iOS 18. Development will happen on a dedicated Mac.
 - Identifiers are created on the phone.
 - Each session stores its time together with its time zone.
 - Attributing minutes to a day follows one explicit rule, implemented once in the logic package
-  and covered by tests. The rule itself is a product decision, see the pending section below.
+  and covered by tests. The rule is the owner's product decision, see the section below.
 
 **Interface baseline**
 - String Catalog from the first screen; Russian only for now.
@@ -76,12 +77,31 @@ device is an iPhone 15 on iOS 18. Development will happen on a dedicated Mac.
   RuStore.
 - Each major Xcode release: re-check the Swift rule and the minimum iOS.
 
-## Pending owner decision: attributing minutes to a day
+## Owner decision: attributing minutes to a day
 
 The code needs one rule for "which day do these minutes count for". It drives Slumpy's mood
 "today", day counts, and any rule like "missed a day". It is a product decision: it changes what
-the user sees. Until the owner decides, the agent does not ship behavior that depends on it
-without recording the assumption.
+the user sees.
+
+**Decided by the owner on 2026-10-27:**
+
+- **Reading day with a 04:00 cutoff (option C).** A whole session counts to the reading day in
+  which it started. A reading day runs from 04:00 to 04:00 local time.
+- **Each session keeps its own reading day (option X).** The reading day is computed in the time
+  zone stored with the session and never recomputed after a trip.
+
+**Implementation notes (technical, not owner decisions):**
+
+- Reading day of a session: take its start in its stored time zone; if the local time is before
+  04:00, the reading day is the previous calendar date, otherwise the same date. Compare wall-clock
+  time instead of subtracting four hours, so daylight saving changes cannot shift the result.
+- "Today" for Slumpy's mood is the current reading day in the phone's current time zone; it
+  includes the sessions whose stored reading day equals that date.
+- Tests cover: 23:30-00:40 counts to the start day; a start at 00:10 or 03:59 counts to the
+  previous date; a start at 04:00 counts to the new date; a session read abroad keeps its day
+  after returning; a daylight saving change does not move any session.
+
+The analysis the owner decided on follows.
 
 **Situations the rule must answer**
 1. A session starts at 23:30 and ends at 00:40.
@@ -112,4 +132,4 @@ with A or B the most typical usage, reading past midnight, would split or jump d
 
 Recommendation: X. History the user has already seen does not change on its own.
 
-**Owner decides:** question 1 (and for C the cutoff hour) and question 2.
+**Owner's answers (2026-10-27):** question 1, option C with a 04:00 cutoff; question 2, option X.

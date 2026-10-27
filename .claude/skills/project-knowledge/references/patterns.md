@@ -41,10 +41,10 @@ features only after a review audit; until then there is no house pattern to copy
 
 Rules the code must keep regardless of feature:
 
-- **"Today".** Which day a session's minutes belong to is defined by one explicit rule in the
-  logic package and covered by tests. The rule is pending the owner's decision, see
-  [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md#pending-owner-decision-attributing-minutes-to-a-day).
-  Until it is decided, do not implement code that depends on it without recording the assumption.
+- **"Today".** A reading day runs from 04:00 to 04:00 local time; a whole session counts to the
+  reading day in which it started, computed in the time zone stored with the session and never
+  recomputed after a trip. One implementation in the logic package, covered by tests; details in
+  [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md#owner-decision-attributing-minutes-to-a-day).
 - **Session time** is stored with its time zone.
 
 ---

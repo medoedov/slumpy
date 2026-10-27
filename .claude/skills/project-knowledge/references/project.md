@@ -123,11 +123,10 @@ leaderboards and a public feed; dedicated story-sharing features; AI features; p
 Owner decisions not taken yet:
 
 1. MVP composition, including app blocking (after the blocking check on an iPhone).
-2. The rule for attributing minutes to a day, see ADR-0001.
-3. Whether Slumpy looks the same for everyone or slightly different per user.
-4. Duel details: duration, result confirmation, draws, three or more participants.
-5. Store tagline; name checks.
-6. Monetization and Pro.
-7. Public launch date.
-8. Apple Developer enrollment as an individual or an organization (sets the App Store seller
+2. Whether Slumpy looks the same for everyone or slightly different per user.
+3. Duel details: duration, result confirmation, draws, three or more participants.
+4. Store tagline; name checks.
+5. Monetization and Pro.
+6. Public launch date.
+7. Apple Developer enrollment as an individual or an organization (sets the App Store seller
    name, hard to change later).
