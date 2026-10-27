@@ -46,8 +46,9 @@ Classify by the decision the change makes. When unsure, go higher.
 
 Whatever the tier:
 
-- A change that touches Keychain, permissions, ATS, the Privacy Manifest (including
-  required-reason APIs), or user data leaving the device gets `reviewer` with a security pass.
+- A change that touches Keychain, permissions, ATS, or user data leaving the device, or adds a
+  required-reason API category or reason not yet declared in the Privacy Manifest, gets `reviewer`
+  with a security pass.
 - A persisted schema change ships with a test that opens a store created by the previous schema
   version.
 
@@ -65,7 +66,8 @@ blocking findings yourself; a blocking finding you dispute gets a recheck, at an
 fixed at its source in the same task, preferring: compiler, lint rule, test, skill,
 `docs/lessons.md`, this file. At most two rounds per mode (spec, decision, code); log each review
 in plan.md (mode, round, verdict) and never start a fresh review to reset the count. On
-`fix and verify`, apply the listed fixes and verify them without another round. On
+`fix and verify`, apply the listed fixes and verify them without another round; in decision mode,
+record the fixes in plan.md and give them to code round 1. On
 `rethink approach`, revise the brief and review the new approach with a fresh pair of rounds, once
 per change. If that also ends with `rethink approach`, do not ship the part that carries the open
 blocking finding and keep the previous behavior; record it in plan.md and list it in the owner

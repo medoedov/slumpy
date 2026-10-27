@@ -78,7 +78,8 @@ from the code. Verdict: confirmed or refuted, with the evidence.
 - Actor isolation and `Sendable`.
 - API availability for iOS 18 and soft deprecations the compiler does not flag.
 - Tests on the right boundary: they protect behavior; if deleting a line of logic would not fail
-  any test, the test does not protect it.
+  any test, the test does not protect it. A rule of the form "do not do X" needs a test input on
+  which X gives a different answer.
 - Gate bypass: new lint suppressions, `@unchecked Sendable`, `nonisolated(unsafe)`, removed or
   weakened tests or assertions without a stated reason.
 - Security, when the caller asks for a security pass or the change touches Keychain, permissions,

@@ -121,7 +121,8 @@ the user sees.
   after returning; a session read in one time zone counts in "today" while the phone is in
   another zone on the same reading day; a daylight saving change does not move any session; the
   time zone changes while the app is open; on 2026-09-06 in America/Santiago (clocks jump from
-  00:00 to 01:00) a session starting at 01:30 counts to 2026-09-05; the number of days between
+  00:00 to 01:00) a session starting at 01:30 counts to 2026-09-05 and one starting at 04:30 counts
+  to 2026-09-06 (subtracting four hours would give 2026-09-05); the number of days between
   consecutive reading days is 1 across 23- and 25-hour local days.
 
 The analysis the owner decided on follows.
