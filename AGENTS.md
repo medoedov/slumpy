@@ -1,3 +1,5 @@
+> FROZEN (Codex option A, 2026-10-27): generated mirror, not maintained; the source of truth is CLAUDE.md and .claude/. Do not edit or regenerate.
+
 # Project: Slumpy
 
 > **iOS app that replaces the evening scroll with reading: a timed reading session that blocks

@@ -1,151 +1,102 @@
 # Architecture
 
-- [Purpose](#purpose)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Key Dependencies](#key-dependencies)
+- [Status](#status)
+- [Stack](#stack)
+- [Targets and Package](#targets-and-package)
+- [Architecture Map](#architecture-map)
+- [Data Rules](#data-rules)
+- [Planned Entities](#planned-entities)
 - [App Blocking](#app-blocking)
 - [External Integrations](#external-integrations)
-- [Data Flow](#data-flow)
-- [Data Model](#data-model)
 
-## Purpose
-Technical architecture overview for AI agents: HOW the system is built. The app code does not
-exist yet; everything below is the planned architecture from [mvp.md](../../../../mvp.md).
-Verify Expo and native-module versions against current official docs before using them.
+## Status
 
----
-
-## Tech Stack
-
-**Mobile:** React Native + Expo SDK 58, TypeScript.
-- **Why:** One codebase for iOS now and Android later; EAS Build compiles iOS in the cloud, so the
-  team can develop from Windows without a Mac.
-
-**Character animation:** Rive.
-- **Why:** Interactive, state-driven animation for Slumpy's moods and reactions.
-
-**Backend:** Self-hosted Supabase or PocketBase in a Russian cloud, plus Russian S3-compatible
-storage. The choice is open.
-- **Why:** Personal data of Russian users must be stored in Russia (152-FZ); cost is about
-  0-1 RUB per active user per month.
-
-**Database:** PostgreSQL (if Supabase) or SQLite (if PocketBase), decided with the backend.
-
-**Platform target for MVP:** iOS only. Keep code platform-neutral where it is free to do so;
-Android-specific blocking is out of the MVP.
+App code does not exist yet; all of it will live in this repository (decided 2026-10-23). The stack and structure below are decided in
+[ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md). Entities and
+integrations come from the draft [mvp.md](../../../../mvp.md) and are product hypotheses.
 
 ---
 
-## Project Structure
+## Stack
 
-Not created yet. All app code lives in this repository, next to the product docs and agent setup
-(decided 2026-10-23).
-When the Expo app is scaffolded, record the actual directory map here, including where native
-iOS extensions and config plugins live.
+- **UI:** SwiftUI, minimum iOS 18, latest stable Xcode, Swift 6 language mode with strict
+  concurrency checking. Swift-specific facts: [.claude/rules/swift.md](../../../rules/swift.md).
+- **Third-party libraries:** none yet. A new one is added only through an ADR.
+- **Storage:** not chosen. SwiftData or SQLite through GRDB, decided before the reading-session
+  model in ADR-0002.
+- **Backend:** none until social features. Personal reading works without an account.
+- **Character rendering:** not chosen. Working assumption: a SwiftUI prototype of the simple face
+  before the character feature; Rive from the draft is a hypothesis.
 
 ---
 
-## Key Dependencies
+## Targets and Package
 
-Planned critical packages:
-- `expo-sensors` - Detects the phone lying face down to start and keep the "book in hands" ritual.
-- `expo-widgets` - Live Activity with the session timer on iOS.
-- `rive-react-native` - Renders Slumpy.
-- Screen Time native module - Wraps Family Controls, DeviceActivity, and ManagedSettings; a ready
-  Expo module such as `expo-app-blocker` must be evaluated for maturity before adoption.
-- Apple Vision (on-device) - OCR for photographed quotes.
+- One app target.
+- Separate targets for extensions: Live Activity widget, DeviceActivity monitor, shield screen
+  if needed. Extensions stay minimal (monitor memory limit, see the Swift rule).
+- One local Swift package with pure logic: the "today" calculation, session rules, models. It
+  must not import UI frameworks.
+- App Group shared by the app and its extensions from day one.
+- A new module appears only when there is a second reason for it.
+
+---
+
+## Architecture Map
+
+Not created yet. When the project skeleton exists, record here the real directory map, which
+target owns which state, and how the app and extensions exchange data. Keep it current at feature
+finalization.
+
+---
+
+## Data Rules
+
+From ADR-0001:
+
+- Everything works on the device without network.
+- Identifiers are created on the phone.
+- Each session stores its time together with its time zone.
+- Attributing minutes to a day follows one explicit rule covered by tests, see the "Today"
+  invariant in [patterns.md](patterns.md#business-invariants).
+
+---
+
+## Planned Entities
+
+Product hypotheses from `mvp.md`; the schema is designed with ADR-0002.
+
+- **ReadingSession** - core record with a reading type so audio, longreads, and comics can be
+  added without schema rework. Hypothesized fields: book, start, duration, time zone, mode (book
+  in hands / on phone), reading type, source (timer / added later), flags.
+- **Book, LibraryEntry** - book metadata; the user's status for a book (current, finished, set
+  aside, queued in "read next"), hidden flag, queue order.
+- **Goal** - a book by a date, N books for a season, volume per year.
+- **Quote** - text or OCR'd photo, always linked to a book.
+- **Friendship, Invitation, JointSession, Duel** - social layer; needs a backend and accounts,
+  deferred until social features.
 
 ---
 
 ## App Blocking
 
-The hardest part of the MVP and the main platform risk.
+The main platform risk. Inclusion in the MVP is decided after the blocking check on an iPhone.
 
-- iOS uses the Screen Time API: Family Controls (app selection and authorization), DeviceActivity
-  (session schedule and monitoring), ManagedSettings (shields).
-- Requires the Family Controls entitlement from Apple for every bundle ID, including extension
-  targets. Request order and timing: [deployment.md](deployment.md#required-manual-release-steps).
-- Requires native extensions (DeviceActivityMonitor and the shield screen) built by EAS through an
-  Expo config plugin.
-- There is no public iOS API for the device lock state, which is why "face down" is a ritual (see
-  [patterns.md](patterns.md#reading-session)).
+- Screen Time API: Family Controls (authorization and app selection), DeviceActivity (schedule and
+  monitoring), ManagedSettings (shields).
+- The development capability needs a paid Apple Developer Program membership; App Store
+  distribution needs an entitlement request for the app and for each extension, see
+  [deployment.md](deployment.md#accounts-and-stores).
+- Works only on a physical device, not in the simulator.
+- There is no public iOS API for the device lock state; "face down" is a start ritual.
 
 ---
 
 ## External Integrations
 
-**Apple Screen Time / Family Controls**
-- **Purpose:** Block selected apps during a session.
-- **Auth method:** Family Controls entitlement on each bundle ID plus user authorization on device.
+All are hypotheses from `mvp.md`, decided when the feature that needs them is planned.
 
-**Backend (Supabase or PocketBase)**
-- **Purpose:** Accounts, sync, friends, duels, server time for anti-cheat checks.
-- **Auth method:** TBD with the backend choice.
-
-**Open book database**
-- **Purpose:** Book metadata and covers. Must be free and open; which one is open.
-- **Auth method:** TBD.
-
-**Russian S3-compatible storage**
-- **Purpose:** Quote photos and other user files.
-- **Auth method:** TBD; keys never ship in the app bundle.
-
----
-
-## Data Flow
-
-The user starts a session on the device; the app runs the timer, applies shields for the selected
-apps, and shows a Live Activity. The finished session reaches the backend, which checks it against
-server time; it then drives today's Slumpy mood, library progress, friends' "reading now" status,
-and active duels. Offline and sync strategy is not decided.
-
----
-
-## Data Model
-
-**Database:** TBD with the backend. Planned entities:
-
-**User / profile**
-- Purpose: Account, display name, Slumpy state.
-- Relationships: Owns sessions, library entries, goals, quotes; linked to friends and duels.
-
-**ReadingSession**
-- Purpose: The core record. A session with a reading type so audio, longreads, and comics can be
-  added without schema rework.
-- Key fields (names TBD): user, book, duration, mode (book in hands / reading on the phone),
-  reading type (book, audiobook; later longread, comic), whether it was added later.
-- Relationships: user, book.
-
-**Book and LibraryEntry**
-- Purpose: Book metadata from the open database; the user's relationship to a book.
-- Key fields: status (current, finished, set aside, queued for "read next"), hidden flag, order in
-  the queue.
-
-**Goal**
-- Purpose: Reading goals: a book by a date, a theme for a season (N books), volume per year.
-
-**Quote**
-- Purpose: A quote as text or OCR'd photo; always linked to a book (author and title).
-
-**Friendship, Invitation, JointSession**
-- Purpose: Social graph, "let's read?" invitations, sessions read at the same time.
-
-**Duel**
-- Purpose: A challenge between friends with a stake and a loss rule.
-- Key fields: participants, stake, loss rule, dates, result (rules in
-  [patterns.md](patterns.md#duel)).
-
-### Key Constraints
-
-To be defined with the backend schema. Visibility and library rules (such as hidden books) are in
-[patterns.md](patterns.md#library).
-
-### Migration Strategy
-
-TBD with the backend choice.
-
-### Sensitive Data
-
-All data about Russian users is stored in Russia (152-FZ). PII: account identifiers and contact
-data, the friends graph, reading history and quotes.
+- **Book metadata:** a free open database; which one is open.
+- **Backend and hosting:** decided before friends and duels, including 152-FZ requirements.
+- **Accounts and sign-in:** with the backend; App Review Guideline 4.8 applies.
+- **On-device OCR for quotes:** Apple Vision.

@@ -1,5 +1,16 @@
 {
-  "agents": {
-    "enabled": true
+  "permissions": {
+    "deny": [
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push *:main)",
+      "Bash(git push *:main *)",
+      "Bash(git push *refs/heads/main*)",
+      "Bash(git push)",
+      "Bash(git push origin)",
+      "Bash(git push * origin)",
+      "Bash(git push * HEAD)",
+      "Bash(git push * HEAD *)"
+    ]
   }
 }

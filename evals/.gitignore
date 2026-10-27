@@ -1,0 +1,3 @@
+.build/
+results/**/report.html
+results/**/mock-recordings/

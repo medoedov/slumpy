@@ -8,43 +8,36 @@ description: |
 
 # Project Knowledge
 
-This skill provides access to project documentation that defines how this project works, how code should be written, and how features should be developed.
+Each fact has one owner file below; update that file instead of repeating the fact elsewhere.
+When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md) for other
+copies and update them or replace them with a link to the section that states the fact, keeping
+its status (hypothesis or approved).
 
-## When to use
+**Status of facts.** Product content comes from the draft [mvp.md](../../../mvp.md). Everything
+taken from it is a product hypothesis, marked as such, until the owner approves it. Technical
+decisions live in ADRs under [docs/decisions/](../../../docs/decisions/); where this skill and an
+ADR disagree, the ADR wins and this skill is fixed.
 
-Activate this skill when you need to:
-- Understand project architecture, tech stack, and data model
-- Learn coding patterns, git workflow, and testing approach
-- Check deployment setup, monitoring, and operational procedures
-- Apply UX guidelines and design system
-- Make technical decisions aligned with project standards
+## References
 
-## Core references
+- **[project.md](references/project.md)** - product overview, audience, principles, feature
+  hypotheses, open product decisions.
+- **[architecture.md](references/architecture.md)** - stack, targets and package, architecture
+  map, data rules, planned entities, external integrations.
+- **[patterns.md](references/patterns.md)** - git workflow, verification, business invariants
+  and product rules (hypotheses).
+- **[deployment.md](references/deployment.md)** - build and delivery path, accounts, environments.
+- **[ux-guidelines.md](references/ux-guidelines.md)** - interface language, tone, glossary,
+  accessibility baseline.
 
-All documentation is in the `references/` folder:
+## Decisions and lessons
 
-- **[project.md](references/project.md)** - Project overview, purpose, target audience, core features, scope boundaries
-- **[architecture.md](references/architecture.md)** - Tech stack, project structure, dependencies, external integrations, data flow, data model (schema, migrations, sensitive data)
-- **[patterns.md](references/patterns.md)** - Project-specific coding conventions, git workflow (branching, testing, security gates), testing & verification methods, business rules
-- **[deployment.md](references/deployment.md)** - Runtime platform, routine delivery, direct-operation boundary, agent/operations host, environments, rollback, monitoring, and recovery
+- **Decision index:** [docs/decisions/README.md](../../../docs/decisions/README.md). Read the
+  relevant ADR before changing anything it covers.
+- **Lessons (traps already hit):** [docs/lessons.md](../../../docs/lessons.md). Check it before
+  working in an area it lists.
 
-## Optional references
+## When finishing a feature
 
-- **[ux-guidelines.md](references/ux-guidelines.md)** - Interface language, tone of voice, domain glossary, text patterns, design system (only for projects with significant UI)
-- **{custom}.md** - Domain-specific files added per project (e.g., vault.md, bot.md, mcp.md)
-
-## How to use
-
-Read specific guides as needed for your task:
-
-- Starting feature development - read [project.md](references/project.md), [architecture.md](references/architecture.md), [patterns.md](references/patterns.md)
-- Implementing database changes - read [architecture.md](references/architecture.md) (Data Model section)
-- Working on UI/UX - read [ux-guidelines.md](references/ux-guidelines.md)
-- Setting up deployment - read [deployment.md](references/deployment.md)
-- Creating branches or PRs - read [patterns.md](references/patterns.md) (Git Workflow section)
-- Investigating logs or errors - read [deployment.md](references/deployment.md) (Monitoring section)
-- Working with domain logic - read [patterns.md](references/patterns.md) (Business Rules section)
-
-All guides are maintained as single source of truth for project knowledge. The product source is
-[mvp.md](../../../mvp.md); its open items and "proposal" marks are not decisions, see
-[project.md](references/project.md#open-decisions).
+Update the architecture map in [architecture.md](references/architecture.md), the decision index,
+and any business invariant the feature changed. Move `work/{feature}/` to `work/completed/`.

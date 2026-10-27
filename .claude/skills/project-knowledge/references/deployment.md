@@ -1,106 +1,63 @@
 # Deployment & Operations
 
-- [Purpose](#purpose)
-- [Deployment Platform](#deployment-platform)
+- [Status](#status)
+- [Build and Delivery](#build-and-delivery)
 - [Accounts and Stores](#accounts-and-stores)
-- [Operating Model](#operating-model)
-- [Environment Variables](#environment-variables)
-- [Deployment Triggers](#deployment-triggers)
-- [Required Manual Release Steps](#required-manual-release-steps)
-- [Emergency Recovery](#emergency-recovery)
 - [Environments](#environments)
-- [Monitoring & Observability](#monitoring--observability)
+- [Secrets](#secrets)
+- [Monitoring](#monitoring)
 
-## Purpose
-Delivery, infrastructure, and operations for AI agents. Nothing is deployed yet; this file records
-the agreed plan from [mvp.md](../../../../mvp.md).
+## Status
+
+Nothing is built or deployed yet. The path below is from
+[ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md); items from the draft
+`mvp.md` are marked as hypotheses.
 
 ---
 
-## Deployment Platform
+## Build and Delivery
 
-**Mobile:** iOS app built by EAS Build (Expo cloud) and distributed through TestFlight for the
-closed beta, then the App Store.
-
-**Backend:** Self-hosted Supabase or PocketBase in a Russian cloud with Russian S3-compatible
-storage (choice open).
-
-**Why this platform:** EAS builds iOS without a Mac; Russian hosting satisfies 152-FZ.
+- **Development host:** a dedicated Mac (planned, not yet set up). Builds, tests, simulators, and
+  device installs run there with Apple's command-line tools.
+- **CI and distribution:** Xcode Cloud, then TestFlight, then the App Store.
+- **External actions** - App Store Connect, TestFlight uploads, any publication - are owner
+  decisions and need explicit approval each time.
 
 ---
 
 ## Accounts and Stores
 
-- Apple Developer Program: $99/year, paid with a foreign card in the founder's name. A free app
-  may be published under a personal account, but individual vs organization enrollment is not
-  decided; it sets the App Store seller name and is hard to change later.
-- Apple payouts to Russia are closed, so Pro is not sold through the App Store; paid features go
-  through Google Play, RuStore, and the web later. A Russian sole proprietorship is needed once
-  payments start.
-- Google Play ($25) is needed only for the deferred Android version.
-
----
-
-## Operating Model
-
-**Routine delivery:** Not set up yet. Planned: EAS Build for iOS builds and EAS Submit or manual
-upload to TestFlight.
-
-**Direct target operations:** Not applicable until the backend exists.
-
-**Agent/operations host:** Not applicable yet.
-
-**Environment strategy:** TBD with the backend.
-
-**Production authorization:** Any App Store Connect / TestFlight submission and any production
-backend change require the user's explicit approval.
-
----
-
-## Environment Variables
-
-**See:** [.env.example](../../../../.env.example) in project root. No variables defined yet;
-backend URLs and keys will be added with the backend choice. EAS build secrets live in EAS, not in
-the repository.
-
----
-
-## Deployment Triggers
-
-**Production:** Not configured.
-
-**Staging:** Not configured.
-
-**Preview:** Not configured.
-
----
-
-## Required Manual Release Steps
-
-- [ ] Enroll in the paid Apple Developer Program first, before development starts. It is required
-  to register bundle IDs, request the Family Controls entitlement, and sign device builds; the
-  foreign card in the founder's name may take time to arrange.
-- [ ] Request the Family Controls entitlement for the app bundle ID and every extension bundle ID
-  in the first week of development. Approval takes days to weeks and blocks app blocking (see
-  [architecture.md](architecture.md#app-blocking)).
-
----
-
-## Emergency Recovery
-
-Not applicable yet: no production release or backend.
+- **Apple Developer Program:** not enrolled yet. Enroll first, before development starts: it is
+  required to register bundle IDs, request the Family Controls entitlement, and sign device builds
+  (blocking check on an iPhone, TestFlight). Paid with a foreign card in the founder's name, which
+  may take time to arrange. Individual vs organization enrollment is an open owner decision: it
+  sets the App Store seller name and is hard to change later.
+- **Family Controls distribution entitlement:** requested by the Account Holder for the app bundle
+  ID and separately for each Screen Time extension bundle ID (DeviceActivity monitor, shield),
+  right after the blocking check on an iPhone; approval time is unpredictable.
+- **Payments outside the App Store** (hypothesis from `mvp.md`: Apple payouts to Russia are
+  closed, Pro sold through Google Play, RuStore, web): App Review Guideline 3.1.1 risk; decided
+  together with monetization.
+- **Android:** no date; possible later.
 
 ---
 
 ## Environments
 
-**Closed beta:** TestFlight; size and duration in [project.md](project.md#mvp-scope).
-
-**Production:** App Store, after the beta; public launch date is open.
+- **Closed beta (hypothesis from `mvp.md`):** TestFlight; size and duration in
+  [project.md](project.md#mvp-scope).
+- **Production:** App Store; launch date open.
 
 ---
 
-## Monitoring & Observability
+## Secrets
 
-No logging, error tracking, or analytics configured yet. The beta must measure the success metrics
-in [project.md](project.md#success-metrics); the analytics tool is not chosen.
+No secrets exist yet. Never in the repository or chat: local `.env` (git-ignored) on the Mac or
+Xcode Cloud environment secrets.
+
+---
+
+## Monitoring
+
+Nothing configured. No analytics until the first tester build; the analytics service and its
+privacy impact are decided before that build.

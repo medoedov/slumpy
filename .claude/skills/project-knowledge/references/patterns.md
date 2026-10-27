@@ -1,117 +1,76 @@
 # Patterns & Conventions
 
-- [Project-Specific Code Patterns](#project-specific-code-patterns)
+- [Code Patterns](#code-patterns)
 - [Git Workflow](#git-workflow)
-- [Testing & Verification](#testing--verification)
-- [Business Rules](#business-rules)
-
-Coding conventions, development workflow, and project-specific practices.
+- [Verification](#verification)
+- [Business Invariants](#business-invariants)
+- [Product Rules (hypotheses)](#product-rules-hypotheses)
 
 ---
 
-## Project-Specific Code Patterns
+## Code Patterns
 
-No app code yet. Agreed constraints:
-
-- Development happens on Windows; iOS builds go through EAS Build in the cloud. Do not rely on a
-  local Mac, Xcode, or the iOS Simulator.
-- Native iOS code (Screen Time extensions, Live Activity) is added through Expo config plugins so
-  the project stays buildable by EAS.
-- Every reading feature uses the shared "session with reading type" model; do not add separate
-  per-format tracking.
+No app code yet. The first vertical slice becomes the reference implementation for later
+features only after a review audit; until then there is no house pattern to copy.
 
 ---
 
 ## Git Workflow
 
-### Branch Structure
-
-- **`main`** - Release-ready code. Only merge from `dev` after full testing. No server-side
-  branch protection is configured; the CLAUDE.md rule to ask before pushing to `main` applies.
-- **`dev`** - Active development. All work happens here.
-
-### Testing Requirements
-
-- **On commit:** Run the smallest checks that cover the changed behavior. When there is no test
-  subject, use the relevant build, lint, render, or other executable check.
-- **On merge to dev:** Run the project's CI checks for the changed behavior.
-- **On merge to main:** Run the project's required CI checks, including selected critical E2E
-  flows when applicable.
-
-### Security & Quality Gates
-
-Git hooks in `.githooks/` regenerate and check the Codex runtime files (`AGENTS.md`,
-`.agents/skills/`, `.codex/agents/`) from the Claude sources. They call
-`~/.claude/scripts/sync-to-codex.sh` directly because the upstream Python guard cannot spawn `.sh`
-scripts on Windows. No CI or code-quality gates are configured yet.
-
-### Agent Framework
-
-The molyanov-ai-dev skills and reviewer agents are vendored in `.claude/skills/` and
-`.claude/agents/`, except `project-initialization`, which the Codex sync rejects in a project
-because its template holds MCP and settings files. The same version is installed globally in
-`~/.claude`; Claude Code prefers a global skill over a project skill with the same name, so update
-both copies together.
+- **`dev`** - default branch, active development.
+- **`main`** - release-ready code. Pushing or merging to `main` is an owner decision. GitHub has
+  no branch protection and its default branch is `main`. `.claude/settings.json` denies pushes
+  that name `main` and pushes that name no branch, so agents always push with an explicit branch.
+  This is not a security boundary: other command forms are not matched; a hook on the Mac closes
+  the rest.
+- `AGENTS.md`, `.agents/`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
+  regenerated, hooks not enabled, not a source of project facts. The hooks call scripts outside
+  the repository and would fail.
 
 ---
 
-## Testing & Verification
+## Verification
 
-### Test Infrastructure
-
-Not configured yet.
-
-### Agent Verification Methods
-
-None established yet.
-
-### User Verification Methods
-
-**Device-only behavior**
-- **What to check:** App blocking (Screen Time shields), face-down detection, Live Activity,
-  on-device OCR.
-- **How:** Install an EAS build on a physical iPhone (development build or TestFlight).
-- **Why agent can't:** Screen Time and sensors do not work in a simulator, and the agent has no
-  iPhone.
+- Building and testing happen only on a Mac with Xcode. Cloud sessions can review text, specs,
+  and diffs but cannot build or run code.
+- Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
+  lint, format, gate-bypass scan, minimum risk tier from changed paths. Not created yet.
+- Package logic is tested with Swift Testing on the smallest reliable boundary.
+- Device-only checks (Family Controls blocking, motion sensors, Live Activity on the lock screen
+  over time) go to the owner as a ready checklist.
 
 ---
 
-## Business Rules
+## Business Invariants
 
-### Reading Session
-- Two modes, both recorded automatically:
-  - **Book in hands** (paper, Kindle, e-reader): the phone goes face down and the timer runs. This
-    is a start ritual, not a detector.
-  - **Reading on the phone** (Litres, Bookmate, PDF): social and other selected apps are blocked
-    for the session; the reader app stays open; the timer shows in a Live Activity.
-- Blocking is part of the session, not a separate feature. Free tier: blocking inside a session.
-  Pro features (schedule, strict mode, custom lists) are a proposal, not an MVP requirement.
-- Audiobooks count as reading and are shown with a separate icon.
-- A forgotten session can be added as "+N minutes" in one tap and is marked as added later.
+Rules the code must keep regardless of feature:
 
-### Anti-Cheat (light)
-- Plausibility: a session runs no longer than 3 hours without asking the user; when and how the
-  question appears is not designed yet.
-- Session time is checked against server time.
-- Honest peeks at the phone are allowed and do not reset the session.
-- The main safeguard is social: friends see your reading.
+- **"Today".** A reading day runs from 04:00 to 04:00 local time; a whole session counts to the
+  reading day in which it started, computed in the time zone stored with the session and never
+  recomputed after a trip. One implementation in the logic package, covered by tests; details in
+  [ADR-0001](../../../../docs/decisions/0001-stack-and-project-structure.md#owner-decision-attributing-minutes-to-a-day).
+- **Session time** is stored with its time zone.
 
-### Slumpy Mood
-- Mood reflects today's reading only; it is not a counter and does not accumulate.
-- Reactions are deadpan, e.g. picking up the phone mid-session gets a silent stony stare. A rare
-  smile is the reward. Specific reactions are defined during design.
-- Each user has their own Slumpy; there is no shared character.
+---
 
-### Library
-- Books can be current, finished, set aside ("put aside" has no penalty), or queued in "read next".
-- The "read next" queue is the user's own plan and can be filled from friends' shelves; it is not
-  a recommendation engine.
-- A hidden book shows friends the minutes but not the title.
-- Quote cards always show author and title; sharing goes through the system share sheet.
+## Product Rules (hypotheses)
 
-### Duel
-- A user challenges a friend; the stake is dinner, coffee, a gift, or their own option. The app
-  never processes money (244-FZ).
-- Participants choose the loss rule at creation: "first to miss a day" or "read less by the date".
-- A duel needs a second person, so it doubles as the built-in invitation and main growth channel.
-- Duration, result confirmation, draws, and 3+ participants are open decisions.
+From the draft `mvp.md`, not approved. Use them as context; confirm through `product-spec` before
+building a feature on them.
+
+- **Session modes:** "book in hands" (phone face down, timer runs; a ritual, not a detector) and
+  "reading on the phone" (selected apps blocked, reader app open, timer in a Live Activity).
+- **Blocking** is part of the session. Pro features (schedule, strict mode, custom lists) are a
+  proposal.
+- **Audiobooks** count as reading with a separate icon.
+- **Forgotten session** added as "+N minutes" in one tap, marked as added later.
+- **Light anti-cheat:** a session over 3 hours asks before counting (when and how is not designed); honest peeks do not reset the
+  session; time checked against server time once a server exists.
+- **Slumpy mood** reflects today's reading only, does not accumulate; reactions are deadpan.
+- **Library:** current, finished, set aside without penalty, own "read next" queue (not a
+  recommendation engine); a hidden book shows friends minutes but not the title; quote cards show
+  author and title; sharing through the system share sheet.
+- **Duel:** stake is dinner, coffee, a gift, or the user's own option; the app never processes
+  money (244-FZ); loss rule chosen at
+  creation ("first to miss a day" or "read less by the date"). Duration, result confirmation,
+  draws, and 3+ participants are open.

@@ -1,32 +1,42 @@
 # Project Context
 
+- [Status](#status)
 - [Project Overview](#project-overview)
 - [Target Audience](#target-audience)
 - [Core Problem](#core-problem)
 - [Product Principles](#product-principles)
-- [Key Features](#key-features)
+- [Feature Hypotheses](#feature-hypotheses)
 - [MVP Scope](#mvp-scope)
 - [Success Metrics](#success-metrics)
 - [Out of Scope](#out-of-scope)
 - [Open Decisions](#open-decisions)
 
-## Purpose
-High-level project overview for AI agents: WHAT we build and WHY. Product source:
-[mvp.md](../../../../mvp.md) (MVP v0.3, 2026-10-22). Items marked "proposal" there are model
-ideas the founder has not approved; do not implement them as decisions.
+## Status
+
+Source: the draft [mvp.md](../../../../mvp.md) (v0.3, 2026-10-22). The owner treats it as a
+draft: **everything below is a product hypothesis**, not a decision, unless marked as confirmed.
+Confirmed by the owner so far:
+
+- Start with iOS; Android is possible later, with no date.
+- App blocking is potentially important; whether it is in the MVP is not decided.
+- The MVP composition is not approved.
+- Visual design is made in Claude Design.
+
+Working assumption until the owner says otherwise: the interface is Russian only.
+
+Product decisions belong to the owner. Confirm a hypothesis through `product-spec` before a
+feature depends on it.
 
 ---
 
 ## Project Overview
 
-**Name:** Slumpy (working name; trademark, store, domain, and handle checks are pending).
+**Name:** Slumpy (working name; trademark, store, domain, and handle checks pending).
 
-**Description:** A reading app that replaces the evening social-media scroll with a book.
-
-The user starts a reading session: either puts the phone face down while reading a paper book or
-e-reader, or reads on the phone while social and other selected apps are blocked. Slumpy, a
-deadpan companion character, gets happier from today's reading. Friends see what you read and can
-challenge you to a duel.
+**Description:** A reading app that replaces the evening social-media scroll with a book. The
+user starts a reading session: puts the phone face down while reading paper or an e-reader, or
+reads on the phone while selected apps are blocked. Slumpy, a deadpan companion character, gets
+happier from today's reading. Friends see what you read and can challenge you to a duel.
 
 Store tagline candidate: «Slumpy: читай, а не листай» (not decided).
 
@@ -34,79 +44,60 @@ Store tagline candidate: «Slumpy: читай, а не листай» (not decid
 
 ## Target Audience
 
-**Primary users:** People aged 18-35 in Russia who consider themselves readers but lose their
-evenings to the feed. Women read more often (73% vs 58%).
+Hypothesis: people aged 18-35 in Russia who consider themselves readers but lose their evenings to
+the feed. Women report liking reading more often (73% vs 58%, figures cited in `mvp.md`).
 
-**Use case:** "I want to read but cannot start: the phone pulls me in." They need a ritual that
-moves the phone out of the way and makes reading visible to friends.
+Use case: "I want to read but cannot start: the phone pulls me in."
 
 ---
 
 ## Core Problem
 
-"Fewer social media" is a more common goal than "read more" (21% of New Year resolutions). 66% of
-Russians like reading, but only 29% read daily; about a third of started books are abandoned.
+Figures cited in `mvp.md` (VTsIOM 2025, Statista), not re-verified: "fewer social media" is a more
+common goal than "read more" (21% of New Year resolutions); 66% of Russians like reading, 29% read
+daily; about a third of started books are abandoned.
 
-Forest and Opal fight the phone but are not about reading. Bookly and Goodreads are about reading
-but do not fight the phone and have no live people around. Yandex Books works only with its own
-catalog. Slumpy combines reading against the phone, any book in any format, and friends with duels
-in one polished product.
+Positioning hypothesis: Forest and Opal fight the phone but are not about reading; Bookly and
+Goodreads are about reading but do not fight the phone; Yandex Books works only with its own
+catalog.
 
 ---
 
 ## Product Principles
 
-1. **Reading only.** Expand only deeper into reading (audiobooks, longreads, comics), never into
-   other goals or activities.
-2. **Valuable for one person from day one.** People and duels are a second, but mandatory, layer.
-3. **No Duolingo mechanics:** no streaks, XP, or "your streak burned".
-4. **Not a catalog:** no reviews, book ratings, or recommendation engine.
-5. **Any book:** paper, Kindle, Litres, audio. Said from the first screen; this is the defense
-   against Yandex.
-6. **Visual quality on par with the best apps:** beautiful library, clean minimalism, smooth
-   animation, no feature overload.
-7. **Concrete outward communication,** no abstractions.
+Hypotheses from `mvp.md`:
+
+1. Reading only; expand only deeper into reading (audiobooks, longreads, comics).
+2. Valuable for one person from day one; people and duels are a second layer.
+3. No Duolingo mechanics: no streaks, XP, or "your streak burned".
+4. Not a catalog: no reviews, book ratings, or recommendation engine.
+5. Any book: paper, Kindle, Litres, audio.
+6. Visual quality on par with the best apps, no feature overload.
+7. Concrete outward communication, no abstractions.
 
 ---
 
-## Key Features
+## Feature Hypotheses
 
-- **Reading session** - The core: a timed session in two modes ("book in hands" with the phone
-  face down, "reading on the phone" with app blocking); both record minutes automatically.
-- **Slumpy** - A personal companion character whose mood reflects today's reading and who reacts
-  in a deadpan style.
-- **Library** - Current, finished, and set-aside books, a personal "read next" queue, reading
-  goals, quotes, and hidden books.
-- **Friends** - What friends are reading, "reading now" status, "let's read?" invitations, joint
-  sessions, and friends' shelves.
-- **Duel** - The main social feature and growth channel: challenge a friend with a non-monetary
-  stake and a loss rule chosen at creation.
+- **Reading session** - timed session in two modes, minutes recorded automatically.
+- **Slumpy** - personal character whose mood reflects today's reading.
+- **Library** - current, finished, set aside, "read next" queue, goals, quotes, hidden books.
+- **Friends** - what friends read, "reading now", invitations, joint sessions, shelves.
+- **Duel** - challenge a friend with a non-monetary stake and a loss rule.
 
 ---
 
 ## MVP Scope
 
-The MVP is an iOS app tested in a closed TestFlight beta (50-150 people, 2-4 weeks). Android is
-deferred (see [backlog.md](../../../../backlog.md)).
-
-Included:
-1. Onboarding: meet Slumpy -> first session -> "invite a friend" (skippable).
-2. Reading session in both modes with app blocking.
-3. Slumpy with daily mood and deadpan reactions.
-4. Library: current book, finished, "read next" queue, goals, quotes, hidden book.
-5. Friends: what they read, "reading now", invitation, joint session.
-6. Duel with a chosen loss rule.
-7. A "session with reading type" data model so audio, longreads, and comics can be added without
-   rework.
-
-Estimate: 6-8 full-time weeks, closer to 8 because of the Family Controls entitlement and native
-extensions (model estimate).
+Not approved. The draft proposes an iOS closed beta in TestFlight (50-150 people, 2-4 weeks) with
+onboarding, both session modes with blocking, Slumpy, the library, friends, and duels, on a
+"session with reading type" data model. The 6-8 week estimate in the draft is a model estimate.
 
 ---
 
 ## Success Metrics
 
-Closed-beta thresholds, to be re-validated in the spec:
+Draft closed-beta thresholds from `mvp.md`, to be re-validated in a spec:
 
 | Metric | Target | Alarm |
 |---|---|---|
@@ -121,29 +112,21 @@ Closed-beta thresholds, to be re-validated in the spec:
 
 ## Out of Scope
 
-- Streaks, XP, and other Duolingo-style mechanics.
-- Book reviews, ratings, and a recommendation engine.
-- Global leaderboards and a public feed.
-- Dedicated story-sharing features; sharing goes through the system share sheet only.
-- AI features.
-- Processing money: duel stakes are agreed between people (244-FZ).
-- Telegram bot as a test channel: the product starts as a native app.
-- Android in the MVP, including Russian-text OCR on Android.
+Hypotheses from `mvp.md`: streaks and XP; reviews, ratings, recommendation engine; global
+leaderboards and a public feed; dedicated story-sharing features; AI features; processing money
+(244-FZ); a Telegram bot as a test channel.
 
 ---
 
 ## Open Decisions
 
-Not decided yet; ask the founder instead of assuming:
+Owner decisions not taken yet:
 
-1. Whether Slumpy looks the same for everyone or slightly different per user (model recommends
-   the same, for brand recognition).
-2. Duel details: duration, result confirmation, draw and "both lose", three or more participants.
-3. Store tagline.
-4. Who draws and animates Slumpy.
-5. Which open book database to use.
-6. Name check (stores, domains, handles, FIPS).
-7. Public launch by January.
-8. Backend choice: self-hosted Supabase or PocketBase (from the stack section of mvp.md).
-
-Resolved since mvp.md v0.3: app code lives in this repository (2026-10-23).
+1. MVP composition, including app blocking (after the blocking check on an iPhone).
+2. Whether Slumpy looks the same for everyone or slightly different per user.
+3. Duel details: duration, result confirmation, draws, three or more participants.
+4. Store tagline; name checks.
+5. Monetization and Pro.
+6. Public launch date.
+7. Apple Developer enrollment as an individual or an organization (sets the App Store seller
+   name, hard to change later).
