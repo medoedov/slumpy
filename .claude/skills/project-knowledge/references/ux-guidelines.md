@@ -48,8 +48,9 @@ short phrases; no guilt or loss framing, never anything like "Серия сго�
 
 ## Slumpy Character
 
-Hypothesis from `mvp.md`: minimalist neutral face (simple shape, two dot eyes, a line mouth); mood
-is "today"; reactions are deadpan and defined during design. Rendering is not chosen; a SwiftUI
+Hypothesis from `mvp.md`: minimalist neutral face (simple shape, two dot eyes, a line mouth). Mood
+and reaction rules: [patterns.md](patterns.md#business-invariants); specific reactions are defined
+during design. Rendering is not chosen; a SwiftUI
 prototype comes first.
 
 ---
@@ -61,6 +62,6 @@ prototype comes first.
 - **Читаю с телефона** — mode for reading apps on the phone with other apps blocked.
 - **Подглядывание** — an honest look at the phone mid-session; it does not reset the session.
 - **Что читать дальше** — the user's own queue of next books, not recommendations.
-- **Скрытая книга** — a book whose title friends cannot see; they see only the minutes.
+- **Скрытая книга** — a book hidden from friends (rule in [patterns.md](patterns.md#business-invariants)).
 - **Дуэль** — a reading challenge between friends with a stake and a loss rule.
 - **Ставка** — the non-monetary stake of a duel.

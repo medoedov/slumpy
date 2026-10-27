@@ -32,8 +32,9 @@ Nothing is built or deployed yet. The path below is from
   (blocking check on an iPhone, TestFlight). Paid with a foreign card in the founder's name, which
   may take time to arrange. Individual vs organization enrollment is an open owner decision: it
   sets the App Store seller name and is hard to change later.
-- **Family Controls distribution entitlement:** requested from Apple right after enrollment;
-  approval time is unpredictable.
+- **Family Controls distribution entitlement:** requested by the Account Holder for the app bundle
+  ID and separately for each Screen Time extension bundle ID (DeviceActivity monitor, shield),
+  right after the blocking check on an iPhone; approval time is unpredictable.
 - **Payments outside the App Store** (hypothesis from `mvp.md`: Apple payouts to Russia are
   closed, Pro sold through Google Play, RuStore, web): App Review Guideline 3.1.1 risk; decided
   together with monetization.
@@ -43,7 +44,8 @@ Nothing is built or deployed yet. The path below is from
 
 ## Environments
 
-- **Closed beta (hypothesis from `mvp.md`):** TestFlight, 50-150 testers, 2-4 weeks.
+- **Closed beta (hypothesis from `mvp.md`):** TestFlight; size and duration in
+  [project.md](project.md#mvp-scope).
 - **Production:** App Store; launch date open.
 
 ---

@@ -57,8 +57,8 @@ From ADR-0001:
 - Everything works on the device without network.
 - Identifiers are created on the phone.
 - Each session stores its time together with its time zone.
-- Attributing minutes to a day follows one explicit rule covered by tests: a reading day with a
-  04:00 cutoff, kept per session in its own time zone (owner decision, ADR-0001).
+- Attributing minutes to a day follows one explicit rule covered by tests, see the "Today"
+  invariant in [patterns.md](patterns.md#business-invariants).
 
 ---
 
@@ -85,7 +85,8 @@ The main platform risk. Inclusion in the MVP is decided after the blocking check
 - Screen Time API: Family Controls (authorization and app selection), DeviceActivity (schedule and
   monitoring), ManagedSettings (shields).
 - The development capability needs a paid Apple Developer Program membership; App Store
-  distribution needs an entitlement request to Apple with unpredictable approval time.
+  distribution needs an entitlement request for the app and for each extension, see
+  [deployment.md](deployment.md#accounts-and-stores).
 - Works only on a physical device, not in the simulator.
 - There is no public iOS API for the device lock state; "face down" is a start ritual.
 

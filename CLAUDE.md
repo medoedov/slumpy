@@ -13,7 +13,8 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 - App code builds and tests only on a Mac with Xcode; cloud sessions cannot run it.
 - Docs: Apple frameworks from Apple's documentation (recipe in `.claude/rules/swift.md`), other
   libraries through context7.
-- `AGENTS.md`, `.codex/`, `.githooks/` are frozen: do not edit, regenerate, or enable them.
+- `AGENTS.md`, `.agents/`, `.codex/`, `.githooks/` are frozen: do not edit, regenerate, or enable
+  them, and do not read them as project facts (they describe the old Expo setup).
 
 ## Decision rights
 
@@ -45,12 +46,14 @@ adjacent code. Problems noticed along the way go to `backlog.md` instead of into
 
 ## Review and lessons
 
-`reviewer` is the only review agent: give it the tier and the diff or document. Fix valid findings
-yourself. A finding class that repeats is fixed at its source in the same task, preferring:
-compiler, lint rule, test, skill, `docs/lessons.md`, this file. Rounds count per change: never
-start a fresh review to reset them. On `rethink approach`, revise the brief; if the new approach
-also ends round 2 with a blocking finding, stop and report it to the owner as unresolved.
-Pre-existing findings do not block: add each to `backlog.md` under «Баги» in plain Russian.
+`reviewer` is the only review agent: give it the tier and the diff or document. Fix blocking
+findings yourself; non-blocking and pre-existing ones go to `backlog.md` under «Баги» in plain
+Russian instead of into this change. A finding class that repeats is fixed at its source in the
+same task, preferring: compiler, lint rule, test, skill, `docs/lessons.md`, this file. Rounds count
+per change and per mode (spec, decision, code), at most two; recheck and the T2 security pass are
+not rounds; never start a fresh review to reset them. On `rethink approach`, revise the brief; if
+the new approach also ends round 2 with a blocking finding, stop and report it to the owner as
+unresolved.
 
 ## Done
 
@@ -62,8 +65,9 @@ A finished feature also updates Project Knowledge as its "When finishing a featu
 ## Owner report
 
 In Russian, without code: what changed for the user; screenshots when there is UI (light and dark,
-large text, iOS 18 and current iOS); what was verified; decisions in plain words; deviations; a
-manual iPhone checklist if a check needs the device.
+large text, iOS 18 and current iOS); what was verified; decisions in plain words; deviations;
+changes to product facts or hypotheses in Project Knowledge, one line each; a manual iPhone
+checklist if a check needs the device.
 
 ## Language and secrets
 

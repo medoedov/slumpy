@@ -19,9 +19,13 @@ features only after a review audit; until then there is no house pattern to copy
 
 - **`dev`** - default branch, active development.
 - **`main`** - release-ready code. Pushing or merging to `main` is an owner decision. GitHub has
-  no branch protection; `.claude/settings.json` denies agent pushes to `main`.
-- `AGENTS.md`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
-  regenerated, hooks not enabled. The hooks call scripts outside the repository and would fail.
+  no branch protection and its default branch is `main`. `.claude/settings.json` denies pushes
+  that name `main` and pushes that name no branch, so agents always push with an explicit branch.
+  This is not a security boundary: other command forms are not matched; a hook on the Mac closes
+  the rest.
+- `AGENTS.md`, `.agents/`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
+  regenerated, hooks not enabled, not a source of project facts. The hooks call scripts outside
+  the repository and would fail.
 
 ---
 

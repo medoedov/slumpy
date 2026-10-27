@@ -94,9 +94,12 @@ Principles as trade-offs, not rules:
 
 - At most two rounds per change. Round 2 reviews only the new diff and the findings still open
   from round 1; do not reopen settled points or start a fresh review.
-- If a blocking finding is still open at the end of round 2, or round 2 finds a new instance of a
-  round-1 class, return `rethink approach`: patching is not converging, and the author goes back
-  to the brief instead of trying a third patch.
+- Round 2 ends with `clean` or `rethink approach`, never `changes needed`: any blocking finding in
+  round 2, carried over or new, means patching is not converging, and the author goes back to the
+  brief instead of trying a third patch.
+- Rounds count per mode (spec, decision, code). Recheck and the T2 security pass are not rounds.
+- In spec mode there is no `rethink approach`: findings left after round 2 become owner questions
+  or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
   so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
 - In T2 reviews, mark findings you are not sure about as disputed so the caller can run recheck.
@@ -105,7 +108,7 @@ Principles as trade-offs, not rules:
 
 ```
 Mode: <mode>, tier: <tier>, round: <n>
-Verdict: clean (no blocking findings) | changes needed | rethink approach
+Verdict: clean (no blocking findings) | changes needed (round 1 only) | rethink approach
 Findings:
 1. [bug | violation | complexity] [blocking | non-blocking] <class>
    Where: <every file:line or section in the change with this class>
