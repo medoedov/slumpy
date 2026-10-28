@@ -64,18 +64,12 @@ def change_set(b):
     return names("diff", "--name-only", "--no-renames", b), names("ls-files", "--others", "--exclude-standard")
 
 
-def added_lines_by_file(b):
-    lines, current = {}, None
-    for line in out("diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", b).splitlines():
-        m = re.match(r'^\+\+\+ (?:b/(.*?)\t?|/dev/null)$', line)
-        if m:
-            current = m.group(1)
-            if current and current.startswith('"'):
-                current = None  # quoted names: read their diff one by one below
-            lines.setdefault(current, [])
-        elif line.startswith("+") and not line.startswith("+++") and current is not None:
-            lines[current].append(line[1:])
-    return lines
+def added_lines(b, f, untracked):
+    """The lines the change set adds to f: a whole untracked file, or the added lines of its diff."""
+    if f in untracked:
+        return (ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
+    diff = out("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", ":(literal)" + f)
+    return [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
 
 
 def match(name, glob):
@@ -97,13 +91,7 @@ def main():
     new_files = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b)) | set(untracked)
     files = sorted(set(tracked) | set(untracked))
 
-    added = added_lines_by_file(b)
-    for f in files:
-        if f in untracked:
-            added[f] = (ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
-        elif f not in added and (ROOT / f).is_file():
-            diff = out("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", f)
-            added[f] = [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
+    added = {f: added_lines(b, f, untracked) for f in files if (ROOT / f).is_file()}
 
     plan_added = [l for f in files if re.fullmatch(r"work/[^/]+/plan\.md", f) for l in added.get(f, [])]
     new_adr = any(re.fullmatch(r"docs/decisions/\d{4}-.+\.md", f) for f in new_files)
