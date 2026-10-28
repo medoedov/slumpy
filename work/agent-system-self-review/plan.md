@@ -217,3 +217,8 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   regex groups), `startswith`/`endswith` on rule categories (rules carry `kind` and `text`);
   `check-pointers` fails cleanly when git cannot list files. One more `EQUIVALENT` entry, with the
   argument that the report is the same on every input.
+- Final version without item 1 (e25a178), traps T1–T3, 2 runs each: proportionate T1 2/2, T2 1/2,
+  T3 2/2; traps as before. Over both measurements proportionate 11 of 12 against 3 of 6 for the
+  control; trap cost +7% on average, +25% in this run, where the design skill loaded in two runs
+  (one of them added a layer in T2, the effect of `baseline.md` section 17). Watch item for the
+  pilot, ledger row 3.
