@@ -107,4 +107,7 @@ session to Accept edits and asked the agent to apply them.
 - Settings applied (ed9df17). Smoke test in a real session (`claude -p` in a throwaway worktree with
   a planted core violation, edit tools withheld): the Stop hook blocked with the failing check as
   the reason, the session continued, the second stop got a system message instead of a block, and
-  the session ended. The app shows the block as "Stop hook error occurred"; see `docs/tech-debt.md`.
+  the session ended. The app showed the block as "Stop hook error occurred".
+- Check failures now return `additionalContext` (9d0ab92); only a crash of the hook blocks as an
+  error. Same smoke test: the session continued on the feedback, the second stop got a system
+  message, and no hook-error notification appeared. Self-test 112 cases, 31 of 31 mutants.
