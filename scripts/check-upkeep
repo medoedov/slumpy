@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Fails when an upkeep task in docs/agent-system.md (section Upkeep) is due: its last date is
+older than its interval in days. A task whose interval is "on event" carries no date. A missing
+section or table, a row that does not parse, and a date in the future fail too. Any error exits
+non-zero."""
+import datetime, pathlib, re, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SEPARATOR = re.compile(r"\|(\s*:?-+:?\s*\|)+")
+
+text = (ROOT / "docs/agent-system.md").read_text(encoding="utf-8")
+if "\n## Upkeep\n" not in text:
+    sys.exit("check-upkeep: docs/agent-system.md has no Upkeep section")
+section = text.split("\n## Upkeep\n", 1)[1].split("\n## ", 1)[0]
+table = [l.strip() for l in section.splitlines() if l.strip().startswith("|")]
+if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):
+    sys.exit("check-upkeep: the Upkeep section has no table with a header row")
+rows = table[2:]
+today = datetime.date.today()
+problems = [] if rows else ["the Upkeep table has no tasks"]
+for row in rows:
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    if len(cells) != 4:
+        problems.append(f"upkeep row does not have 4 cells: {row}")
+        continue
+    task, every, last, _ = cells
+    if every == "on event":
+        continue
+    interval = re.fullmatch(r"(\d+) days", every)
+    try:
+        done = datetime.date.fromisoformat(last)
+    except ValueError:
+        done = None
+    if not interval or done is None:
+        problems.append(f"upkeep '{task}': the interval must be 'N days' or 'on event' and the "
+                        "last date YYYY-MM-DD")
+    elif done > today:
+        problems.append(f"upkeep '{task}': last done {done} is in the future")
+    elif (today - done).days > int(interval.group(1)):
+        problems.append(f"upkeep '{task}' is due: last done {done}, every {every}; do it in its own "
+                        "commit and update its date")
+
+if problems:
+    print("\n".join(problems))
+    sys.exit(1)
+print(f"check-upkeep: {len(rows)} tasks, none due")

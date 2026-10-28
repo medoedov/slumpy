@@ -16,7 +16,7 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
 import json, pathlib, subprocess, sys, traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons"]
+CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "check-upkeep"]
 
 
 def script(name, *args):

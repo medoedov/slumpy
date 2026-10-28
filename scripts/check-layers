@@ -6,6 +6,7 @@
   non-English text. Only the frontmatter `paths` list is skipped (globs are set per project).
 - Platform-pack files (.claude/rules/platform.md and the rule files it names) and CLAUDE.md bind
   names and point to core rules; they hold no tier labels, reviewer rules, or decision-rights text.
+- Every .claude/rules/**/*.md is a core file or a platform-pack file.
 
 The term lists catch known cases only. Any error exits non-zero.
 """
@@ -87,9 +88,14 @@ def scan(files, pattern, label, skip_paths=False):
 
 
 core, problems = core_files()
+platform = platform_files()
+for f in sorted((ROOT / ".claude/rules").rglob("*.md")):
+    if f not in core and f not in platform:
+        problems.append(f"rule file in no layer: {f.relative_to(ROOT)} (name it in the first sentence "
+                        "of core-process.md or as `.claude/rules/<file>` in platform.md)")
 problems += scan(core, TERMS, "platform or project term", skip_paths=True)
 problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)
-problems += scan(platform_files() + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
+problems += scan(platform + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
 
 if problems:
     print("\n".join(problems))

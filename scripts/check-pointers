@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Fails when a pointer of the form `file.md`, Section (or «Section», "Section") names a section
 that the file does not have. A section matches a heading, a bold label, or a line that starts with
-its name. Dated records that cite past states are skipped (SKIP below)."""
-import pathlib, re, subprocess, sys
+its name. A pointer with a path resolves by that path, from the repository root or from the
+pointing file's folder, and fails when neither exists; a bare file name is checked against every
+tracked file of that name. Dated records that cite past states are skipped (SKIP below)."""
+import os, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")
@@ -42,7 +44,16 @@ for f in files:
             name, target = m.group(1), m.group(2)
             names = re.findall(r'«([^»]+)»|"([^"]+)"', target)
             names = [a or b for a, b in names] or [target.strip()]
-            candidates = by_name.get(pathlib.Path(name).name, [])
+            if "/" in name:
+                here = os.path.normpath(os.path.join(os.path.dirname(f), name))
+                candidates = [p for p in dict.fromkeys((os.path.normpath(name), here))
+                              if (ROOT / p).is_file()]
+                if not candidates:
+                    print(f"{f}:{n}: `{name}` does not exist")
+                    status = 1
+                    continue
+            else:
+                candidates = by_name.get(name, [])
             if not candidates:
                 continue  # not a repository file (e.g. a doc page name)
             for sec in names:

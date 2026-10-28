@@ -55,24 +55,41 @@ Then:
    year. Say which you chose and why.
 7. **New elements:** one line per new type, protocol, layer, dependency, or setting: why now, and
    why something simpler does not work.
-8. **Menu answers:** only the questions from the menu below that apply, one or two lines each.
+8. **Menu answers:** only the questions from the menu below that apply, one or two lines each. A
+   question checks the design; it does not ask for a new mechanism. The usual answer is that the
+   simplest design already handles it, or that it does not apply here and why. Add a mechanism
+   only for a scenario in the brief.
 
 Size: a T1 brief fits on one screen; a T2 brief stays well under the size of the code it
 describes. Delete sections that have nothing to say. A product consequence found here goes to the
 owner as a product question; technical choices you make yourself.
 
+A T1 brief at the right size:
+
+```markdown
+## Brief
+- T1 because it sorts existing data on one screen; nothing stored changes.
+- Data model: no new field; the last-opened date comes from the existing history of opens.
+- Boundaries: the list screen gets documents with their last-opened date from the existing query.
+- Scenarios: never-opened documents go last; ties sort by title; the order updates after an open.
+- Assumptions: up to a few thousand documents.
+- New elements: none; one sort next to the existing query.
+- Menu: Any: this is the simplest design. Data and growth: a few thousand items sort in memory in
+  milliseconds. Interaction between parts: does not apply, no other process reads the order.
+```
+
 ## 4. Question menu
 
 | Decision type | Questions |
 |---|---|
+| Any | What is the simplest design that covers the scenarios? Each element beyond it needs its line in New elements |
 | New abstraction, type, module, or boundary | What leaks out: storage errors, async, threads, time, network? What happens with a second implementation? Who owns the state? What is the contract: inputs, outputs, errors, ordering, thread safety? |
 | Data and growth | Which field combinations do the types allow that the domain forbids? What happens at 10x and 100x: memory, launch time, scrolling, database size, migration time? How does the migration run? How reversible is it, what does replacing it cost in a year? |
 | Interaction between parts, services, extensions | What is the exchange contract? What if the other side fails or is late? Is ordering guaranteed? What if an operation runs twice, or again after a crash at any point: does it end in the same state, and does the next run recognize what a crashed run left behind? |
 | Concurrent code | Where is the isolation, what may cross threads, who owns the state? What does the compiler not check (the platform's design questions say)? Which processes write shared data? Writers that record independent facts get their own file or key, merged on read in one shared module; a record that must be one gets one writer or the store's transactions. What about cancellation? What runs on the main thread? |
 | System service or external API | What if permission is denied? What differs across supported OS versions? What are the background limits? What without network? What do the store's review and privacy rules require? |
-| Standard or protocol | Which standard applies and what does it require? Read the primary source: RFC, ISO 8601, IANA time zones, HTTP semantics, OAuth, Unicode, WCAG, the platform's interface guidelines and store rules. Do not answer from memory |
+| Data crosses a boundary (a file, an export, another app or process, the network), or a standard or protocol applies | What does the other side assume? Is each value the boundary rule in `core-process.md` ("Whatever the tier") lists represented explicitly? Which standard applies and what does it require? Read the primary source: RFC, ISO 8601, IANA time zones, HTTP semantics, OAuth, Unicode, WCAG, the platform's interface guidelines and store rules. Do not answer from memory |
 | Interface | Text size settings, screen reader, dark theme, small screens, list performance |
-| Any | Can it be simpler? |
 
 ## 5. After the brief
 

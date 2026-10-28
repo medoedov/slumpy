@@ -22,6 +22,7 @@ GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
        "-c", "commit.gpgsign=false"]
 ENV = dict(os.environ, SLUMPY_IN_TEST_CHECKS="1")
 TODAY = datetime.date.today().isoformat()
+def DAYS_AGO(n): return (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
 LESSON = ("\n### {title}\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** {guard}\n"
           "- **Stale when:** z\n- **Added:** {added}\n")
 
@@ -122,13 +123,18 @@ KEYCHAIN = ("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")
 CORE_BAD = (".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")
 POINTER_BAD = (".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")
 OVERDUE = ("docs/lessons.md", LESSON.format(title="Old trap", guard="this entry only.", added="2000-01-01"), "append")
+UPKEEP = "docs/agent-system.md"
+UPKEEP_HEAD = "| Task | Every | Last done | How |\n|---|---|---|---|\n"
+def upkeep_row(row): return (UPKEEP, (UPKEEP_HEAD, UPKEEP_HEAD + row + "\n"), "replace")
+UPKEEP_DUE = upkeep_row("| Old task | 30 days | 2000-01-01 | x |")
+def upkeep_doc(body): return (UPKEEP, "# Agent system\n\n## Upkeep\n\n" + body + "\n## Mechanism ledger\n\n| # | x |\n|---|---|\n| 1 | y |\n", "write")
 T1_LINE = "- T1 because the test needs it.\n"
 SEC_LINE = "- Security pass: clean, reviewer code round 1.\n"
 PLAN = "work/feature/plan.md"
 
 # A failure each check must report, for the data-driven cases over CHECKS.
 PLANT = {"check-layers": [CORE_BAD], "check-pointers": [POINTER_BAD], "check-risk": [KEYCHAIN],
-         "check-lessons": [OVERDUE]}
+         "check-lessons": [OVERDUE], "check-upkeep": [UPKEEP_DUE]}
 
 
 def one(edits=(), commit=False, git=(), stdin=None, git_before=()):
@@ -191,9 +197,16 @@ STATIC = [
     ("reviewer rule in swift.md", dict(runs=one([(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")]), script=["check-layers"], expect=fails)),
     ("decision-rights text in CLAUDE.md", dict(runs=one([("CLAUDE.md", "\n- Pushes are decided by the owner.\n", "append")]), script=["check-layers"], expect=fails)),
     ("unnamed core rule file", dict(runs=one([(".claude/rules/core-extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
+    ("core-named rule file listed by the platform pack", dict(runs=one([(".claude/rules/core-extra.md", "# Extra\n", "write"), (".claude/rules/platform.md", "\n- Extra: `.claude/rules/core-extra.md`.\n", "append")]), script=["check-layers"], expect=fails)),
+    ("rule file in no layer", dict(runs=one([(".claude/rules/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
+    ("rule file in a subfolder in no layer", dict(runs=one([(".claude/rules/sub/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
     ("clean copy passes check-pointers", dict(script=["check-pointers"], expect=passes)),
     ("deleted tracked Markdown file does not crash check-pointers", dict(runs=one([("backlog.md", None, "delete")]), script=["check-pointers"], expect=passes)),
+    ("pointer with a path to a missing file", dict(runs=one([("work/feature/notes.md", "See `work/nope/plan.md`, «Log».\n", "write")], commit=True), script=["check-pointers"], expect=fails)),
+    ("pointer with a path is not resolved by another file of that name", dict(runs=one([("work/feature/notes.md", "See `work/agent-system-layers/plan.md`, «Left out».\n", "write")], commit=True), script=["check-pointers"], expect=fails)),
+    ("pointer with a path resolves from the pointing file's folder", dict(runs=one([(".claude/skills/project-knowledge/SKILL.md", "\nSee `references/patterns.md`, «Git Workflow».\n", "append")]), script=["check-pointers"], expect=passes)),
+    ("pointer with a path to an untracked file", dict(runs=one([("work/feature/plan.md", "# Plan\n\n## Log\n", "write"), ("backlog.md", "\nSee `work/feature/plan.md`, «Log».\n", "append")]), script=["check-pointers"], expect=passes)),
     ("frozen files are not scanned for pointers", dict(runs=one([(".agents/notes.md", "See `core-process.md`, «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=passes)),
     # check-risk
     ("clean copy passes check-risk", dict(script=["check-risk"], expect=passes)),
@@ -223,6 +236,16 @@ STATIC = [
     ("overdue lesson with a capitalized guard", dict(runs=one([("docs/lessons.md", LESSON.format(title="Caps", guard="This entry only.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails)),
     ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),
     ("lesson missing only its cause", dict(runs=one([("docs/lessons.md", LESSON.format(title="No cause", guard="a test.", added=TODAY).replace("- **Cause:** y\n", ""), "append")]), script=["check-lessons"], expect=fails)),
+    # check-upkeep
+    ("clean copy passes check-upkeep", dict(script=["check-upkeep"], expect=passes)),
+    ("upkeep task at its interval passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(30)} | x |")]), script=["check-upkeep"], expect=passes)),
+    ("upkeep task a day past its interval", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(31)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep date in the future", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(-400)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep interval that does not parse", dict(runs=one([upkeep_row(f"| Task | monthly | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep row with three cells", dict(runs=one([upkeep_row(f"| Task | 30 days | {TODAY} |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep table without its header row", dict(runs=one([upkeep_doc(f"| Old | 30 days | 2000-01-01 | x |\n| New | 30 days | {TODAY} | x |\n| Newer | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep table with no tasks", dict(runs=one([upkeep_doc("| Task | Every | Last done | How |\n|---|---|---|---|\n")]), script=["check-upkeep"], expect=fails)),
+    ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook blocks when there is no base", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set"))),
@@ -237,6 +260,8 @@ STATIC = [
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
 # check's crash handler in --hook is not listed: no input the cases can build crashes the hook.
+# check-upkeep's cell-count and parse branches are not listed: without them the row crashes the
+# script, which fails it just the same.
 MUTANTS = [
     ("check", "    if changed.returncode == 0 and not changed.stdout.strip(\"\\0\"):", "    if True:", "the hook never runs the checks"),
     ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
@@ -263,10 +288,24 @@ MUTANTS = [
     ("check-lessons", "    if missing:", "    if False:", "missing fields accepted"),
     ("check-lessons", 'text.split("## Entries", 1)[1])[1:]', 'text.split("## Entries", 1)[1])[2:]', "first lesson skipped"),
     ("check-lessons", '.strip().lower()', ".strip()", "guard case-sensitive"),
-    ("check-layers", 'problems += scan(platform_files() + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")', "pass", "restating scan off"),
+    ("check-layers", 'problems += scan(platform + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")', "pass", "restating scan off"),
     ("check-layers", 'problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)', "pass", "language scan off"),
     ("check-layers", '            problems.append(f"core file not named in core-process.md: {f.relative_to(ROOT)}")', "            pass", "unnamed core file accepted"),
     ("check-pointers", "if not any(s.startswith(key) for c in candidates for s in sections(c)):", "if False:", "pointers never checked"),
+    ("check-pointers", '            if "/" in name:', "            if False:", "path pointers resolved by file name"),
+    ("check-pointers", 'print(f"{f}:{n}: `{name}` does not exist")\n                    status = 1', "pass", "missing path accepted"),
+    ("check-pointers", "dict.fromkeys((os.path.normpath(name), here))", "dict.fromkeys((os.path.normpath(name),))", "path relative to the pointing file not resolved"),
+    ("check-pointers", "if (ROOT / p).is_file()]", "if p in files]", "untracked target reported missing"),
+    ("check-layers", "    if f not in core and f not in platform:", "    if False:", "rule file in no layer accepted"),
+    ("check-layers", '.claude/rules").rglob("*.md")', '.claude/rules").glob("*.md")', "rule files in subfolders not checked"),
+    ("check-upkeep", "    elif (today - done).days > int(interval.group(1)):", "    elif False:", "due task accepted"),
+    ("check-upkeep", "> int(interval.group(1))", ">= int(interval.group(1))", "task due a day early"),
+    ("check-upkeep", "    elif done > today:", "    elif False:", "future date accepted"),
+    ("check-upkeep", "rows = table[2:]", "rows = table[3:]", "first task skipped"),
+    ("check-upkeep", 'problems = [] if rows else ["the Upkeep table has no tasks"]', "problems = []", "empty table accepted"),
+    ("check-upkeep", "if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):", "if len(table) < 2:", "table without a header row accepted"),
+    ("check-upkeep", '    if every == "on event":\n        continue\n', "", "event task read as dated"),
+    ("check-upkeep", '.split("\\n## ", 1)[0]', "", "rows after the section read as tasks"),
     ("check-pointers", " and (ROOT / f).is_file()]", "]", "deleted file crashes the scan"),
     ("check-pointers", 'FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")', 'FROZEN = ("AGENTS.md",)', "frozen files scanned"),
 ]

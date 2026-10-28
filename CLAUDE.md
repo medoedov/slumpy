@@ -8,6 +8,7 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 
 - Layers and their files: `.claude/rules/core-process.md`, first paragraph. Platform pack here:
   Apple iOS.
+- Mechanism ledger and regular upkeep: `docs/agent-system.md`.
 - The checks catch listed cases only. After changing `scripts/`, run `scripts/test-checks` and
   `scripts/test-checks --mutants` (minutes; every mutant must be killed).
 

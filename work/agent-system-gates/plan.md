@@ -17,7 +17,7 @@ priorities from "partly" to "done".
 | `scripts/test-checks` | On demand. Fixed cases plus cases built from data: one per rule line in `risk-paths` (with a count of rule lines independent of the parser) and one per check in `scripts/check`, each with a planted failure. `--mutants` runs the unmodified self-test first, then requires each listed mutant to fail it | gate on the gates |
 | Stop hook | Exits when the change set is empty; otherwise runs the document checks and blocks on a failure with a JSON decision; while already continuing, shows the failures as a system message. Keeps no record of its own | gate |
 | Permissions | Deny edits to the frozen Codex files; ask before any pull request merge and before `xcodebuild` archive, export, or provisioning changes; allow build and test commands for the Mac | gate |
-| `work/agent-system-audit/mechanisms.md` | Each mechanism with its target error, evidence, pilot measure, and removal criterion, set before the pilot | record |
+| `work/agent-system-audit/mechanisms.md` (since 2026-10-28 in `docs/agent-system.md`) | Each mechanism with its target error, evidence, pilot measure, and removal criterion, set before the pilot | record |
 
 Drift fixed in the same change: README, `.gitignore` for Xcode, Node for context7 on the Mac,
 single owners for the minimum iOS (ADR-0001), the Mac-only build (`platform.md`), secrets
