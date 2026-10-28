@@ -222,3 +222,7 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   control; trap cost +7% on average, +25% in this run, where the design skill loaded in two runs
   (one of them added a layer in T2, the effect of `baseline.md` section 17). Watch item for the
   pilot, ledger row 3.
+- Full run on 49b7aa4: 832 mutants, 2 survived and one written mutant was stale (now covered by
+  the generated `.lower()` drop, removed from the written list). The `--` before a pathspec only
+  matters for a root-level file whose `(literal)` twin is tracked; the `+++` test only for an
+  added line that contains `+++`. Cases for both; both killed.
