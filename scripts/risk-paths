@@ -11,7 +11,18 @@
 # A path rule also applies to a deleted file. A *-text rule is a regular expression matched
 # against the lines the change set adds.
 #
+#   project   a file that means an Xcode project or package exists; scripts/check then fails until
+#             build and tests are wired in
+#
 # category       pattern
+project          *.xcodeproj/project.pbxproj
+project          **/*.xcodeproj/project.pbxproj
+project          Package.swift
+project          **/Package.swift
+project          project.yml
+project          **/project.yml
+project          Project.swift
+project          **/Project.swift
 t2               **/*.entitlements
 t2               **/Package.swift
 t2               **/project.yml

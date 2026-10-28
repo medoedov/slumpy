@@ -51,17 +51,31 @@ def match(name, glob):
     return fnmatch.fnmatch(name, glob) or (glob.startswith("**/") and fnmatch.fnmatch(name, glob[3:]))
 
 
-def main():
+def load_rules():
     rules = []
     for line in RULES.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
             category, pattern = line.split(None, 1)
             rules.append((category, re.compile(pattern) if category.endswith("-text") else pattern))
+    return rules
 
-    b = base()
+
+def change_set(b):
     tracked = names("diff", "--name-only", "--no-renames", b)
     untracked = names("ls-files", "--others", "--exclude-standard")
+    return tracked, untracked
+
+
+def main():
+    if "--changed" in sys.argv:  # the change set for scripts/check, NUL-separated
+        tracked, untracked = change_set(base())
+        sys.stdout.write("\0".join(sorted(set(tracked) | set(untracked))))
+        return 0
+    rules = [r for r in load_rules() if r[0] != "project"]
+
+    b = base()
+    tracked, untracked = change_set(b)
     added_new_adrs = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b))
     files = sorted(set(tracked) | set(untracked))
 

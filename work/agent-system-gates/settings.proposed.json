@@ -41,7 +41,7 @@
           {
             "type": "command",
             "command": "python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook",
-            "timeout": 120
+            "timeout": 600
           }
         ]
       }

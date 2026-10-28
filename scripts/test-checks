@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
-"""Self-test of the checks: each planted violation must fail its check, each valid change must
-pass, and an input a check cannot read must fail it. Works on throwaway git copies of the
-agent-system files, never on the repository itself. Add a case for every new rule or input."""
-import datetime, json, os, pathlib, shutil, subprocess, sys, tempfile
+"""Self-test of the checks, on throwaway git copies of the agent-system files; never touches the
+repository.
+
+Cases: each planted violation fails its check, each valid change passes, an input a check cannot
+read fails it, every early return or skip path has a case whose skipped input holds a violation,
+and every part of the hook's state has a case where only that part changes. Add a case with every
+new rule, input, or skip path.
+
+--mutants: the fixed mutant list below is applied, one at a time, to a copy of the scripts; the
+self-test must fail on each. A surviving mutant is logic no case observes. Add a mutant with
+every new rule. scripts/check runs this when scripts/ is in the change set.
+"""
+import concurrent.futures, datetime, json, os, pathlib, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 COPY = ["CLAUDE.md", "README.md", "backlog.md", ".claude", "docs", "work", "scripts"]
@@ -18,15 +27,19 @@ def sh(d, *cmd):
     subprocess.run(GIT + list(cmd), cwd=d, check=True, capture_output=True)
 
 
+def copy_files(src_root, dst):
+    dst.mkdir(parents=True)
+    for name in COPY:
+        src = src_root / name
+        if src.is_dir():
+            shutil.copytree(src, dst / name, ignore=shutil.ignore_patterns("__pycache__"))
+        elif src.exists():
+            shutil.copy2(src, dst / name)
+
+
 def make_template(tmp):
     t = tmp / "template"
-    t.mkdir()
-    for name in COPY:
-        src = ROOT / name
-        if src.is_dir():
-            shutil.copytree(src, t / name, ignore=shutil.ignore_patterns("__pycache__"))
-        elif src.exists():
-            shutil.copy2(src, t / name)
+    copy_files(ROOT, t)
     sh(t, "init", "-q", "-b", "dev")
     sh(t, "add", "-A")
     sh(t, "commit", "-q", "-m", "base")
@@ -62,70 +75,149 @@ def run_case(template, tmp, n, c):
         sh(d, "commit", "-q", "-m", "base change")
         sh(d, "checkout", "-q", "work")
         sh(d, "merge", "-q", "--ff-only", "dev")
-    apply(d, c.get("edits", []))
-    if c.get("commit"):
-        sh(d, "add", "-A")
-        sh(d, "commit", "-q", "-m", "work change")
-    for cmd in c.get("git", []):
-        sh(d, *cmd)
     outs = []
-    for stdin in c.get("stdins", [None]):
-        p = subprocess.run([sys.executable, "-I", str(d / "scripts" / c["script"][0]),
-                            *c["script"][1:]], cwd=d, capture_output=True, text=True,
-                           input=stdin, env=ENV)
-        outs.append(p)
+    for step in c.get("runs", [{}]):
+        apply(d, step.get("edits", []))
+        if step.get("commit"):
+            sh(d, "add", "-A")
+            sh(d, "commit", "-q", "-m", "work change")
+        for cmd in step.get("git", []):
+            sh(d, *[a.replace("{template}", str(template)) for a in cmd])
+        outs.append(subprocess.run([sys.executable, "-I", str(d / "scripts" / c["script"][0]),
+                                    *c["script"][1:]], cwd=d, capture_output=True, text=True,
+                                   input=step.get("stdin"), env=ENV))
     shutil.rmtree(d)
     return c["expect"](outs)
 
 
-fails = lambda outs: outs[-1].returncode != 0
-passes = lambda outs: outs[-1].returncode == 0
-blocks = lambda outs: outs[-1].returncode == 0 and '"decision": "block"' in outs[-1].stdout
-silent = lambda outs: outs[-1].returncode == 0 and outs[-1].stdout.strip() == ""
+def fails(o): return o[-1].returncode != 0
+def passes(o): return o[-1].returncode == 0
+def is_block(p): return p.returncode == 0 and '"decision": "block"' in p.stdout
+def is_message(p): return p.returncode == 0 and '"systemMessage"' in p.stdout and '"decision"' not in p.stdout
+def is_silent(p): return p.returncode == 0 and p.stdout.strip() == ""
+def blocks(o): return is_block(o[-1])
+def silent(o): return is_silent(o[-1])
+def silent_then_block(o): return is_silent(o[0]) and is_block(o[1])
+
+
 HOOK = json.dumps({"stop_hook_active": False})
+CONTINUING = json.dumps({"stop_hook_active": True})
 ADR_NEW = ("docs/decisions/0099-test.md", "# ADR-0099\n", "write")
 PKG = ("Package.swift", "// swift-tools-version: 6.0\n", "write")
+KEYCHAIN = ("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")
+CORE_BAD = (".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")
+HARMLESS = ("notes/a.txt", "a\n", "write")
+
+
+def one(edits=(), commit=False, git=(), stdin=None):
+    return [dict(edits=list(edits), commit=commit, git=list(git), stdin=stdin)]
+
 
 CASES = [
+    # check-layers
     ("clean copy passes check-layers", dict(script=["check-layers"], expect=passes)),
+    ("Cyrillic in a core skill", dict(runs=one([(".claude/skills/product-spec/SKILL.md", "\nМожно ответить.\n", "append")]), script=["check-layers"], expect=fails)),
+    ("project term in core-process", dict(runs=one([CORE_BAD]), script=["check-layers"], expect=fails)),
+    ("tier label in the platform pack", dict(runs=one([(".claude/rules/platform.md", "\n- New extension (T2 the first time).\n", "append")]), script=["check-layers"], expect=fails)),
+    ("reviewer rule in swift.md", dict(runs=one([(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")]), script=["check-layers"], expect=fails)),
+    ("decision-rights text in CLAUDE.md", dict(runs=one([("CLAUDE.md", "\n- Pushes are decided by the owner.\n", "append")]), script=["check-layers"], expect=fails)),
+    ("unnamed core rule file", dict(runs=one([(".claude/rules/core-extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
+    # check-pointers
     ("clean copy passes check-pointers", dict(script=["check-pointers"], expect=passes)),
+    ("renamed section breaks a pointer", dict(runs=one([(".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")]), script=["check-pointers"], expect=fails)),
+    ("deleted tracked Markdown file does not crash check-pointers", dict(runs=one([("work/agent-system-gates/plan.md", None, "delete")]), script=["check-pointers"], expect=passes)),
+    # check-risk
     ("clean copy passes check-risk", dict(script=["check-risk"], expect=passes)),
+    ("t2 path at the root without evidence", dict(runs=one([PKG]), script=["check-risk"], expect=fails)),
+    ("t2 path with a new untracked ADR", dict(runs=one([PKG, ADR_NEW]), script=["check-risk"], expect=passes)),
+    ("t2 path with a new committed ADR", dict(runs=one([PKG, ADR_NEW], commit=True), script=["check-risk"], expect=passes)),
+    ("t2 path with an edit to an old ADR only", dict(runs=one([PKG, ("docs/decisions/0001-stack-and-project-structure.md", "\nTypo fix.\n", "append")]), script=["check-risk"], expect=fails)),
+    ("t2 path with an added T1 line", dict(runs=one([PKG, ("work/feature/plan.md", "- T1 because the package only adds a test target.\n", "write")]), script=["check-risk"], expect=passes)),
+    ("T1 phrase in the middle of a line", dict(runs=one([PKG, ("work/feature/plan.md", "- Not T1 because of the new target.\n", "write")]), script=["check-risk"], expect=fails)),
+    ("T1 line in a file that is not a plan", dict(runs=one([PKG, ("work/feature/notes.md", "T1 because x.\n", "write")]), script=["check-risk"], expect=fails)),
+    ("t2 text in an added line", dict(runs=one([("Core/Session.swift", "@Model final class Session {}\n", "write")]), script=["check-risk"], expect=fails)),
+    ("entitlements without evidence", dict(runs=one([("App/App.entitlements", "<plist/>\n", "write")]), script=["check-risk"], expect=fails)),
+    ("entitlements with T1 and security lines", dict(runs=one([("App/App.entitlements", "<plist/>\n", "write"), ("work/feature/plan.md", "T1 because the entitlement repeats ADR-0001.\nSecurity pass: clean, reviewer code round 1.\n", "write")]), script=["check-risk"], expect=passes)),
+    ("old security line in a touched plan does not count", dict(base=[("work/feature/plan.md", "Security pass: clean.\n", "write")], runs=one([KEYCHAIN, ("work/feature/plan.md", "- Step 2 done.\n", "append")]), script=["check-risk"], expect=fails)),
+    ("security phrase inside prose does not count", dict(runs=one([KEYCHAIN, ("work/feature/plan.md", "- Review: no security pass needed.\n", "write")]), script=["check-risk"], expect=fails)),
+    ("security phrase in the middle of a line", dict(runs=one([KEYCHAIN, ("work/feature/plan.md", "- Step 2: Security pass: pending.\n", "write")]), script=["check-risk"], expect=fails)),
+    ("usage description in project.yml", dict(runs=one([("project.yml", "INFOPLIST_KEY_NSCameraUsageDescription: x\n", "write"), ("work/feature/plan.md", "T1 because only a string.\n", "write")]), script=["check-risk"], expect=fails)),
+    ("folder with a space, untracked", dict(runs=one([("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")]), script=["check-risk"], expect=fails)),
+    ("folder with a space, committed", dict(runs=one([("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")], commit=True), script=["check-risk"], expect=fails)),
+    ("non-ASCII file name with a Keychain call", dict(runs=one([("App/Хранилище.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True), script=["check-risk"], expect=fails)),
+    ("file name with a quote and a Keychain call", dict(runs=one([('App/We"ird.swift', "let s = SecItemAdd(q, nil)\n", "write")], commit=True), script=["check-risk"], expect=fails)),
+    ("deleted entitlements file", dict(base=[("App/App.entitlements", "<plist/>\n", "write")], runs=one([("App/App.entitlements", None, "delete")]), script=["check-risk"], expect=fails)),
+    ("no base branch to compare with", dict(runs=one(git=[["branch", "-D", "dev"]]), script=["check-risk"], expect=fails)),
+    ("only origin/dev as the base", dict(runs=one(git=[["remote", "add", "origin", "{template}"], ["fetch", "-q", "origin", "dev"], ["branch", "-D", "dev"]]), script=["check-risk"], expect=passes)),
+    # check-lessons
     ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=passes)),
-    ("Cyrillic in a core skill", dict(edits=[(".claude/skills/product-spec/SKILL.md", "\nМожно ответить.\n", "append")], script=["check-layers"], expect=fails)),
-    ("project term in core-process", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")], script=["check-layers"], expect=fails)),
-    ("tier label in the platform pack", dict(edits=[(".claude/rules/platform.md", "\n- New extension (T2 the first time).\n", "append")], script=["check-layers"], expect=fails)),
-    ("reviewer rule in swift.md", dict(edits=[(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")], script=["check-layers"], expect=fails)),
-    ("unnamed core rule file", dict(edits=[(".claude/rules/core-extra.md", "# Extra\n", "write")], script=["check-layers"], expect=fails)),
-    ("renamed section breaks a pointer", dict(edits=[(".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")], script=["check-pointers"], expect=fails)),
-    ("deleted tracked Markdown file does not crash check-pointers", dict(edits=[("work/agent-system-gates/plan.md", None, "delete")], script=["check-pointers"], expect=passes)),
-    ("t2 path at the root without evidence", dict(edits=[PKG], script=["check-risk"], expect=fails)),
-    ("t2 path with a new ADR", dict(edits=[PKG, ADR_NEW], script=["check-risk"], expect=passes)),
-    ("t2 path with an edit to an old ADR only", dict(edits=[PKG, ("docs/decisions/0001-stack-and-project-structure.md", "\nTypo fix.\n", "append")], script=["check-risk"], expect=fails)),
-    ("t2 path with an added T1 line", dict(edits=[PKG, ("work/feature/plan.md", "- T1 because the package only adds a test target.\n", "write")], script=["check-risk"], expect=passes)),
-    ("t2 text in an added line", dict(edits=[("Core/Session.swift", "@Model final class Session {}\n", "write")], script=["check-risk"], expect=fails)),
-    ("entitlements without evidence", dict(edits=[("App/App.entitlements", "<plist/>\n", "write")], script=["check-risk"], expect=fails)),
-    ("entitlements with T1 and security lines", dict(edits=[("App/App.entitlements", "<plist/>\n", "write"), ("work/feature/plan.md", "T1 because the entitlement repeats ADR-0001.\nSecurity pass: clean, reviewer code round 1.\n", "write")], script=["check-risk"], expect=passes)),
-    ("old security line in a touched plan does not count", dict(base=[("work/feature/plan.md", "Security pass: clean.\n", "write")], edits=[("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write"), ("work/feature/plan.md", "- Step 2 done.\n", "append")], script=["check-risk"], expect=fails)),
-    ("security phrase inside prose does not count", dict(edits=[("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write"), ("work/feature/plan.md", "- Review: no security pass needed.\n", "write")], script=["check-risk"], expect=fails)),
-    ("usage description in project.yml", dict(edits=[("project.yml", "INFOPLIST_KEY_NSCameraUsageDescription: x\n", "write"), ("work/feature/plan.md", "T1 because only a string.\n", "write")], script=["check-risk"], expect=fails)),
-    ("folder with a space, untracked", dict(edits=[("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")], script=["check-risk"], expect=fails)),
-    ("folder with a space, committed", dict(edits=[("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")], commit=True, script=["check-risk"], expect=fails)),
-    ("non-ASCII file name with a Keychain call", dict(edits=[("App/Хранилище.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True, script=["check-risk"], expect=fails)),
-    ("deleted entitlements file", dict(base=[("App/App.entitlements", "<plist/>\n", "write")], edits=[("App/App.entitlements", None, "delete")], script=["check-risk"], expect=fails)),
-    ("no base branch to compare with", dict(git=[["branch", "-D", "dev"]], script=["check-risk"], expect=fails)),
-    ("recent lesson guarded by this entry only passes", dict(edits=[("docs/lessons.md", LESSON.format(title="New trap", added=TODAY), "append")], script=["check-lessons"], expect=passes)),
-    ("overdue lesson guarded by this entry only", dict(edits=[("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")], script=["check-lessons"], expect=fails)),
-    ("lesson with a missing field", dict(edits=[("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")], script=["check-lessons"], expect=fails)),
-    ("Xcode package without build in scripts/check", dict(edits=[PKG, ADR_NEW], script=["check"], expect=fails)),
-    ("hook blocks a failing check", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[HOOK], expect=blocks)),
-    ("hook blocks when a check crashes", dict(edits=[("docs/lessons.md", ("## Entries", "## Items"), "replace")], script=["check", "--hook"], stdins=[HOOK], expect=blocks)),
-    ("hook does not block a turn that changed nothing", dict(base=[("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")], script=["check", "--hook"], stdins=[HOOK], expect=silent)),
-    ("hook does not block twice on the same state", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[HOOK, HOOK], expect=lambda o: '"decision": "block"' in o[0].stdout and '"systemMessage"' in o[1].stdout and '"decision"' not in o[1].stdout)),
-    ("hook does not block when already continuing", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[json.dumps({"stop_hook_active": True})], expect=lambda o: '"systemMessage"' in o[0].stdout and '"decision"' not in o[0].stdout)),
+    ("recent lesson guarded by this entry only passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="New trap", added=TODAY), "append")]), script=["check-lessons"], expect=passes)),
+    ("overdue lesson guarded by this entry only", dict(runs=one([("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails)),
+    ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),
+    ("lesson missing only its cause", dict(runs=one([("docs/lessons.md", LESSON.format(title="No cause", added=TODAY).replace("- **Cause:** y\n", ""), "append")]), script=["check-lessons"], expect=fails)),
+    # check
+    ("root package without build in scripts/check", dict(runs=one([PKG, ADR_NEW]), script=["check"], expect=lambda o: fails(o) and "does not build it yet" in o[-1].stdout)),
+    ("Xcode project without build in scripts/check", dict(runs=one([("Slumpy.xcodeproj/project.pbxproj", "// x\n", "write"), ADR_NEW]), script=["check"], expect=lambda o: fails(o) and "does not build it yet" in o[-1].stdout)),
+    ("package in a subfolder without build in scripts/check", dict(runs=one([("SlumpyKit/Package.swift", "// x\n", "write"), ADR_NEW]), script=["check"], expect=lambda o: fails(o) and "does not build it yet" in o[-1].stdout)),
+    ("a scripts change triggers the mutation run", dict(runs=one([("scripts/check-lessons", "\n# note\n", "append")]), script=["check"], expect=lambda o: "test-checks --mutants" in o[-1].stdout)),
+    # the hook
+    ("hook blocks a failing uncommitted change", dict(runs=one([CORE_BAD], stdin=HOOK), script=["check", "--hook"], expect=blocks)),
+    ("hook blocks a failing committed change on its first run", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=blocks)),
+    ("hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=blocks)),
+    ("hook blocks when the hook itself crashes", dict(runs=one([(".git/slumpy-check-state.json", "{not json", "write")], stdin=HOOK), script=["check", "--hook"], expect=blocks)),
+    ("hook crash while continuing gives a message", dict(runs=one([(".git/slumpy-check-state.json", "{not json", "write")], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
+    ("hook blocks when there is no base to compare with", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=blocks)),
+    ("hook does not block a branch with nothing new", dict(base=[("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")], runs=one(stdin=HOOK), script=["check", "--hook"], expect=silent)),
+    ("hook does not block twice on the same state", dict(runs=[dict(edits=[CORE_BAD], stdin=HOOK), dict(stdin=HOOK)], script=["check", "--hook"], expect=lambda o: is_block(o[0]) and is_message(o[1]))),
+    ("hook does not block when already continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
+    ("hook sees a new commit", dict(runs=[dict(edits=[HARMLESS], commit=True, stdin=HOOK), dict(edits=[CORE_BAD], commit=True, stdin=HOOK)], script=["check", "--hook"], expect=silent_then_block)),
+    ("hook sees a further edit of an already modified file", dict(runs=[dict(edits=[(".claude/rules/core-process.md", "\nOne more line.\n", "append")], stdin=HOOK), dict(edits=[CORE_BAD], stdin=HOOK)], script=["check", "--hook"], expect=silent_then_block)),
+    ("hook sees a new untracked file", dict(runs=[dict(edits=[HARMLESS], commit=True, stdin=HOOK), dict(edits=[(".claude/rules/core-extra.md", "# Extra\n", "write")], stdin=HOOK)], script=["check", "--hook"], expect=silent_then_block)),
+    ("hook sees changed content of an untracked file", dict(runs=[dict(edits=[("App/Store.swift", "let x = 1\n", "write")], stdin=HOOK), dict(edits=[KEYCHAIN], stdin=HOOK)], script=["check", "--hook"], expect=silent_then_block)),
+]
+
+# (file, old text, new text, what the mutant breaks); each old text occurs exactly once.
+# Not in the list, because no case can observe it without recursing into the mutation run:
+# check's switch that skips the mutation run inside the self-test, and its record of the scripts
+# content the mutants last passed for. A real scripts/check run reports both, and the reviewer
+# checks them.
+MUTANTS = [
+    ("check-risk", 'if needs["t2"] and not (new_adr or t1_line):', "if False:", "t2 rule off"),
+    ("check-risk", "not (new_adr or t1_line)", "not (t1_line)", "new ADR ignored"),
+    ("check-risk", "not (new_adr or t1_line)", "not (True)", "any evidence accepted"),
+    ("check-risk", ' or (glob.startswith("**/") and fnmatch.fnmatch(name, glob[3:]))', "", "root-level match removed"),
+    ("check-risk", r'r"\s*(-\s+)?Security pass:"', r'r".*Security pass:"', "security line unanchored"),
+    ("check-risk", r'r"\s*(-\s+)?T1 because\b"', r'r".*T1 because\b"', "T1 line unanchored"),
+    ("check-risk", '"--diff-filter=A"', '"--diff-filter=AM"', "edited ADR accepted"),
+    ("check-risk", "for f in (added_new_adrs | set(untracked)))", "for f in set(untracked))", "committed ADR ignored"),
+    ("check-risk", r'r"work/[^/]+/plan\.md"', r'r".+\.md"', "evidence from any Markdown file"),
+    ("check-risk", "        elif f not in added and (ROOT / f).is_file():", "        elif False:", "quoted-name fallback removed"),
+    ("check-risk", 'for ref in ("origin/dev", "dev"):', 'for ref in ("dev",):', "origin/dev ignored"),
+    ("check-risk", "files = sorted(set(tracked) | set(untracked))", "files = sorted(f for f in set(tracked) | set(untracked) if (ROOT / f).is_file())", "deleted files ignored"),
+    ("check-risk", '    raise SystemExit("check-risk: no merge base', '    return "HEAD"\n    raise SystemExit("check-risk: no merge base', "no base falls back to HEAD"),
+    ("check", 'for part in (git("rev-parse", "HEAD"), git("diff", "HEAD", "--no-color", "--binary")):', 'for part in (git("diff", "HEAD", "--no-color", "--binary"),):', "HEAD left out of the state"),
+    ("check", 'for part in (git("rev-parse", "HEAD"), git("diff", "HEAD", "--no-color", "--binary")):', 'for part in (git("rev-parse", "HEAD"),):', "diff left out of the state"),
+    ("check", 'h.update(n.encode() + b"\\0" + (ROOT / n).read_bytes() + b"\\0")', "h.update(n.encode())", "untracked content left out of the state"),
+    ("check", 'for n in sorted(n for n in git("ls-files", "-z", "--others", "--exclude-standard").split("\\0") if n):', "for n in []:", "untracked files left out of the state"),
+    ("check", '(ROOT / n).read_bytes() + b"\\0")\n    return h.hexdigest()', '(ROOT / n).read_bytes() + b"\\0")\n    return "constant"', "constant state"),
+    ("check", "        except Exception:", "        except ZeroDivisionError:", "hook crash not handled"),
+    ("check", "traceback.format_exc(), continuing)", "traceback.format_exc(), False)", "crash ignores continuing"),
+    ("check", "if last is None and nothing_new_on_branch():", "if last is None:", "first run skipped"),
+    ("check", "return False  # no base: never assume nothing changed", "return True", "no base means nothing new"),
+    ("check", "[f for f in files if any(fnmatch.fnmatch(f, g) for g in globs)]", '[f for f in files if f == "Package.swift"]', "project markers reduced"),
+    ("check", '        if last["failed"]:', "        if False:", "repeat failures not reported"),
+    ("check", '        names.append("test-checks --mutants")', "        pass", "mutation run never triggered"),
+    ("check-lessons", " and (today - added).days > GRACE_DAYS", "", "grace period removed"),
+    ("check-lessons", "    if missing:", "    if False:", "missing fields accepted"),
+    ("check-layers", 'problems += scan(platform_files() + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")', "pass", "restating scan off"),
+    ("check-layers", 'problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)', "pass", "language scan off"),
+    ("check-layers", '            problems.append(f"core file not named in core-process.md: {f.relative_to(ROOT)}")', "            pass", "unnamed core file accepted"),
+    ("check-pointers", "if not any(s.startswith(key) for c in candidates for s in sections(c)):", "if False:", "pointers never checked"),
+    ("check-pointers", " and (ROOT / f).is_file()]", "]", "deleted file crashes the scan"),
 ]
 
 
-def main():
+def run_cases():
     failures = []
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
@@ -137,6 +229,35 @@ def main():
                 ok, desc = False, f"{desc} (case error: {e})"
             if not ok:
                 failures.append(desc)
+    return failures
+
+
+def run_mutant(m):
+    script, old, new, label = m
+    with tempfile.TemporaryDirectory() as tmp:
+        d = pathlib.Path(tmp) / "copy"
+        copy_files(ROOT, d)
+        f = d / "scripts" / script
+        s = f.read_text(encoding="utf-8")
+        if s.count(old) != 1:
+            return f"stale mutant (text found {s.count(old)} times): {label}"
+        f.write_text(s.replace(old, new), encoding="utf-8")
+        p = subprocess.run([sys.executable, "-I", str(f.parent / "test-checks")], cwd=d,
+                           capture_output=True, text=True, env=ENV)
+        return None if p.returncode != 0 else f"surviving mutant: {label} ({script})"
+
+
+def main():
+    if "--mutants" in sys.argv:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            problems = [r for r in pool.map(run_mutant, MUTANTS) if r]
+        if problems:
+            print("\n".join(problems))
+            print(f"test-checks: {len(problems)} of {len(MUTANTS)} mutants survive or are stale")
+            return 1
+        print(f"test-checks: all {len(MUTANTS)} mutants killed")
+        return 0
+    failures = run_cases()
     if failures:
         print("\n".join(failures))
         print(f"test-checks: {len(failures)} of {len(CASES)} cases failed")

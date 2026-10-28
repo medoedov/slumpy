@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """The project's single check command.
 
-Runs the document checks and their self-test everywhere, and the build and tests where an Xcode
-project exists. Prints what ran and what did not; exits non-zero when a check fails, and fails when
-an Xcode project or package exists but build and tests are not wired in yet. Any check that cannot
-read its input fails; it never reports success on input it did not read.
+Runs the document checks and their self-test everywhere, the mutation run of the self-test when
+scripts/ is in the change set (once per exact content of scripts/, recorded under .git), and fails once an Xcode project or package exists (markers:
+`project` rules in scripts/risk-paths) until build and tests are wired in. Prints what ran and what
+did not. A check that cannot read its input fails; nothing reports success on input it did not
+read.
 
---hook: the Stop hook. It runs the checks only when the repository changed since its last run
-(HEAD, the diff against HEAD, untracked files), so a turn that changed nothing is never blocked.
-A failure blocks with a JSON decision on stdout; when the session is already continuing because of
-this hook, or nothing changed since a failed run, it does not block again and shows the open
-failures as a system message.
+--hook: the Stop hook. "Changed" is measured against the last state the hook actually checked
+(HEAD, the diff against HEAD, untracked names and contents), recorded only after the checks ran.
+Without a record it is measured against the merge base with origin/dev: when HEAD equals it and the
+tree is clean, nothing on this branch is new and the hook exits without recording. A failure
+blocks once with a JSON decision; a repeat on the same state, or a stop while the session is
+already continuing because of this hook, shows the open failures as a system message instead.
 """
-import hashlib, json, os, pathlib, subprocess, sys, traceback
+import fnmatch, hashlib, json, os, pathlib, subprocess, sys, traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "test-checks"]
-XCODE_MARKERS = ("*.xcodeproj/project.pbxproj", "Package.swift", "**/Package.swift", "project.yml")
+IN_SELF_TEST = bool(os.environ.get("SLUMPY_IN_TEST_CHECKS"))
 
 
 def git(*args):
@@ -24,21 +26,63 @@ def git(*args):
                           capture_output=True, text=True, check=True).stdout
 
 
+def script(name, *args):
+    return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args], cwd=ROOT,
+                          capture_output=True, text=True)
+
+
+def project_markers():
+    globs = [l.split(None, 1)[1].strip() for l in
+             (ROOT / "scripts/risk-paths").read_text(encoding="utf-8").splitlines()
+             if l.strip() and not l.startswith("#") and l.split(None, 1)[0] == "project"]
+    files = [n for n in git("ls-files", "-z", "--cached", "--others", "--exclude-standard")
+             .split("\0") if n and (ROOT / n).is_file()]
+    return [f for f in files if any(fnmatch.fnmatch(f, g) for g in globs)]
+
+
+def scripts_hash():
+    h = hashlib.sha256()
+    for f in sorted((ROOT / "scripts").iterdir()):
+        if f.is_file():
+            h.update(f.name.encode() + b"\0" + f.read_bytes() + b"\0")
+    return h.hexdigest()
+
+
+def mutants_file():
+    return ROOT / git("rev-parse", "--git-path", "slumpy-mutants-passed").strip()
+
+
+def mutants_passed_for():
+    f = mutants_file()
+    return f.read_text().strip() if f.is_file() else None
+
+
 def run_checks():
     failed, report = [], []
-    # Inside the self-test, the self-test itself is skipped: it would recurse.
-    names = [c for c in CHECKS if not (c == "test-checks" and os.environ.get("SLUMPY_IN_TEST_CHECKS"))]
-    for name in names:
-        p = subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name)], cwd=ROOT,
-                           capture_output=True, text=True)
+    names = [c for c in CHECKS if not (c == "test-checks" and IN_SELF_TEST)]
+    changed = script("check-risk", "--changed")
+    if changed.returncode != 0:
+        failed.append("change set: " + (changed.stdout + changed.stderr).strip())
+    elif any(n.startswith("scripts/") for n in changed.stdout.split("\0")):
+        names.append("test-checks --mutants")
+    for entry in names:
+        if IN_SELF_TEST and entry == "test-checks --mutants":  # would recurse; report only
+            report.append(f"[not run] {entry}: inside the self-test")
+            continue
+        if entry == "test-checks --mutants" and mutants_passed_for() == scripts_hash():
+            report.append(f"[ok] {entry}: passed earlier for these exact scripts")
+            continue
+        name, *args = entry.split()
+        p = script(name, *args)
         out = (p.stdout + p.stderr).strip()
         last = out.splitlines()[-1] if out else ""
         ok = p.returncode == 0
-        report.append(f"[{'ok' if ok else 'FAIL'}] {name}: {last.removeprefix(name + ': ')}")
+        if ok and entry == "test-checks --mutants":
+            mutants_file().write_text(scripts_hash())
+        report.append(f"[{'ok' if ok else 'FAIL'}] {entry}: {last.removeprefix(name + ': ')}")
         if not ok:
-            failed.append(f"{name}:\n{out}")
-    project = [n for n in git("ls-files", "-z", "--cached", "--others", "--exclude-standard",
-                              *XCODE_MARKERS).split("\0") if n]
+            failed.append(f"{entry}:\n{out}")
+    project = project_markers()
     if project:
         report.append("[FAIL] build, tests, lint: an Xcode project or package exists ("
                       + ", ".join(project[:3]) + ") but scripts/check does not build it yet")
@@ -50,55 +94,56 @@ def run_checks():
 
 def state():
     h = hashlib.sha256()
-    h.update(git("rev-parse", "HEAD").encode())
-    h.update(git("diff", "HEAD", "--no-color", "--binary").encode())
-    for n in [n for n in git("ls-files", "-z", "--others", "--exclude-standard").split("\0") if n]:
-        h.update(n.encode())
-        f = ROOT / n
-        if f.is_file():
-            h.update(f.read_bytes())
+    for part in (git("rev-parse", "HEAD"), git("diff", "HEAD", "--no-color", "--binary")):
+        h.update(part.encode())
+    for n in sorted(n for n in git("ls-files", "-z", "--others", "--exclude-standard").split("\0") if n):
+        h.update(n.encode() + b"\0" + (ROOT / n).read_bytes() + b"\0")
     return h.hexdigest()
 
 
-def hook():
-    payload = {}
-    try:
-        payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, OSError):
-        pass
+def nothing_new_on_branch():
+    for ref in ("origin/dev", "dev"):
+        try:
+            b = git("merge-base", "HEAD", ref).strip()
+        except subprocess.CalledProcessError:
+            continue
+        return b == git("rev-parse", "HEAD").strip() and not git("status", "--porcelain").strip()
+    return False  # no base: never assume nothing changed
+
+
+def respond(reason, continuing):
+    key = "systemMessage" if continuing else "decision"
+    print(json.dumps({key: reason} if continuing else {key: "block", "reason": reason}))
+
+
+def hook(continuing):
     state_file = ROOT / git("rev-parse", "--git-path", "slumpy-check-state.json").strip()
     last = json.loads(state_file.read_text()) if state_file.is_file() else None
     now = state()
-    clean = not git("status", "--porcelain").strip()
-
-    if last is None and clean:
-        state_file.write_text(json.dumps({"state": now, "failed": []}))
-        return 0  # first stop in this clone with nothing changed: a chat-only turn
-    if last and last["state"] == now:
-        if last["failed"]:
-            print(json.dumps({"systemMessage": "scripts/check still fails:\n"
-                              + "\n\n".join(last["failed"])}))
+    if last is None and nothing_new_on_branch():
         return 0
-
+    if last is not None and last["state"] == now:
+        if last["failed"]:
+            respond("scripts/check still fails:\n\n" + "\n\n".join(last["failed"]), True)
+        return 0
     failed, _ = run_checks()
     state_file.write_text(json.dumps({"state": now, "failed": failed}))
-    if not failed:
-        return 0
-    reason = "scripts/check failed; fix before finishing:\n\n" + "\n\n".join(failed)
-    if payload.get("stop_hook_active"):
-        print(json.dumps({"systemMessage": reason}))
-    else:
-        print(json.dumps({"decision": "block", "reason": reason}))
+    if failed:
+        respond("scripts/check failed; fix before finishing:\n\n" + "\n\n".join(failed), continuing)
     return 0
 
 
 def main():
     if "--hook" in sys.argv:
+        continuing = False
         try:
-            return hook()
+            continuing = bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))
+        except (json.JSONDecodeError, OSError):
+            pass
+        try:
+            return hook(continuing)
         except Exception:
-            print(json.dumps({"decision": "block",
-                              "reason": "scripts/check --hook crashed:\n" + traceback.format_exc()}))
+            respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing)
             return 0
     failed, report = run_checks()
     print("\n".join(report))
