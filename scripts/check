@@ -21,7 +21,7 @@ CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "chec
 
 
 def script(name, *args):
-    return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args], cwd=ROOT,
+    return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args],
                           capture_output=True, text=True)
 
 
@@ -32,7 +32,8 @@ def run_checks():
         out = (p.stdout + p.stderr).strip()
         last = out.splitlines()[-1] if out else ""
         ok = p.returncode == 0
-        report.append(f"[{'ok' if ok else 'FAIL'}] {name}: {last.removeprefix(name + ': ')}")
+        status, summary = ("ok" if ok else "FAIL"), last.removeprefix(name + ": ")
+        report.append(f"[{status}] {name}: {summary}")
         if not ok:
             failed.append(f"{name}:\n{out}")
     report.append("[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)")
@@ -52,9 +53,9 @@ def respond(reason, continuing, error=False):
 
 def hook(continuing):
     if os.environ.get("SLUMPY_TEST_HOOK_CRASH"):
-        raise RuntimeError("crash requested by the self-test")
+        raise Exception("crash requested by the self-test")
     changed = script("check-risk", "--changed")
-    if changed.returncode == 0 and not changed.stdout.strip("\0"):
+    if changed.returncode == 0 and not changed.stdout:
         return 0  # the change set is empty: this turn changed nothing
     failed, report = run_checks()
     if changed.returncode != 0:
@@ -68,10 +69,11 @@ def hook(continuing):
 def run_hook():
     continuing = False
     try:
-        continuing = bool(json.loads(sys.stdin.read()).get("stop_hook_active"))
-    except (json.JSONDecodeError, OSError):
-        pass  # no input or not JSON: not continuing
-    try:
+        raw = sys.stdin.read()
+        try:
+            continuing = bool(json.loads(raw).get("stop_hook_active"))
+        except json.JSONDecodeError:
+            pass  # no input or not JSON: not continuing
         return hook(continuing)
     except Exception:
         respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True)

@@ -24,7 +24,14 @@ for entry in entries:
     if missing:
         problems.append(f"lesson '{title}': missing {', '.join(missing)}")
         continue
-    added = datetime.date.fromisoformat(values["Added"].group(1).strip()[:10])
+    date = values["Added"].group(1).strip()[:10]
+    try:  # YYYY-MM-DD only: newer Pythons also accept forms like 20261027
+        added = datetime.date.fromisoformat(date) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else None
+    except ValueError:
+        added = None
+    if added is None:
+        problems.append(f"lesson '{title}': Added must start with a date, YYYY-MM-DD")
+        continue
     guard = values["Now guarded by"].group(1).strip().lower()
     if guard.startswith("this entry only") and (earliest - added).days > GRACE_DAYS:
         problems.append(f"lesson '{title}': guarded by this entry only since {added}; "

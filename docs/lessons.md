@@ -56,8 +56,9 @@ is removed; `scripts/check-lessons` enforces this.
 - **Cause:** the author of the cases also picked the mutants, so both share the same blind spots;
   state and caches added skip paths that no case exercised.
 - **Now guarded by:** `scripts/test-checks --mutants`, which since 2026-10-28 also generates
-  mutants from the code of every check; a survivor needs a case or an `EQUIVALENT` entry with its
-  reason. It recurred once more before that: a reviewer's own mutants survived the self-review
+  mutants from the code of every check with the operators its comment lists; a survivor needs a
+  case, and `EQUIVALENT` holds only mutants equivalent on every input. Changes inside a regular
+  expression or an f-string are not generated, so those still depend on a reviewer. It recurred once more before that: a reviewer's own mutants survived the self-review
   fixes while the written list was fully killed; the first generated run found 133 of 602.
 - **Stale when:** the generated mutants have run on 10 changes to `scripts/` without a reviewer's
   own mutant surviving.

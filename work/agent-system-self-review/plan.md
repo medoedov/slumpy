@@ -189,3 +189,17 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   `None` returned where the value becomes the exit code, the closing-fence operand).
 - Full run on 209ce14: all 638 mutants killed (37 written, 609 generated, 8 equivalent), 41
   minutes; `scripts/test-checks` 185 cases.
+- Reviewer, code, fresh round 1 (c3af4da, item 9 only): `changes needed`, three blocking. The
+  `EQUIVALENT` entries, keys, seams, zone-independent dates, and the changes to the checks were
+  confirmed clean. Fixed: (1) `--mutants` fixes one instant (`SLUMPY_NOW`) for the baseline and
+  every mutant, the cases' TODAY derives from it, two cases keep the real clock on dates far from
+  any edge, and a self-test timeout is reported instead of counted as a kill; (2) the crash seam
+  raises a plain `Exception`, the stdin read moved inside the crash handler (no separate `OSError`
+  branch), the stale comment is gone; (3) the generator also turns startswith/endswith into `in`
+  and `==`, swaps fullmatch/match/search, drops strip/lower-style methods, and drops each string
+  argument and keyword argument of a call (not `encoding`); its comment, ledger row 26, and the
+  lesson name what is not generated (regex internals, f-string contents); logic moved out of an
+  f-string in `check`; a case for every reviewer input (21 cases). Pre-existing, fixed because
+  they are this item's kind: an unused environment variable, a `strip` with no effect, dates
+  accepted only as YYYY-MM-DD in `check-upkeep` and `check-lessons` (Python 3.11+ accepts more);
+  `check` no longer passes a `cwd` that no child uses.

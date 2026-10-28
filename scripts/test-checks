@@ -23,8 +23,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 COPY = ["CLAUDE.md", "README.md", "backlog.md", ".claude", "docs", "work", "scripts"]
 GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
        "-c", "commit.gpgsign=false"]
-ENV = dict(os.environ, SLUMPY_IN_TEST_CHECKS="1")
-TODAY = datetime.date.today().isoformat()
+ENV = dict(os.environ)
+# The cases' clock: SLUMPY_NOW when --mutants fixes one instant for the whole run, else the time
+# now. A case with its own SLUMPY_NOW overrides it; SLUMPY_NOW="" makes a check read the real clock.
+NOW = (datetime.datetime.fromisoformat(os.environ["SLUMPY_NOW"]) if os.environ.get("SLUMPY_NOW")
+       else datetime.datetime.now(datetime.timezone.utc))
+TODAY = NOW.astimezone(datetime.timezone.utc).date().isoformat()
 # Fixed instants for the date cases (SLUMPY_NOW). On 2030-06-15 at these hours, today in UTC+14 and
 # in UTC-12 differ from today in UTC+15, UTC+13, UTC-11, and UTC-13, so a shifted zone changes a
 # result: 09:30 UTC is 06-15 in UTC+14 and 06-16 in UTC+15; 10:30 is 06-16 in UTC+14 and 06-15 in
@@ -61,6 +65,10 @@ def make_template(tmp):
 def apply(d, edits):
     for path, text, mode in edits:
         f = d / path
+        if mode == "bytes":
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(text)
+            continue
         if mode == "delete":
             shutil.rmtree(f) if f.is_dir() else f.unlink()
             continue
@@ -101,7 +109,7 @@ def run_case(template, tmp, n, c):
             sh(d, *[a.replace("{template}", str(template)) for a in cmd])
         args = step.get("script", c["script"])
         outs.append(subprocess.run([sys.executable, "-I", str(d / "scripts" / args[0]), *args[1:]],
-                                   cwd=d, capture_output=True, text=True,
+                                   cwd=d / step.get("cwd", "."), capture_output=True, text=True,
                                    input=step.get("stdin"), env=dict(ENV, **c.get("env", {})),
                                    timeout=60))
     shutil.rmtree(d, ignore_errors=True)
@@ -168,8 +176,11 @@ PLANT = {"check-layers": [CORE_BAD], "check-pointers": [POINTER_BAD], "check-ris
          "check-lessons": [OVERDUE], "check-upkeep": [UPKEEP_DUE]}
 
 
-def one(edits=(), commit=False, git=(), stdin=None, git_before=()):
-    return [dict(edits=list(edits), commit=commit, git=list(git), stdin=stdin, git_before=list(git_before))]
+def one(edits=(), commit=False, git=(), stdin=None, git_before=(), cwd="."):
+    return [dict(edits=list(edits), commit=commit, git=list(git), stdin=stdin, git_before=list(git_before), cwd=cwd)]
+
+
+def notes(text): return [("work/feature/notes.md", text, "write")]
 
 
 def example_path(glob):
@@ -213,7 +224,8 @@ def check_cases():
               dict(script=["check"], expect=lambda o, c=checks: passes(o)
                    and all(f"[ok] {k}: " in o[-1].stdout and SUCCESS[k] in o[-1].stdout for k in c)
                    and "[not run] build, tests, lint" in o[-1].stdout
-                   and "[not run] test-checks" in o[-1].stdout))]
+                   and "[not run] test-checks" in o[-1].stdout
+                   and not any(f"[ok] {k}: {k}:" in o[-1].stdout for k in c)))]
     for name in checks:
         plant = PLANT.get(name)
         if not plant:
@@ -248,6 +260,8 @@ STATIC = [
     ("term in a frontmatter list after the paths list", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n', '  - "**/*.swift"\nnote:\n  - Slumpy\n'), "replace")]), script=["check-layers"], expect=fails)),
     ("a body line starting with paths: in a core file is scanned", dict(runs=one([(".claude/rules/core-process.md", "\npaths: Slumpy builds for iOS.\n", "append")]), script=["check-layers"], expect=fails)),
     ("a list item right after a core file's frontmatter is scanned", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n---\n', '  - "**/*.swift"\n---\n  - Slumpy uses iOS.\n'), "replace")]), script=["check-layers"], expect=fails)),
+    ("a frontmatter line that mentions paths: after other text is scanned", dict(runs=one([(".claude/agents/reviewer.md", ("skills:\n", "summary: brief before code; paths: Swift files\nskills:\n"), "replace")]), script=["check-layers"], expect=fails)),
+    ("a frontmatter key that starts with paths is scanned", dict(runs=one([(".claude/agents/reviewer.md", ("skills:\n", "pathsNote: Slumpy only\nskills:\n"), "replace")]), script=["check-layers"], expect=fails)),
     ("rule file in no layer", dict(runs=one([(".claude/rules/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     ("rule file in a subfolder in no layer", dict(runs=one([(".claude/rules/sub/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
@@ -256,6 +270,11 @@ STATIC = [
     ("pointer with a path to a missing file", dict(runs=one([("work/feature/notes.md", "See `work/nope/plan.md`, «Log».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("work/feature/notes.md:1: `work/nope/plan.md` does not exist"))),
     ("a missing section is reported with its file and line", dict(runs=one([("work/feature/notes.md", "Intro.\nSee `core-process.md`, «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("work/feature/notes.md:2: `core-process.md` has no section 'Nope'"))),
     ("the second of two quoted sections is checked", dict(runs=one([("work/feature/notes.md", "See `core-process.md`, «Done» и «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("has no section 'Nope'"))),
+    ("the second of two sections joined by and is checked", dict(runs=one(notes("See `core-process.md`, «Done» and «Nope».\n"), commit=True), script=["check-pointers"], expect=fails_with("has no section 'Nope'"))),
+    ("a pointer written with раздел is checked", dict(runs=one(notes("См. `core-process.md`, раздел «Нет такого».\n"), commit=True), script=["check-pointers"], expect=fails_with("has no section 'Нет такого'"))),
+    ("an unquoted section of three words is checked", dict(runs=one(notes("See `core-process.md`, Review and nonsense.\n"), commit=True), script=["check-pointers"], expect=fails_with("has no section 'Review and nonsense'"))),
+    ("a section matches from its start only", dict(runs=one(notes("See `core-process.md`, «tiers».\n"), commit=True), script=["check-pointers"], expect=fails_with("has no section 'tiers'"))),
+    ("check-pointers run from a subfolder still reads every file", dict(runs=one(notes("See `core-process.md`, «Nope».\n"), commit=True, cwd="docs"), script=["check-pointers"], expect=fails_with("has no section 'Nope'"))),
     ("pointer with a double-quoted missing section", dict(runs=one([("work/feature/notes.md", 'See `core-process.md`, "Nope".\n', "write")], commit=True), script=["check-pointers"], expect=fails)),
     ("pointer with an unquoted missing section", dict(runs=one([("work/feature/notes.md", "See `core-process.md`, Nope.\n", "write")], commit=True), script=["check-pointers"], expect=fails)),
     ("pointer to a file outside the repository is skipped", dict(runs=one([("work/feature/notes.md", "See `framework.md`, Overview.\n", "write")], commit=True), script=["check-pointers"], expect=passes)),
@@ -296,6 +315,14 @@ STATIC = [
     ("a file named like a glob reads only its own diff", dict(runs=one([("*.swift", "let a = 1\n", "write"), ("docs/example.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True), script=["check-risk"], expect=passes)),
     ("a rule matching every name passes when only agent-system files changed", dict(runs=one([("scripts/risk-paths", "\nt2  *\n", "append")]), script=["check-risk"], expect=passes)),
     ("a t2 signal names the rule and the file", dict(runs=one([PKG]), script=["check-risk"], expect=fails_with("T2 signal without a new ADR or an added 'T1 because' line in a work/*/plan.md (scripts/risk-paths): Package.swift"))),
+    ("a renamed risky path still counts as changed", dict(base=[("App/Migrations/V2.swift", "let a = 1\n", "write")], runs=one([(PLAN, SEC_LINE, "write")], commit=True, git_before=[["mv", "App/Migrations/V2.swift", "App/Legacy.swift"]]), script=["check-risk"], expect=fails)),
+    ("a new document outside docs/decisions is not an ADR", dict(runs=one([PKG, ("docs/domains/sync.md", "# Sync\n", "write")]), script=["check-risk"], expect=fails)),
+    ("a new file in docs/decisions without a number is not an ADR", dict(runs=one([PKG, ("docs/decisions/notes.md", "# Notes\n", "write")]), script=["check-risk"], expect=fails)),
+    ("a T1 line in a file named like a plan backup does not count", dict(runs=one([PKG, ("work/feature/plan.md.orig", T1_LINE, "write")]), script=["check-risk"], expect=fails)),
+    ("a T1 line in a nested plan does not count", dict(runs=one([PKG, ("work/a/b/plan.md", T1_LINE, "write")]), script=["check-risk"], expect=fails)),
+    ("an untracked binary file does not crash the check", dict(runs=one([("App/Icon.png", b"\x89PNG\r\n\x1a\n\xff\xfe\xfd", "bytes")]), script=["check-risk"], expect=clean("check-risk"))),
+    ("ignored files are not in the change set", dict(runs=one([(".gitignore", "build/\n", "write"), ("build/App.entitlements", "<plist/>\n", "write")]), script=["check-risk"], expect=passes)),
+    ("check-risk run from a subfolder still reads the whole change set", dict(runs=one([KEYCHAIN], cwd="docs"), script=["check-risk"], expect=fails_with("App/Store.swift"))),
     ("a malformed rule fails the check", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\bFoo\\b  ## no match here\n", "append")]), script=["check-risk"], expect=fails)),
     # check-lessons
     ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=clean("check-lessons"))),
@@ -305,6 +332,10 @@ STATIC = [
     ("old lesson guarded by a test passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Guarded", guard="a case in scripts/test-checks.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=passes)),
     ("lesson date followed by a note", dict(runs=one([("docs/lessons.md", LESSON.format(title="Noted", guard="a test.", added=TODAY + " (moved from the audit)"), "append")]), script=["check-lessons"], expect=passes)),
     ("a lesson that mentions the Entries heading does not end the list", dict(runs=one([("docs/lessons.md", LESSON.format(title="Heading", guard="a test.", added=TODAY).replace("- **Symptom:** x", "- **Symptom:** the ## Entries heading was renamed"), "append"), OVERDUE]), script=["check-lessons"], expect=fails_with("lesson 'Old trap'"))),
+    ("an overdue guard with more words after it", dict(runs=one([("docs/lessons.md", LESSON.format(title="Wordy", guard="this entry only. When adapting a rule, list its conditions.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails_with("lesson 'Wordy'"))),
+    ("a lesson date without dashes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Compact", guard="a test.", added="20261027"), "append")]), script=["check-lessons"], expect=fails_with("lesson 'Compact': Added must start with a date"))),
+    ("a lesson date that does not exist", dict(runs=one([("docs/lessons.md", LESSON.format(title="Impossible", guard="a test.", added="2026-13-45"), "append")]), script=["check-lessons"], expect=fails_with("lesson 'Impossible': Added must start with a date"))),
+    ("an unset clock reads the real time for lessons", dict(env={"SLUMPY_NOW": ""}, runs=one([lessons_doc(LESSON.format(title="Old", guard="a test.", added="2000-01-01"))]), script=["check-lessons"], expect=clean("check-lessons"))),
     ("overdue lesson as the first entry", dict(runs=one([("docs/lessons.md", LESSON.format(title="First", guard="this entry only.", added="2000-01-01").lstrip("\n") + "\n", "prepend-entry")]), script=["check-lessons"], expect=fails)),
     ("overdue lesson with a capitalized guard", dict(runs=one([("docs/lessons.md", LESSON.format(title="Caps", guard="This entry only.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails)),
     ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),
@@ -327,17 +358,24 @@ STATIC = [
     ("upkeep table of one line", dict(runs=one([upkeep_doc("| Task | Every | Last done | How |\n")]), script=["check-upkeep"], expect=fails)),
     ("a | above the upkeep table", dict(runs=one([upkeep_doc(f"Use `a | b` for alternatives.\n\n| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
     ("a line without pipes right under the upkeep table", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\nOld task 30 days 2000-01-01\n")]), script=["check-upkeep"], expect=fails)),
+    ("an interval that only mentions an event", dict(runs=one([upkeep_row("| Task | 30 days after the event | 2000-01-01 | x |")]), script=["check-upkeep"], expect=fails)),
+    ("an interval with words after the days", dict(runs=one([upkeep_row(f"| Task | 30 days or at a release | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("an indented upkeep table passes", dict(runs=one([upkeep_doc(f"  | Task | Every | Last done | How |\n  |---|---|---|---|\n  | A | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=clean("check-upkeep"))),
+    ("an upkeep date without dashes", dict(runs=one([upkeep_row("| Task | 30 days | 20261027 | x |")]), script=["check-upkeep"], expect=fails)),
+    ("an unset clock reads the real time for upkeep", dict(env={"SLUMPY_NOW": ""}, runs=one([upkeep_task("| Task | 99999 days | 2000-01-01 | x |")]), script=["check-upkeep"], expect=clean("check-upkeep"))),
     ("a paragraph after the upkeep table passes", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n\nA note after the table.\n")]), script=["check-upkeep"], expect=passes)),
     ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook blocks when there is no base, the change set first", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set: check-risk: no base") and o[-1].stdout.index("change set:") < o[-1].stdout.index("check-layers:\\n"))),
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
-    ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "scripts/check --hook crashed:\nTraceback") and is_error(o[-1], "RuntimeError: crash requested by the self-test"))),
+    ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "scripts/check --hook crashed:\nTraceback") and is_error(o[-1], "Exception: crash requested by the self-test"))),
     ("the hook reports its own crash as a message while continuing", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "crashed" in o[-1].stdout)),
     ("scripts/check reports a check that prints nothing", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: \n" in o[-1].stdout)),
     ("scripts/check reports a check's error output", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit('broken lessons')\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: broken lessons\n" in o[-1].stdout)),
     ("scripts/check summarizes a check by its last line", dict(runs=one([("scripts/check-lessons", "import sys\nprint('first')\nprint('last')\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: last\n" in o[-1].stdout)),
+    ("the hook reports JSON stdin that is not an object as its own crash", dict(runs=one(stdin="[]"), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "crashed"))),
+    ("scripts/check run from a subfolder", dict(runs=one(cwd="docs"), script=["check"], expect=lambda o: passes(o) and "[ok] check-pointers: all section pointers resolve" in o[-1].stdout)),
     ("the hook reads stdin that is not JSON as not continuing", dict(runs=one([CORE_BAD], stdin="not json"), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook gives a message while continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
     ("the hook stays silent when nothing changed", dict(base=[OVERDUE], runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
@@ -348,7 +386,6 @@ STATIC = [
 # (file, old text, new text, what the mutant breaks); each old text occurs exactly once.
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
-# check's crash handler in --hook is not listed: no input the cases can build crashes the hook.
 MUTANTS = [
     ("check", "    if changed.returncode == 0 and not changed.stdout.strip(\"\\0\"):", "    if True:", "the hook never runs the checks"),
     ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
@@ -441,7 +478,11 @@ def run_cases():
 # Generated mutants: every condition forced true and false, each operand of and/or dropped, each
 # operand of a binary operator dropped, each `not` removed, each operator of a comparison flipped,
 # each integer moved by one (an exit code or return value only between zero and non-zero), each
-# statement removed. A survivor is logic no case observes. EQUIVALENT lists only mutants that
+# statement removed, startswith/endswith turned into `in` and `==`, fullmatch/match/search swapped,
+# each strip/lower-style string method dropped, each string argument and each keyword argument of
+# a call dropped (except `encoding`: the self-test runs under a UTF-8 locale and cannot observe it).
+# Not generated: changes inside a regular expression (alternatives, quantifiers, classes) and inside
+# f-strings (keep logic out of them). A survivor is logic no case observes. EQUIVALENT lists only mutants that
 # cannot change what a check reports on any input, each with its reason; code no case could reach
 # is made reachable by a test seam (SLUMPY_TEST_HOOK_CRASH, SLUMPY_NOW) instead of being listed.
 # An entry is keyed by script, enclosing function, mutation, and line, and must match exactly one
@@ -452,6 +493,8 @@ OPS = {ast.Gt: ">", ast.GtE: ">=", ast.Lt: "<", ast.LtE: "<=", ast.Eq: "==", ast
        ast.In: "in", ast.NotIn: "not in", ast.Is: "is", ast.IsNot: "is not"}
 FLIP = {ast.Gt: ">=", ast.GtE: ">", ast.Lt: "<=", ast.LtE: "<", ast.Eq: "!=", ast.NotEq: "==",
         ast.In: "not in", ast.NotIn: "in", ast.Is: "is not", ast.IsNot: "is"}
+MATCHERS = ("fullmatch", "match", "search")
+STRING_METHODS = ("strip", "lstrip", "rstrip", "lower", "upper", "casefold")
 NONE_EXIT = "the function's value becomes the exit code, and None exits with 0 as 0 does"
 EQUIVALENT = {
     ("check", "<module>", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
@@ -486,6 +529,8 @@ def generated_mutants(root=ROOT):
                     owner[id(n)] = fn.name
         def seg(n):
             return src[pos(n.lineno, n.col_offset):pos(n.end_lineno, n.end_col_offset)]
+        def seg_from(n, col, end_line, end_col):  # from a column on the call's first line to its end
+            return src[pos(n.func.end_lineno, col):pos(end_line, end_col)]
         def add(n, new, what):
             a, b = pos(n.lineno, n.col_offset), pos(n.end_lineno, n.end_col_offset)
             text = lines[n.lineno - 1]
@@ -519,6 +564,25 @@ def generated_mutants(root=ROOT):
                     for j, (op_j, right) in enumerate(zip(n.ops, n.comparators)):
                         parts += [FLIP[type(op_j)] if j == i else OPS[type(op_j)], seg(right)]
                     add(n, "(" + " ".join(parts) + ")", f"comparison {i + 1} to {FLIP[type(o)]}")
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+                obj, attr = seg(n.func.value), n.func.attr
+                if attr in ("startswith", "endswith") and len(n.args) == 1 and not n.keywords:
+                    add(n, f"({seg(n.args[0])} in {obj})", f"{attr} to in")
+                    add(n, f"({obj} == {seg(n.args[0])})", f"{attr} to ==")
+                if attr in MATCHERS:
+                    rest = n.func.end_col_offset, n.end_lineno, n.end_col_offset
+                    for other in MATCHERS:
+                        if other != attr:
+                            add(n, f"{obj}.{other}{seg_from(n, *rest)}", f"{attr} to {other}")
+                if attr in STRING_METHODS:
+                    add(n, f"({obj})", f".{attr}() dropped")
+            if isinstance(n, ast.Call):
+                parts = [(a, isinstance(a, ast.Constant) and type(a.value) is str) for a in n.args]
+                parts += [(k, k.arg != "encoding") for k in n.keywords]
+                for i, (dropped, mutable) in enumerate(parts):
+                    if mutable:
+                        kept = [seg(x) for j, (x, _) in enumerate(parts) if j != i]
+                        add(n, f"{seg(n.func)}({', '.join(kept)})", f"argument {i + 1} dropped")
             if isinstance(n, ast.Constant) and type(n.value) is int and id(n) in exit_codes:
                 add(n, "1" if n.value == 0 else "0", f"exit code {n.value} to {1 if n.value == 0 else 0}")
             elif isinstance(n, ast.Constant) and type(n.value) is int:
@@ -537,11 +601,11 @@ def key(m):
     return script, function, what, line
 
 
-def run_copy(mutant=None):
+def run_copy(mutant=None, now=None):
     with tempfile.TemporaryDirectory() as tmp:
         d = pathlib.Path(tmp) / "copy"
         copy_files(ROOT, d)
-        env = dict(ENV)
+        env = dict(ENV, SLUMPY_NOW=now) if now else dict(ENV)
         if mutant and len(mutant) == 4:            # written: (script, old, new, label)
             script, old, new, label = mutant
             f = d / "scripts" / script
@@ -561,17 +625,18 @@ def run_copy(mutant=None):
         try:
             p = subprocess.run([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
                                capture_output=True, text=True, env=env, timeout=600)
-            failed, output = p.returncode != 0, p.stdout
-        except subprocess.TimeoutExpired:
-            failed, output = True, "the self-test timed out"
+        except subprocess.TimeoutExpired:            # neither a kill nor a pass: report it
+            return f"self-test timed out: {name if mutant else 'baseline'}"
         if mutant is None:
-            return None if not failed else "baseline fails; mutants not measured:\n" + output
-        return None if failed else f"surviving mutant: {name}"
+            return None if p.returncode == 0 else "baseline fails; mutants not measured:\n" + p.stdout
+        return None if p.returncode != 0 else f"surviving mutant: {name}"
 
 
 def main():
     if "--mutants" in sys.argv:
-        baseline = run_copy()
+        # One instant for the whole run, so a date that falls due mid-run cannot fail the cases.
+        now = os.environ.get("SLUMPY_NOW") or datetime.datetime.now(datetime.timezone.utc).isoformat()
+        baseline = run_copy(now=now)
         if baseline:
             print(baseline)
             return 1
@@ -583,7 +648,7 @@ def main():
                  for k in EQUIVALENT if count.get(k, 0) != 1]
         todo = MUTANTS + [m for m in generated if key(m) not in EQUIVALENT]
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            problems = stale + [r for r in pool.map(run_copy, todo) if r]
+            problems = stale + [r for r in pool.map(lambda m: run_copy(m, now), todo) if r]
         total = len(MUTANTS) + len(generated)
         if problems:
             print("\n".join(problems))

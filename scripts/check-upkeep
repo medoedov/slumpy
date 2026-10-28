@@ -41,8 +41,8 @@ for row in rows:
     if every == "on event":
         continue
     interval = re.fullmatch(r"(\d+) days", every)
-    try:
-        done = datetime.date.fromisoformat(last)
+    try:  # YYYY-MM-DD only: newer Pythons also accept forms like 20261027
+        done = datetime.date.fromisoformat(last) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", last) else None
     except ValueError:
         done = None
     if not interval or done is None:
