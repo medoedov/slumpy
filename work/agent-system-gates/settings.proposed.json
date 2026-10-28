@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild *)",
+      "Bash(xcrun simctl *)",
+      "Bash(xcrun xccov *)",
+      "Bash(swift build *)",
+      "Bash(swift test *)",
+      "Bash(scripts/check)",
+      "Bash(scripts/check *)",
+      "Bash(python3 -I scripts/*)"
+    ],
+    "ask": [
+      "mcp__github__merge_pull_request",
+      "Bash(gh pr merge *)"
+    ],
+    "deny": [
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push *:main)",
+      "Bash(git push *:main *)",
+      "Bash(git push *refs/heads/main*)",
+      "Bash(git push)",
+      "Bash(git push origin)",
+      "Bash(git push * origin)",
+      "Bash(git push * HEAD)",
+      "Bash(git push * HEAD *)",
+      "Edit(/AGENTS.md)",
+      "Edit(/.agents/**)",
+      "Edit(/.codex/**)",
+      "Edit(/.githooks/**)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

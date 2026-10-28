@@ -3,6 +3,8 @@
 Traps this project has already hit. Add an entry only if a future implementer reading the code
 would likely repeat the mistake without it. Prefer fixing at the source first: compiler, then
 linter, test, skill; an entry here comes after those. Remove entries whose "stale when" has come.
+An entry guarded by "this entry only" gets a test, lint rule, check, or skill within 30 days, or
+is removed; `scripts/check-lessons` enforces this.
 
 ## Format
 
@@ -26,9 +28,11 @@ linter, test, skill; an entry here comes after those. Remove entries whose "stal
   the exit when no honest test is possible.
 - **Cause:** shortening a source rule keeps its main clause and drops its conditions and
   exceptions; restating a rule in a second file does the same.
-- **Now guarded by:** this entry only. When adapting an external rule, generalizing a rule, or
-  moving it between layers, list each condition and exception of the source and either keep it or
-  record why it is dropped; state each rule in one file and point to it from others. It happened
-  again on 2026-10-28 when the core was split from the platform and project layers.
+- **Now guarded by:** `scripts/check-layers` (platform or project lines that restate a core
+  rule) and `scripts/check-pointers` (stale section pointers), both self-tested by
+  `scripts/test-checks`. Not guarded by a mechanism: when adapting an external rule, generalizing
+  a rule, or moving it between layers, list each condition and exception of the source and either
+  keep it or record why it is dropped. It happened again on 2026-10-28 when the core was split
+  from the platform and project layers.
 - **Stale when:** the agent system gets an eval case that catches a dropped condition.
 - **Added:** 2026-10-27

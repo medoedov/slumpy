@@ -8,8 +8,7 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 
 - Layers and their files: `.claude/rules/core-process.md`, first paragraph. Platform pack here:
   Apple iOS.
-- Run `scripts/check-layers` after editing a core file, a platform-pack file, or CLAUDE.md, and
-  `scripts/check-pointers` after moving or renaming a section; both catch listed cases only.
+- The checks catch listed cases only; their self-test is `scripts/test-checks`.
 
 ## Project facts
 
@@ -21,8 +20,9 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 - Default branch: `dev`.
 - External actions: push or merge to `main`, App Store Connect, TestFlight,
   publications.
-- Check command: `scripts/check`, planned; it runs on the Mac.
+- Check command: `scripts/check`. It runs the document checks now and will run build and tests once
+  the Xcode project exists.
 - The owner's language: Russian.
-- Secrets live in a git-ignored `.env` on the Mac or in Xcode Cloud secrets.
+- Where secrets live: `deployment.md`, Secrets.
 - `AGENTS.md`, `.agents/`, `.codex/`, `.githooks/` are frozen: do not edit, regenerate, or enable
   them, and do not read them as project facts (they describe the old Expo setup).

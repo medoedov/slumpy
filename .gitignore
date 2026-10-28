@@ -30,8 +30,14 @@ __pycache__/
 # Build outputs
 dist/
 build/
+DerivedData/
+.build/
 .next/
 out/
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
 
 # IDE
 .vscode/

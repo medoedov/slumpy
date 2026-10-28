@@ -80,7 +80,7 @@ notice the missing part, that becomes a product question.
 ## Done
 
 "Done" needs evidence from the current state: verification output for the latest commit (the
-check command CLAUDE.md names, once it exists). Say what could not be verified and why. Never
+check command CLAUDE.md names). Say what could not be verified and why. Never
 weaken a test or disable a check to get green; if one must change, state the reason where the
 reviewer sees it. Each commit message body has one line above the trailer lines:
 `Verified: <command and result>` or `Unverified: <why>`. A finished feature also updates Project

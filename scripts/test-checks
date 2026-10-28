@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Self-test of the checks: each planted violation must fail its check, and a clean copy must pass.
+
+Works on throwaway git copies of the agent-system files, never on the repository itself.
+"""
+import json, pathlib, shutil, subprocess, sys, tempfile
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+COPY = ["CLAUDE.md", "README.md", "backlog.md", ".claude", "docs", "work", "scripts"]
+GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
+       "-c", "commit.gpgsign=false"]
+
+
+def make_template(tmp):
+    t = tmp / "template"
+    t.mkdir()
+    for name in COPY:
+        src = ROOT / name
+        if src.is_dir():
+            shutil.copytree(src, t / name, ignore=shutil.ignore_patterns("__pycache__"))
+        elif src.exists():
+            shutil.copy2(src, t / name)
+    for cmd in (["init", "-q", "-b", "dev"], ["add", "-A"], ["commit", "-q", "-m", "base"],
+                ["checkout", "-q", "-b", "work"]):
+        subprocess.run(GIT + cmd, cwd=t, check=True, capture_output=True)
+    return t
+
+
+def case(template, tmp, n, edits, script, expect_fail, stdin=None, expect_code=None):
+    d = tmp / f"case{n}"
+    shutil.copytree(template, d)
+    for path, text, mode in edits:
+        f = d / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        if mode == "append":
+            f.write_text(f.read_text(encoding="utf-8") + text, encoding="utf-8")
+        elif mode == "replace":
+            old, new = text
+            s = f.read_text(encoding="utf-8")
+            assert old in s, f"case {n}: '{old}' not in {path}"
+            f.write_text(s.replace(old, new, 1), encoding="utf-8")
+        else:
+            f.write_text(text, encoding="utf-8")
+    p = subprocess.run([sys.executable, "-I", str(d / "scripts" / script[0]), *script[1:]], cwd=d,
+                       capture_output=True, text=True, input=stdin)
+    if expect_code is not None:
+        ok = p.returncode == expect_code
+    else:
+        ok = (p.returncode != 0) == expect_fail
+    shutil.rmtree(d)
+    return ok, p.returncode
+
+
+CASES = [
+    # (description, edits, script, expect_fail)
+    ("clean copy passes check-layers", [], ["check-layers"], False),
+    ("clean copy passes check-pointers", [], ["check-pointers"], False),
+    ("clean copy passes check-risk", [], ["check-risk"], False),
+    ("clean copy passes check-lessons", [], ["check-lessons"], False),
+    ("Cyrillic in a core skill", [(".claude/skills/product-spec/SKILL.md", "\nМожно ответить.\n", "append")], ["check-layers"], True),
+    ("project term in core-process", [(".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")], ["check-layers"], True),
+    ("tier label in the platform pack", [(".claude/rules/platform.md", "\n- New extension (T2 the first time).\n", "append")], ["check-layers"], True),
+    ("reviewer rule in swift.md", [(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")], ["check-layers"], True),
+    ("unnamed core rule file", [(".claude/rules/core-extra.md", "# Extra\n", "write")], ["check-layers"], True),
+    ("renamed section breaks a pointer", [(".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")], ["check-pointers"], True),
+    ("entitlements without evidence", [("App/App.entitlements", "<plist/>\n", "write")], ["check-risk"], True),
+    ("entitlements with ADR line and security pass", [("App/App.entitlements", "<plist/>\n", "write"),
+        ("work/feature/plan.md", "T1 because the entitlement repeats ADR-0001.\nReview: code, round 1, security pass, clean.\n", "write")], ["check-risk"], False),
+    ("Keychain call without security pass", [("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")], ["check-risk"], True),
+    ("overdue lesson guarded by this entry only", [("docs/lessons.md", "\n### Old trap\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** this entry only.\n- **Stale when:** z\n- **Added:** 2000-01-01\n", "append")], ["check-lessons"], True),
+    ("lesson with a missing field", [("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")], ["check-lessons"], True),
+]
+
+
+def main():
+    failures = []
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        template = make_template(tmp)
+        for n, (desc, edits, script, expect_fail) in enumerate(CASES):
+            ok, code = case(template, tmp, n, edits, script, expect_fail)
+            if not ok:
+                failures.append(f"{desc}: {script[0]} exited {code}")
+        hook_cases = [
+            ("hook blocks a failing check with exit 2", json.dumps({"stop_hook_active": False}), 2),
+            ("hook does not block twice in a row", json.dumps({"stop_hook_active": True}), 0),
+        ]
+        bad = [(".claude/rules/core-process.md", "\nSlumpy\n", "append")]
+        for i, (desc, stdin, code) in enumerate(hook_cases):
+            ok, got = case(template, tmp, 100 + i, bad, ["check", "--hook"], True, stdin, code)
+            if not ok:
+                failures.append(f"{desc}: check --hook exited {got}")
+    total = len(CASES) + 2
+    if failures:
+        print("\n".join(failures))
+        print(f"test-checks: {len(failures)} of {total} cases failed")
+        return 1
+    print(f"test-checks: {total} cases pass")
+    return 0
+
+
+sys.exit(main())

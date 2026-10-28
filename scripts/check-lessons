@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Fails when docs/lessons.md has an entry with a missing field, or an entry guarded by
+"this entry only" for longer than the grace period: a lesson becomes a test, lint rule, check, or
+skill, or it is removed. Any error exits non-zero."""
+import datetime, pathlib, re, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+GRACE_DAYS = 30
+FIELDS = ("Symptom", "Cause", "Now guarded by", "Stale when", "Added")
+
+text = (ROOT / "docs/lessons.md").read_text(encoding="utf-8")
+entries = re.split(r"(?m)^### ", text.split("## Entries", 1)[1])[1:]
+today = datetime.date.today()
+problems = []
+for entry in entries:
+    title = entry.splitlines()[0].strip()
+    values = {f: re.search(rf"\*\*{re.escape(f)}:\*\*\s*(.+)", entry) for f in FIELDS}
+    missing = [f for f, m in values.items() if not m]
+    if missing:
+        problems.append(f"lesson '{title}': missing {', '.join(missing)}")
+        continue
+    added = datetime.date.fromisoformat(values["Added"].group(1).strip()[:10])
+    guard = values["Now guarded by"].group(1).strip().lower()
+    if guard.startswith("this entry only") and (today - added).days > GRACE_DAYS:
+        problems.append(f"lesson '{title}': guarded by this entry only since {added}; "
+                        "turn it into a test, lint rule, check, or skill, or remove it")
+
+if problems:
+    print("\n".join(problems))
+    sys.exit(1)
+print(f"check-lessons: {len(entries)} entries, none overdue")

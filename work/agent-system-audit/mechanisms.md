@@ -1,0 +1,34 @@
+# Mechanism ledger
+
+Each mechanism of the agent system, the error it exists for, what is known, and the result that
+removes or changes it. The pilot on the Mac decides by this table. Thresholds are initial and may
+be set before the pilot starts, never after its results. Results: `baseline.md`; rules: the files
+in "Where".
+
+Kind: **gate** (a script, hook, or compiler blocks), **trigger** (a script decides when it runs),
+**prose** (the model must remember).
+
+| # | Mechanism | Where | Error it targets | Kind | Known so far | Pilot measure | Remove or change if |
+|---|---|---|---|---|---|---|---|
+| 1 | Decision rights, product questions with recommendations | core-process; `product-spec` | Owner turned into a tech lead | prose | P1–P3: recommendations and product-only questions 6/6 and 30/30 (sections 8, 16) | Technical questions to the owner per feature; owner minutes per feature | A technical question reaches the owner in more than 1 of 10 features |
+| 2 | Risk tiers | core-process | Shallow analysis of irreversible decisions | prose | S3: the agent named T2 and skipped the T2 order (section 8) | Share of T2 changes with brief, ADR, and decision review before code | Below 80%: the tier comes from `check-risk` paths only |
+| 3 | Brief and question menu | `engineering-design` | Code before the data model, boundaries, scenarios | prose | Graders at ceiling; fires more after the layer split; proportionality 2/4 when it fired (section 16) | Hidden-test pass rate and extra types on T1 and T2 tasks, with and without the skill | No hidden-test gain and either cost above +25% or more extra types than without it |
+| 4 | Domain blind-spot pass | `engineering-design` | Missing practitioner knowledge in a new area | prose | Never run | Facts from the pass used in later decisions | Two passes yield no fact used in a decision |
+| 5 | Reviewer, decision mode | `reviewer` | Wrong irreversible choice | prose trigger | Design cost +120% when it ran (section 10) | Confirmed blocking findings per review; cost per confirmed finding | Fewer than 1 confirmed blocking finding per 3 reviews |
+| 6 | Reviewer, code mode | `reviewer`; core-process T1 trigger | Defects the author misses | prose trigger | Not launched in R1–R9; mandatory on T1 failed on cost (section 10) | Findings confirmed by a test or later bug; escaped defects with and without | Same rule as row 5; cost per confirmed finding above the cost of the defect class |
+| 7 | Reviewer, spec mode | `product-spec` step 5 | Specs an implementer must ask about | prose | Unmeasured: single-turn eval never reaches it | Spec changes caused by the review; later product questions during implementation | No spec change in 3 specs |
+| 8 | Review convergence | `reviewer`; core-process | Endless review loops | prose | Two changes converged in 4 rounds each | Rounds per change; parts left out | Average above 3 rounds per mode |
+| 9 | Security pass | core-process; `platform.md`; `check-risk` | Privacy and App Review failures, leaked secrets | gate (evidence line) | Self-test only | Security findings; App Review rejections | Kept by policy: the cost of one miss is high |
+| 10 | Schema test against the previous store | core-process | Data loss on update | prose | No schema yet | Migrations shipped with the test | Kept by policy: data loss cannot be undone |
+| 11 | ADRs | `docs/decisions/` | Decisions forgotten between sessions | prose | One ADR; unmeasured | Later sessions contradicting an ADR | — |
+| 12 | Lessons with an expiry for unguarded entries | `docs/lessons.md`; `check-lessons` | Repeated mistakes | gate | The only lesson recurred once, then got scripts | Repeats of a recorded class | — (the gate removes stale entries) |
+| 13 | Technical debt register | `docs/tech-debt.md` | Non-blocking findings lost or widening changes | prose | 3 entries | Items closed against items added | More than 30 open items: a cleanup pass |
+| 14 | Test and fix rules | `core-code.md` | Tests that prove nothing; fixes that hide causes | prose | R9 at ceiling | Mutation survivors in the logic package; escaped defects | No difference against the bare model on hidden tests |
+| 15 | Premise check after two failed fixes | `core-code.md` | Fix loops on a wrong assumption | prose | Unmeasured | Third fixes on the same premise in debugging tasks | Never triggered in the pilot |
+| 16 | `Verified:` line in commits | core-process | "Done" without proof | prose | 14 of 15 recent commits | Lines with real command output | Below 90%: a commit-message hook |
+| 17 | Platform facts and design questions | `platform.md`; `swift.md` | Outdated or wrong platform knowledge | prose; compiler later | R8 at ceiling | Deprecation and availability errors from the compiler; wrong facts found | Facts never used in a brief or review are removed at the next major Xcode |
+| 18 | Layer and pointer checks | `check-layers`; `check-pointers`; `test-checks` | Details in the wrong layer; stale pointers | gate | Caught 3 restatements and 2 stale pointers in review rounds | False positives per change to the system | — |
+| 19 | Risk evidence check | `check-risk`; `scripts/risk-paths` | Risky change without a decision record | gate | Self-test only; paths provisional until the skeleton | Blocks that found a real gap against noise | More than 1 false block per feature: narrow the paths |
+| 20 | Stop hook running `scripts/check` | `.claude/settings.json` (pending, see `work/agent-system-gates/plan.md`) | Checks skipped because nobody remembered | gate | — | Blocked stops that fixed a real issue against noise | More noise than real issues over 10 features |
+| 21 | Owner report format | core-process | Owner cannot judge the result | prose | — | Owner follow-up questions per report | Owner asks for the same missing item twice |
+| 22 | Project Knowledge | `project-knowledge` | Product facts re-asked or invented | prose | Helped in P1 (section 12) | Facts re-asked from the owner | — |

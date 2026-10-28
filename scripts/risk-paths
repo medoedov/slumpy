@@ -1,0 +1,21 @@
+# Paths and text that make a change need written evidence (read by scripts/check-risk).
+# Project layer: the globs follow this project's planned layout (architecture.md, Targets and
+# Package); revise them when the Xcode skeleton exists.
+#
+#   t2        the change needs an ADR in docs/decisions/ or a line "T1 because ..." in a
+#             work/*/plan.md, either changed by the same change set
+#   security  the change needs "security pass" in a work/*/plan.md changed by the same change set
+#   *-text    a regular expression matched against the lines the change adds
+#
+# category       pattern
+t2               **/*.entitlements
+t2               **/Package.swift
+t2               **/project.yml
+t2               **/*.xcodeproj/project.pbxproj
+t2               **/Migrations/**
+t2               **/*Schema*.swift
+t2-text          \bimport (GRDB|Firebase|Supabase|Alamofire|RevenueCat)\b
+security         **/*.entitlements
+security         **/Info.plist
+security         **/PrivacyInfo.xcprivacy
+security-text    \b(SecItem\w*|kSecClass|NSAppTransportSecurity|requestAuthorization|AuthorizationCenter)\b

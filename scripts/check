@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""The project's single check command.
+
+Runs the document checks everywhere, the self-test of the checks when scripts/ changed, and the
+build and tests where Xcode is available. Prints what ran and what did not; exits non-zero when a
+check fails. With --hook it acts as the Stop hook: silent on success, the failures on stderr with
+exit 2 so the session continues to fix them, and no block when the session is already continuing
+because of this hook.
+"""
+import json, pathlib, shutil, subprocess, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DOC_CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons"]
+
+
+def run(name, *args):
+    p = subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args], cwd=ROOT,
+                       capture_output=True, text=True)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+
+def scripts_changed():
+    def git(*a):
+        return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True).stdout
+    b = ""
+    for ref in ("origin/dev", "dev"):
+        b = git("merge-base", "HEAD", ref).strip()
+        if b:
+            break
+    names = git("diff", "--name-only", b or "HEAD").split()
+    names += git("ls-files", "--others", "--exclude-standard").split()
+    return any(n.startswith("scripts/") for n in names)
+
+
+def main():
+    hook = "--hook" in sys.argv
+    if hook:
+        try:
+            if json.load(sys.stdin).get("stop_hook_active"):
+                return 0
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    failed, report = [], []
+    checks = DOC_CHECKS + (["test-checks"] if scripts_changed() else [])
+    for name in checks:
+        code, out = run(name)
+        last = out.splitlines()[-1] if out else ""
+        report.append(f"[{'ok' if code == 0 else 'FAIL'}] {name}: {last.removeprefix(name + ': ')}")
+        if code != 0:
+            failed.append(f"{name}:\n{out}")
+
+    if shutil.which("xcodebuild") is None:
+        report.append("[not run] build, tests, lint: no Xcode in this environment")
+    else:
+        report.append("[not run] build, tests, lint: no Xcode project yet (skeleton ADR)")
+
+    if hook:
+        if failed:
+            print("scripts/check failed; fix before finishing:\n\n" + "\n\n".join(failed),
+                  file=sys.stderr)
+            return 2
+        return 0
+    print("\n".join(report))
+    if failed:
+        print("\n" + "\n\n".join(failed))
+        return 1
+    return 0
+
+
+sys.exit(main())

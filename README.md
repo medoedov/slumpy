@@ -21,7 +21,8 @@
                             #   ядро, одинаковое для любых проектов: rules/core-*.md, агент-ревьюер, скиллы
                             #   пакет iOS: rules/platform.md и rules/swift.md
                             #   проект Slumpy: CLAUDE.md и знания о проекте (skills/project-knowledge/references)
-scripts/check-layers        # Проверка, что в ядро не попали детали iOS или Slumpy
+scripts/check               # Общая проверка: документы системы сейчас, сборка и тесты на Mac
+scripts/check-*, test-checks  # Отдельные проверки и их самопроверка
 .agents/, .codex/, .githooks/, AGENTS.md  # Старая копия для Codex, заморожена: не править
 docs/decisions/             # Архитектурные решения (ADR)
 docs/lessons.md             # Ловушки, на которые проект уже наступал
