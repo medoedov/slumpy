@@ -67,3 +67,15 @@ this list; remove an entry when it is fixed.
 - **Fix:** fail on a directory entry in the change set, with the reason; the case "a nested
   repository in the change set does not crash the check" then expects the failure.
 - **Found:** 2026-10-28, review of the self-review fixes, round 2 (pre-existing).
+
+### A time in an export is written without its zone
+
+- **Where:** the agent system; eval trap T3 (`evals/cases/traps/t3-standard-csv`).
+- **Problem:** asked for a CSV export, the agent writes each session's start as local time without
+  an offset or a zone column ("you did not ask for it": the Scope rule wins). Every measurement so
+  far failed this trap; a tier-independent boundary rule did not change it and was removed
+  (`work/agent-system-audit/baseline.md`, section 18).
+- **Fix:** not known yet. Candidates: treat the representation of a value as part of correctness
+  in the Scope rule, or a check once code exists (a date formatter without a zone in export code).
+  Measure on T3 and D4 before keeping either.
+- **Found:** 2026-10-28, measurement of the self-review fixes.

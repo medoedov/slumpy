@@ -34,13 +34,14 @@ def load_rules():
         if len(parts) != 2:
             raise SystemExit(f"check-risk: malformed rule at risk-paths:{n}")
         category, pattern = parts[0], parts[1].strip()
-        if category.endswith("-text"):
+        if category in ("t2-text", "security-text"):
             regex, example = re.compile(pattern), example.strip()
             if not example or not regex.search(example):
                 raise SystemExit(f"check-risk: text rule at risk-paths:{n} has no example it matches")
-            rules.append(dict(category=category, pattern=pattern, example=example, line=n))
+            rules.append(dict(category=category, kind=category[:-5], text=True, pattern=pattern,
+                              example=example, line=n))
         elif category in ("t2", "security"):
-            rules.append(dict(category=category, pattern=pattern, line=n))
+            rules.append(dict(category=category, kind=category, text=False, pattern=pattern, line=n))
         else:
             raise SystemExit(f"check-risk: unknown category '{category}' at risk-paths:{n}")
     return rules
@@ -68,7 +69,7 @@ def added_lines(b, f, untracked):
     """The lines the change set adds to f: a whole untracked file, or the added lines of its diff."""
     if f in untracked:
         return (ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
-    diff = out("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", ":(literal)" + f)
+    diff = out("diff", "--no-color", "--no-ext-diff", b, "--", ":(literal)" + f)
     return [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
 
 
@@ -106,12 +107,11 @@ def check():
         if f.startswith(SKIP_PREFIXES) or f.endswith(".md"):
             continue
         for r in rules:
-            kind = r["category"].removesuffix("-text")
-            if r["category"].endswith("-text"):
+            if r["text"]:
                 if any(re.search(r["pattern"], l) for l in added.get(f, [])):
-                    needs[kind].add(f)
+                    needs[r["kind"]].add(f)
             elif match(f, r["pattern"]):
-                needs[kind].add(f)
+                needs[r["kind"]].add(f)
 
     problems = []
     if needs["t2"] and not (new_adr or t1_line):

@@ -1,11 +1,11 @@
 # Agent process (core)
 
 This file, `core-code.md`, `core-agent-system.md`, the `reviewer` agent, and the
-`engineering-design`, `product-spec`, and `project-knowledge` skills are the core: they hold only what applies to any project. Platform rules
-live in the platform pack (`.claude/rules/platform.md` and the files it names); this project's facts
-live in CLAUDE.md, Project Knowledge, and `docs/`. Put each new rule in the layer it belongs to. A
-platform or project line names what a core rule leaves open (a file, a module, a value) and points
-to the rule; it never restates the rule.
+`engineering-design`, `product-spec`, and `project-knowledge` skills are the core: they hold only
+what applies to any project. Platform rules live in the platform pack (`.claude/rules/platform.md`
+and the files it names); this project's facts live in CLAUDE.md, Project Knowledge, and `docs/`. Put
+each new rule in the layer it belongs to. A platform or project line names what a core rule leaves
+open (a file, a module, a value) and points to the rule; it never restates the rule.
 
 ## Where things live
 
@@ -54,12 +54,6 @@ Whatever the tier:
   platform pack lists, gets `reviewer` with a security pass.
 - A persisted schema change ships with a test that opens a store created by the previous schema
   version.
-- Data that crosses a boundary (a file, an export, another app or process, the network) gets a
-  representation the other side reads without guessing: an instant with its offset or time zone; a
-  calendar date or a wall-clock time marked as such, without a zone; money as a decimal with its
-  currency; text with its encoding, and its normalization and collation where it is compared or
-  sorted; identifiers in a stated format; units and number formats. Where a standard applies,
-  check against its primary source.
 
 ## Scope
 

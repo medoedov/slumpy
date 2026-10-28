@@ -41,9 +41,10 @@ for row in rows:
     if every == "on event":
         continue
     interval = re.fullmatch(r"(\d+) days", every)
-    try:  # YYYY-MM-DD only: newer Pythons also accept forms like 20261027
-        done = datetime.date.fromisoformat(last) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", last) else None
-    except ValueError:
+    date = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", last)
+    try:
+        done = datetime.date(*map(int, date.groups())) if date else None
+    except ValueError:  # a date that does not exist
         done = None
     if not interval or done is None:
         problems.append(f"upkeep '{task}': the interval must be 'N days' or 'on event' and the "

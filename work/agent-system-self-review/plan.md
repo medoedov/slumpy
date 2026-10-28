@@ -12,7 +12,7 @@ Close the weak spots the self-review of 2026-10-28 found that can be fixed witho
 
 | # | Weak spot | Evidence | Change | Where |
 |---|---|---|---|---|
-| 1 | The agent does not notice a subtlety at a boundary when the task looks small | Trap T3 (time in a CSV export) failed in every measurement, with and without the system; the design skill never loaded there; D4, where the exchange is named, passed 4 of 7 | One tier-independent rule: data that crosses a boundary gets an explicit representation for the values that break there (time, money, text, identifiers, units and number formats), checked against the primary source. The menu row "Standard or protocol" becomes "Data crosses a boundary, or a standard applies" and points to the rule; the reviewer rubric checks it | `core-process.md`, Whatever the tier; `engineering-design` menu; `reviewer` rubric |
+| 1 | The agent does not notice a subtlety at a boundary when the task looks small (removed after measurement, see Log) | Trap T3 (time in a CSV export) failed in every measurement, with and without the system; the design skill never loaded there; D4, where the exchange is named, passed 4 of 7 | One tier-independent rule: data that crosses a boundary gets an explicit representation for the values that break there (time, money, text, identifiers, units and number formats), checked against the primary source. The menu row "Standard or protocol" becomes "Data crosses a boundary, or a standard applies" and points to the rule; the reviewer rubric checks it | `core-process.md`, Whatever the tier; `engineering-design` menu; `reviewer` rubric |
 | 2 | The brief adds layers | Extra layers in 2 of 4 runs where the skill fired, 0 of 8 without it (`baseline.md`, section 17) | "Any: can it be simpler" becomes the first menu row and asks for the simplest design that covers the scenarios; a sentence says a menu question checks the design and does not ask for a mechanism; an example of a T1 brief at the right size, with "New elements: none" and a "does not apply" answer | `engineering-design`, sections 3 and 4 |
 | 3 | Dense review rules, one rule kept in two core files | "Review and lessons" was one paragraph of 209 words with about ten rules; the round limit and the recheck rule were in both `core-process.md` and `reviewer.md` | The section becomes a list; the author's side (rounds, what to do with each verdict, disputes) lives only in `core-process.md`, the verdict definitions only in `reviewer.md`, which points to the core section | `core-process.md`; `reviewer.md`, Convergence |
 | 4 | The system does not maintain itself | The adoption rule, the ledger, and the upkeep list lived in a task folder (`work/agent-system-audit/`) with no pointer from the always-loaded files; the core tells the agent to fix a repeated class with a rule, up to an always-loaded file, with no counterweight | A path rule `core-agent-system.md` (loads when agent-system files are read or edited): the order of preferred mechanisms, the ledger row per mechanism, the adoption rule, re-measurement after a model change, upkeep. The ledger and the upkeep table move to `docs/agent-system.md`, named in CLAUDE.md | `.claude/rules/core-agent-system.md`; `docs/agent-system.md`; CLAUDE.md |
@@ -203,3 +203,17 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   they are this item's kind: an unused environment variable, a `strip` with no effect, dates
   accepted only as YYYY-MM-DD in `check-upkeep` and `check-lessons` (Python 3.11+ accepts more);
   `check` no longer passes a `cwd` that no child uses.
+- Measurement (`work/agent-system-audit/baseline.md`, section 18): proportionate T1 2/2 against
+  0/2 and T3 2/2 against 1/2; design, review, product, and triggers not worse; cost within the
+  limit. R1 flipped once and passed 3 of 3 on a rerun in both versions (noise). Item 1 made no
+  measurable difference: T3 0 of 4 runs with two wordings (the second said an instant keeps its
+  zone and a zone-less time is only for values that are not moments), D4 at the ceiling in both.
+  The agent drops the zone column as a feature nobody asked for. Per the adoption rule item 1 is
+  removed (the core bullet, the menu row back to "Standard or protocol", the reviewer line); the
+  weakness is in `docs/tech-debt.md`. Measurement cost 27.92 USD with the judge.
+- Full run on 55b851e with the new operators: 836 mutants, 36 survived and one written mutant was
+  stale. Each got a case or its logic was deleted: `-U0` (added lines are the same with context),
+  `.strip()` calls on values a regex already trimmed, a second date parse (dates now come from the
+  regex groups), `startswith`/`endswith` on rule categories (rules carry `kind` and `text`);
+  `check-pointers` fails cleanly when git cannot list files. One more `EQUIVALENT` entry, with the
+  argument that the report is the same on every input.

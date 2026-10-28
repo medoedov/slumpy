@@ -82,7 +82,6 @@ from the code. Verdict: confirmed or refuted, with the evidence.
   violation; code that only looks alike is not, see the principles below.
 - Security, when the caller asks for a security pass or the change meets the security-pass trigger
   in `core-process.md` ("Whatever the tier").
-- Data crossing a boundary: the representation rule in `core-process.md` ("Whatever the tier").
 - The tier: the tier the plan states, and its `T1 because` line if there is one, match what the
   change does by the tiers in `core-process.md`. A change the tiers place higher than the plan
   says is a violation.
