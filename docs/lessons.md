@@ -47,3 +47,16 @@ is removed; `scripts/check-lessons` enforces this.
 - **Stale when:** the checks have run on 10 changes to the agent system without a miss found in
   review.
 - **Added:** 2026-10-28
+
+### Hand-picked mutants overstate how much the self-test covers
+
+- **Symptom:** in four review rounds of the gates (2026-10-28) each reviewer's own mutants survived
+  the self-test while the author's list was fully killed: 12 of 18, 22 of 24, then 3 fail-open
+  survivors. Three parts were left out because the review did not converge.
+- **Cause:** the author of the cases also picked the mutants, so both share the same blind spots;
+  state and caches added skip paths that no case exercised.
+- **Now guarded by:** this entry only. Partial help: `scripts/test-checks` builds cases from the
+  rule and check lists and runs a baseline before the mutants, but the mutant list is still
+  written by hand.
+- **Stale when:** mutants are generated mechanically (docs/tech-debt.md, gate parts left out).
+- **Added:** 2026-10-28

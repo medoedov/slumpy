@@ -47,3 +47,26 @@ an entry when it is fixed.
 - **Fix:** resolve skill names to their SKILL.md and accept file names without `.md`, or write
   those pointers in the parsed form.
 - **Found:** 2026-10-28, layer split review, fresh round 2.
+
+### Gate parts left out after the gates review did not converge
+
+- **Where:** `work/agent-system-gates/plan.md`, «Left out».
+- **Problem:** the session-start base (a push to `dev` in the same turn empties the change set),
+  the self-test inside `scripts/check` and the hook, and the failure of `scripts/check` once an
+  Xcode project exists were not shipped: the last review round found logic in them that no case
+  observed.
+- **Fix:** generate mutants mechanically (an `ast` walk over `check` and `check-risk` that forces
+  each condition, drops each operand, removes each early return), with an allowlist of equivalent
+  mutants and reasons; then bring the three parts back, each through review. The project-marker
+  failure is due at the skeleton ADR at the latest.
+- **Found:** 2026-10-28, gates review, fresh round 2.
+
+### check-pointers resolves a pointer by file name, not by path
+
+- **Where:** `scripts/check-pointers`, `by_name`.
+- **Problem:** a pointer such as `` `work/feature/plan.md`, Section `` is checked against every
+  file named `plan.md`; when the named path is deleted, the pointer is checked against other plans
+  and fails or passes by accident.
+- **Fix:** when the pointer has a path, resolve that path only and report a missing file.
+- **Found:** 2026-10-28, while re-verifying the gates after the last review round.
+

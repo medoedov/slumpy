@@ -1,30 +1,20 @@
 #!/usr/bin/env python3
 """The project's single check command.
 
-Runs the document checks and their self-test, and fails once an Xcode project or package exists
-(markers: `project` rules in scripts/risk-paths) until build and tests are wired in. Prints what
-ran and what did not. A check that cannot read its input fails; nothing reports success on input
-it did not read. The mutation run of the self-test is on demand (`scripts/test-checks --mutants`)
-after a change to scripts/; it is not part of this command.
+Runs the document checks and prints what ran and what did not. A check that cannot read its input
+fails; nothing reports success on input it did not read. Build, tests, and lint are not wired in
+yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-checks`, and
+`scripts/test-checks --mutants` after a change to scripts/.
 
---session-start  SessionStart hook: record HEAD as the session's start, the base the change set
-                 never moves past (scripts/risk-paths, header).
---hook           Stop hook: no record of its own. When the change set is empty, the turn changed
-                 nothing and the hook exits; otherwise it runs the document checks (the self-test
-                 too when scripts/ is in the change set). A failure blocks with a JSON decision;
-                 while the session is already continuing because of this hook, it shows the
-                 failures as a system message instead.
+--hook  Stop hook, with no record of its own. When the change set (`check-risk --changed`) is
+        empty, the turn changed nothing and the hook exits; otherwise it runs the checks. A
+        failure blocks with a JSON decision; while the session is already continuing because of
+        this hook, it shows the failures as a system message instead.
 """
-import fnmatch, json, os, pathlib, subprocess, sys, tempfile, traceback
+import json, pathlib, subprocess, sys, traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "test-checks"]
-IN_SELF_TEST = bool(os.environ.get("SLUMPY_IN_TEST_CHECKS"))
-
-
-def git(*args):
-    return subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=ROOT,
-                          capture_output=True, text=True, check=True).stdout
+CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons"]
 
 
 def script(name, *args):
@@ -32,32 +22,9 @@ def script(name, *args):
                           capture_output=True, text=True)
 
 
-def project_markers():
-    p = script("check-risk", "--rules")
-    if p.returncode != 0:
-        raise RuntimeError((p.stdout + p.stderr).strip())
-    globs = [r["pattern"] for r in json.loads(p.stdout) if r["category"] == "project"]
-    files = [n for n in git("ls-files", "-z", "--cached", "--others", "--exclude-standard")
-             .split("\0") if n and (ROOT / n).is_file()]
-    return [f for f in files if any(fnmatch.fnmatch(f, g) for g in globs)]
-
-
-def changed_files():
-    p = script("check-risk", "--changed")
-    if p.returncode != 0:
-        return None, (p.stdout + p.stderr).strip()
-    return [n for n in p.stdout.split("\0") if n], ""
-
-
-def run_checks(names):
+def run_checks():
     failed, report = [], []
     for name in CHECKS:
-        if name not in names:
-            report.append(f"[not run] {name}: scripts/ not in the change set")
-            continue
-        if name == "test-checks" and IN_SELF_TEST:
-            report.append(f"[not run] {name}: inside the self-test")
-            continue
         p = script(name)
         out = (p.stdout + p.stderr).strip()
         last = out.splitlines()[-1] if out else ""
@@ -65,16 +32,8 @@ def run_checks(names):
         report.append(f"[{'ok' if ok else 'FAIL'}] {name}: {last.removeprefix(name + ': ')}")
         if not ok:
             failed.append(f"{name}:\n{out}")
-    try:
-        project = project_markers()
-    except RuntimeError as e:
-        project, failed = [], failed + [f"project markers: {e}"]
-    if project:
-        report.append("[FAIL] build, tests, lint: an Xcode project or package exists ("
-                      + ", ".join(project[:3]) + ") but scripts/check does not build it yet")
-        failed.append("build: wire xcodebuild or swift build and test into scripts/check")
-    else:
-        report.append("[not run] build, tests, lint: no Xcode project or package yet")
+    report.append("[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)")
+    report.append("[not run] test-checks: on demand")
     return failed, report
 
 
@@ -84,33 +43,19 @@ def respond(reason, continuing):
 
 
 def hook(continuing):
-    files, error = changed_files()
-    if files == []:
+    changed = script("check-risk", "--changed")
+    if changed.returncode == 0 and not changed.stdout.strip("\0"):
         return 0  # the change set is empty: this turn changed nothing
-    names = list(CHECKS)
-    if files is not None and not any(f.startswith("scripts/") for f in files):
-        names.remove("test-checks")
-    failed, report = run_checks(names)
-    if error:
-        failed.insert(0, f"change set: {error}")
+    failed, report = run_checks()
+    if changed.returncode != 0:
+        failed.insert(0, "change set: " + (changed.stdout + changed.stderr).strip())
     if failed:
         respond("scripts/check failed; fix before finishing:\n" + "\n".join(report) + "\n\n"
                 + "\n\n".join(failed), continuing)
     return 0
 
 
-def session_start():
-    target = ROOT / git("rev-parse", "--git-path", "slumpy-session-base").strip()
-    head = git("rev-parse", "HEAD").strip()
-    with tempfile.NamedTemporaryFile("w", dir=target.parent, delete=False) as tmp:
-        tmp.write(head + "\n")
-    os.replace(tmp.name, target)
-    return 0
-
-
 def main():
-    if "--session-start" in sys.argv:
-        return session_start()
     if "--hook" in sys.argv:
         continuing = False
         try:
@@ -122,7 +67,7 @@ def main():
         except Exception:
             respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing)
             return 0
-    failed, report = run_checks(list(CHECKS))
+    failed, report = run_checks()
     print("\n".join(report))
     if failed:
         print("\n" + "\n\n".join(failed))

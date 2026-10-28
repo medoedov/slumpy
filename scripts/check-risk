@@ -13,7 +13,6 @@ import fnmatch, json, pathlib, re, subprocess, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RULES = ROOT / "scripts/risk-paths"
 SKIP_PREFIXES = ("scripts/", ".claude/", "docs/", "work/", "evals/")
-SESSION_BASE = "slumpy-session-base"  # under .git, written by `scripts/check --session-start`
 
 
 def git(*args, check=True):
@@ -40,7 +39,7 @@ def load_rules():
             if not example or not regex.search(example):
                 raise SystemExit(f"check-risk: text rule at risk-paths:{n} has no example it matches")
             rules.append(dict(category=category, pattern=pattern, example=example, line=n))
-        elif category in ("t2", "security", "project"):
+        elif category in ("t2", "security"):
             rules.append(dict(category=category, pattern=pattern, line=n))
         else:
             raise SystemExit(f"check-risk: unknown category '{category}' at risk-paths:{n}")
@@ -48,26 +47,13 @@ def load_rules():
 
 
 def base():
-    """The older of the session start and the merge base with origin/dev or dev."""
-    candidates = []
+    """The merge base with origin/dev, or with dev when there is no origin/dev."""
     for ref in ("origin/dev", "dev"):
         p = git("merge-base", "HEAD", ref, check=False)
         if p.returncode == 0:
-            candidates.append(p.stdout.strip())
-            break
-    session = ROOT / out("rev-parse", "--git-path", SESSION_BASE).strip()
-    if session.is_file():
-        p = git("merge-base", "HEAD", session.read_text().strip(), check=False)
-        if p.returncode == 0:
-            candidates.append(p.stdout.strip())
-    if not candidates:
-        raise SystemExit("check-risk: no base: no merge base with origin/dev or dev and no session "
-                         "start record; run `git fetch origin dev` (and `git fetch --unshallow`)")
-    oldest = candidates[0]
-    for c in candidates[1:]:
-        if git("merge-base", "--is-ancestor", c, oldest, check=False).returncode == 0:
-            oldest = c
-    return oldest
+            return p.stdout.strip()
+    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "
+                     "run `git fetch origin dev` (and `git fetch --unshallow` in a shallow clone)")
 
 
 def names(*args):
@@ -105,7 +91,7 @@ def main():
         sys.stdout.write("\0".join(sorted(set(tracked) | set(untracked))))
         return 0
 
-    rules = [r for r in load_rules() if r["category"] != "project"]
+    rules = load_rules()
     b = base()
     tracked, untracked = change_set(b)
     new_files = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b)) | set(untracked)

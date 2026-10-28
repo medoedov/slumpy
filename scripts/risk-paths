@@ -3,9 +3,8 @@
 # Package) and approximate the platform pack's lists (platform.md: new platform capabilities and
 # security-pass triggers own those lists). Revise at the skeleton ADR and at ADR-0002.
 #
-# The change set: everything since the older of the session start (recorded by the SessionStart
-# hook) and the merge base with origin/dev (or dev), plus uncommitted and untracked files,
-# deleted files included. Files under scripts/, .claude/, docs/, work/, evals/ and Markdown files
+# The change set: everything since the merge base with origin/dev (or dev), plus uncommitted and
+# untracked files, deleted files included. Files under scripts/, .claude/, docs/, work/, evals/ and Markdown files
 # are the agent system and its records, not app code, and are not matched.
 #
 # Evidence counts only when the same change set adds it:
@@ -13,22 +12,12 @@
 #             (after an optional "- ") with "T1 because"
 #   security  an added line in a work/*/plan.md that starts (after an optional "- ") with
 #             "Security pass:"
-#   project   a file that means an Xcode project or package exists; scripts/check then fails until
-#             build and tests are wired in
 #
 # One pattern per line. A path rule is a glob; a *-text rule is a regular expression matched
 # against the lines the change set adds, followed by "## " and an example line it must match.
 # scripts/test-checks builds a case from every line, so a rule without a working case fails it.
 #
 # category       pattern                                   ## example (text rules)
-project          *.xcodeproj/project.pbxproj
-project          **/*.xcodeproj/project.pbxproj
-project          Package.swift
-project          **/Package.swift
-project          project.yml
-project          **/project.yml
-project          Project.swift
-project          **/Project.swift
 t2               **/*.entitlements
 t2               **/Package.swift
 t2               **/project.yml

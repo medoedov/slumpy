@@ -7,16 +7,15 @@ that "done" no longer depends on the agent remembering a check (core principle: 
 check, a machine checks). Owner request of 2026-10-28, step 1 of the plan to bring the eight
 priorities from "partly" to "done".
 
-## What is added
+## What is shipped
 
 | Piece | Enforces | Kind |
 |---|---|---|
-| `scripts/check` | One entry point; reports what ran and what did not; fails once an Xcode project exists until build and tests are wired in | gate |
-| `scripts/check-risk` + `scripts/risk-paths` | Risky paths and text need evidence added by the same change set; the rules, the change set, and the evidence format live in the `risk-paths` header | gate |
+| `scripts/check` | One entry point for the document checks; reports what did not run (build, tests, lint until the skeleton; the self-test, which is on demand) | gate |
+| `scripts/check-risk` + `scripts/risk-paths` | Risky paths and text need evidence added by the same change set since the merge base with `origin/dev`; the rules, the change set, and the evidence format live in the `risk-paths` header | gate |
 | `scripts/check-lessons` | A lesson guarded by "this entry only" gets a mechanism within 30 days or is removed; entries keep all fields | gate |
-| `scripts/test-checks` | Fixed cases plus cases built from data: one per rule line in `risk-paths`, one per check in `scripts/check`, so a rule or check without a working case fails it. `--mutants` (on demand after a change to `scripts/`) runs the unmodified self-test first, then requires each listed mutant to fail it | gate on the gates |
-| SessionStart hook | Records HEAD at session start; the change set never starts later than that, so a push to `dev` cannot empty it | gate, pending the owner |
-| Stop hook | Exits when the change set is empty; otherwise runs the document checks (and the self-test when `scripts/` changed) and blocks on a failure with a JSON decision; while already continuing, shows the failures as a system message. Keeps no record of its own | gate, pending the owner |
+| `scripts/test-checks` | On demand. Fixed cases plus cases built from data: one per rule line in `risk-paths` (with a count of rule lines independent of the parser) and one per check in `scripts/check`, each with a planted failure. `--mutants` runs the unmodified self-test first, then requires each listed mutant to fail it | gate on the gates |
+| Stop hook | Exits when the change set is empty; otherwise runs the document checks and blocks on a failure with a JSON decision; while already continuing, shows the failures as a system message. Keeps no record of its own | gate, pending the owner |
 | Permissions | Deny edits to the frozen Codex files; ask before any pull request merge and before `xcodebuild` archive, export, or provisioning changes; allow build and test commands for the Mac | gate, pending the owner |
 | `work/agent-system-audit/mechanisms.md` | Each mechanism with its target error, evidence, pilot measure, and removal criterion, set before the pilot | record |
 
@@ -24,19 +23,21 @@ Drift fixed in the same change: README, `.gitignore` for Xcode, Node for context
 single owners for the minimum iOS (ADR-0001), the Mac-only build (`platform.md`), secrets
 (`deployment.md`), and the screenshot matrix (`platform.md`).
 
-## Revised approach, second version (after fresh review round 1)
+## Left out
 
-The first revision kept state (a record of checked states, a mutation-run cache) and a skip for
-"nothing new"; each added a way to report success on input never read. This version removes them:
+The fresh pair of reviews ended `rethink approach`; per core-process.md, Review and lessons, the
+parts with open blocking findings are not shipped and the previous behavior stays (no such gate):
 
-- **Base:** the older of the session start (SessionStart hook) and the merge base with
-  `origin/dev`. `check-risk --changed` is the only definition of the change set and of "nothing
-  changed"; `scripts/check` has no ref logic of its own.
-- **Hook:** no record, no cache. An empty change set means the turn changed nothing; otherwise the
-  checks run, every time.
-- **Coverage:** cases built from the rule and check lists, so the lists cannot outgrow the cases;
-  the mutation run starts with the unmodified self-test, so it cannot count kills against a
-  failing baseline; no cache of its result.
+- **Session-start base.** A SessionStart hook recording HEAD so a push to `dev` cannot empty the
+  change set. Open: the "older of" choice had a case in one direction only, the record would be
+  missing in resumed sessions, and the record's name lived in two scripts.
+- **Self-test inside `scripts/check` and the hook.** Open: the switch that skips it inside the
+  self-test was unobservable, and its planted failure was empty.
+- **`scripts/check` failing once an Xcode project exists.** Open: the markers were read through
+  the same parser that built their cases.
+
+The way back is in `docs/tech-debt.md` (generated mutants first); the class is in
+`docs/lessons.md`. Nothing here is visible to the app's user.
 
 ## Pending owner action
 
@@ -53,23 +54,24 @@ hook, the frozen-file denies, the merge prompt, and the Mac allow list. The owne
   the Privacy Manifest's declared categories to avoid a block on every use).
 - The evidence check reads text: a "T1 because" line proves a decision was written, not that it
   is right. The reviewer and the pilot judge the content.
-- Until the owner applies the settings there is no session-start record: after a push to `dev`
-  in the same turn `origin/dev` equals HEAD and the change set is empty. The `scripts/check` run
-  that "Done" requires before the commit covers it.
-- A turn that changes something on a branch with a pre-existing failure (for example a lesson
-  that expired) is blocked until the failure is fixed; a turn that changes nothing is not.
-- The mutation run takes about 6 minutes and is on demand after a change to `scripts/` (CLAUDE.md,
-  Agent system); it is not in the hook. The hook takes about 2 seconds, about 20 with the
-  self-test.
+- After a push to `dev` in the same turn, `origin/dev` equals HEAD and the change set is empty, so
+  the hook is silent and `check-risk` sees nothing (the session-start base was left out). The
+  `scripts/check` run that "Done" requires before the commit covers it.
+- On a branch ahead of `origin/dev`, the normal state during feature work, every turn, chat-only
+  turns included, is blocked once while any check fails (for example a lesson that expired); on
+  `dev` with nothing new the hook is silent.
+- The self-test (about 15 seconds) and the mutation run (about 4 minutes) are on demand after a
+  change to `scripts/` (CLAUDE.md, Agent system); neither runs in the hook. The hook takes about
+  2 seconds.
 - A syntax error in `scripts/check` itself makes the hook a non-blocking error; the run before a
   commit shows it.
 - Build, tests, lint, and the platform staleness check need the Mac.
 
 ## Verification
 
-- `scripts/check` passes; `scripts/test-checks` passes 135 cases (49 fixed, 86 built from the
-  rules and checks); `--mutants` kills all 38 listed mutants after a passing baseline, including
-  the reviewers' mutants that still apply to the new code.
+- `scripts/check` passes; `scripts/test-checks` passes 112 cases; `--mutants` kills all 29 listed
+  mutants after a passing baseline. The listed mutants are hand-picked; the last reviewer's own
+  mutants found fail-open survivors in the parts that were then left out.
 - Ablation: traps T1 and T2 without the `engineering-design` skill, against the layer-split runs
   where the skill fired (`baseline.md`, section 16), to test whether the skill causes extra layers.
 
@@ -96,3 +98,9 @@ hook, the frozen-file denies, the merge prompt, and the Mac allow list. The owne
   mutants survived (risk rules, check list, skip paths), a second ref list in the hook, a core
   condition dropped ("once it exists"). Second revision above: state and caches removed, session
   base added, data-driven cases, baseline-first mutants, the condition restored.
+- Reviewer, code, fresh round 2 (8a941d9): `rethink approach`, the last round. Gate logic no case
+  observed recurred (the base direction, the self-test switch, the project markers), the
+  session-start record would be missing in resumed sessions, the record name lived in two
+  scripts, and a Limits sentence was wrong. Per the rule, the three parts are left out (section
+  above) and the sentence corrected; the shipped rest re-verified: 112 cases, 29 of 29 mutants
+  after a passing baseline.

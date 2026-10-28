@@ -4,9 +4,10 @@ repository.
 
 Cases: each planted violation fails its check, each valid change passes, an input a check cannot
 read fails it, and every skip path has a case whose skipped input holds a violation. Cases are
-also built from data: one per rule in scripts/risk-paths (`check-risk --rules`) and one per entry
-of CHECKS in scripts/check, so a rule or check without a working case fails the self-test. Add a
-case with every new skip path or input.
+also built from data: one per rule in scripts/risk-paths (`check-risk --rules`, whose count is
+checked against the rule lines counted here) and one per entry of CHECKS in scripts/check, each
+with a planted failure, so a rule or check without a working case fails the self-test. Add a case
+with every new skip path or input.
 
 --mutants: runs the unmodified self-test first (a failing baseline fails the run), then applies
 each mutant in MUTANTS to a copy of the scripts; the self-test must fail on each. A surviving
@@ -119,7 +120,7 @@ PLAN = "work/feature/plan.md"
 
 # A failure each check must report, for the data-driven cases over CHECKS.
 PLANT = {"check-layers": [CORE_BAD], "check-pointers": [POINTER_BAD], "check-risk": [KEYCHAIN],
-         "check-lessons": [OVERDUE], "test-checks": None}
+         "check-lessons": [OVERDUE]}
 
 
 def one(edits=(), commit=False, git=(), stdin=None, git_before=()):
@@ -143,12 +144,6 @@ def rule_cases(rules):
                 files_root = [(example_path(r["pattern"][3:]), "x\n", "write")]
             else:
                 files_root = None
-        if kind == "project":
-            for commit in (False, True):
-                cases.append((f"risk-paths:{n} project marker {'committed' if commit else 'untracked'} fails scripts/check",
-                              dict(runs=one(files + [ADR_NEW, (PLAN, T1_LINE + SEC_LINE, "write")], commit=commit),
-                                   script=["check"], expect=lambda o: fails(o) and "does not build it yet" in o[-1].stdout)))
-            continue
         other = SEC_LINE if kind == "t2" else T1_LINE      # evidence for the other kind only
         own = T1_LINE if kind == "t2" else SEC_LINE
         variants = [("", files)]
@@ -167,10 +162,11 @@ def check_cases():
     checks = next(ast.literal_eval(node.value) for node in ast.walk(ast.parse(src))
                   if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "CHECKS")
     cases = [("every check in scripts/check has a planted failure here",
-              dict(script=["check-lessons"], expect=lambda o, c=checks: set(c) == set(PLANT)))]
+              dict(script=["check-lessons"], expect=lambda o, c=checks: set(c) == set(PLANT)
+                   and all(PLANT[k] for k in c)))]
     for name in checks:
         plant = PLANT.get(name)
-        if plant is None:
+        if not plant:
             continue
         cases.append((f"scripts/check reports a failure of {name}",
                       dict(runs=one(plant), script=["check"], expect=lambda o, n=name: fails(o) and f"[FAIL] {n}" in o[-1].stdout)))
@@ -189,10 +185,12 @@ STATIC = [
     ("unnamed core rule file", dict(runs=one([(".claude/rules/core-extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
     ("clean copy passes check-pointers", dict(script=["check-pointers"], expect=passes)),
-    ("deleted tracked Markdown file does not crash check-pointers", dict(runs=one([("work/agent-system-gates/plan.md", None, "delete")]), script=["check-pointers"], expect=passes)),
+    ("deleted tracked Markdown file does not crash check-pointers", dict(runs=one([("backlog.md", None, "delete")]), script=["check-pointers"], expect=passes)),
     ("frozen files are not scanned for pointers", dict(runs=one([(".agents/notes.md", "See `core-process.md`, «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=passes)),
     # check-risk
     ("clean copy passes check-risk", dict(script=["check-risk"], expect=passes)),
+    ("t2 path with a new untracked ADR as the only evidence", dict(runs=one([PKG, ADR_NEW]), script=["check-risk"], expect=passes)),
+    ("the hook blocks when git cannot list the change set", dict(runs=one([KEYCHAIN], git=[["config", "core.bare", "true"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set"))),
     ("t2 path with a new committed ADR", dict(runs=one([PKG, ADR_NEW], commit=True), script=["check-risk"], expect=passes)),
     ("t2 path with an edit to an old ADR only", dict(runs=one([PKG, ("docs/decisions/0001-stack-and-project-structure.md", "\nTypo fix.\n", "append")]), script=["check-risk"], expect=fails)),
     ("T1 phrase in the middle of a line", dict(runs=one([PKG, (PLAN, "- Not T1 because of the new target.\n", "write")]), script=["check-risk"], expect=fails)),
@@ -210,10 +208,6 @@ STATIC = [
     ("no base to compare with", dict(runs=one(git=[["branch", "-D", "dev"]]), script=["check-risk"], expect=lambda o: fails(o) and "no base" in o[-1].stdout + o[-1].stderr)),
     ("only origin/dev as the base", dict(runs=one(git=[["remote", "add", "origin", "{template}"], ["fetch", "-q", "origin", "dev"], ["branch", "-D", "dev"]]), script=["check-risk"], expect=passes)),
     ("a malformed rule fails the check", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\bFoo\\b  ## no match here\n", "append")]), script=["check-risk"], expect=fails)),
-    ("the session start keeps a pushed commit in the change set", dict(runs=[
-        dict(git_before=[["checkout", "-q", "dev"], ["remote", "add", "origin", "{template}"], ["fetch", "-q", "origin", "dev"]], script=["check", "--session-start"]),
-        dict(edits=[KEYCHAIN], commit=True, git=[["update-ref", "refs/remotes/origin/dev", "HEAD"]], script=["check-risk"])], script=["check-risk"], expect=fails)),
-    ("a broken session record falls back to origin/dev", dict(runs=one([(".git/slumpy-session-base", "not-a-commit\n", "write"), KEYCHAIN]), script=["check-risk"], expect=fails)),
     # check-lessons
     ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=passes)),
     ("recent lesson guarded by this entry only passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="New", guard="this entry only.", added=TODAY), "append")]), script=["check-lessons"], expect=passes)),
@@ -222,26 +216,22 @@ STATIC = [
     ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),
     ("lesson missing only its cause", dict(runs=one([("docs/lessons.md", LESSON.format(title="No cause", guard="a test.", added=TODAY).replace("- **Cause:** y\n", ""), "append")]), script=["check-lessons"], expect=fails)),
     # scripts/check and the hook
-    ("scripts/check runs the self-test entry", dict(script=["check"], expect=lambda o: "[not run] test-checks: inside the self-test" in o[-1].stdout)),
-    ("the hook runs the self-test when scripts/ changed", dict(runs=one([("scripts/check-lessons", "\n# note\n", "append"), CORE_BAD], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "inside the self-test"))),
-    ("the hook skips the self-test when scripts/ did not change", dict(runs=one([CORE_BAD], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "scripts/ not in the change set"))),
-    ("an untracked script counts as a scripts/ change", dict(runs=one([("scripts/new-check", "# x\n", "write"), CORE_BAD], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "inside the self-test"))),
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook blocks when there is no base", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set"))),
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
-    ("the hook blocks when the hook itself crashes", dict(runs=one([KEYCHAIN], git=[["config", "core.bare", "true"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "crashed"))),
-    ("a crash while continuing gives a message", dict(runs=one([KEYCHAIN], git=[["config", "core.bare", "true"]], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
     ("the hook gives a message while continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
     ("the hook stays silent when nothing changed", dict(base=[OVERDUE], runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
     ("the hook stays silent on a passing change", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
-    ("the session start is recorded", dict(runs=one(), script=["check", "--session-start"], expect=lambda o: passes(o))),
 ]
 
 
 # (file, old text, new text, what the mutant breaks); each old text occurs exactly once.
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
+# check's crash handler in --hook is not listed: no input the cases can build crashes the hook.
 MUTANTS = [
+    ("check", "    if changed.returncode == 0 and not changed.stdout.strip(\"\\0\"):", "    if True:", "the hook never runs the checks"),
+    ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
     ("check-risk", 'if needs["t2"] and not (new_adr or t1_line):', "if False:", "t2 rule off"),
     ("check-risk", "not (new_adr or t1_line)", "not (t1_line)", "new ADR ignored"),
     ("check-risk", "not (new_adr or t1_line)", "not (True)", "any evidence accepted"),
@@ -255,21 +245,10 @@ MUTANTS = [
     ("check-risk", "        elif f not in added and (ROOT / f).is_file():", "        elif False:", "quoted-name fallback removed"),
     ("check-risk", '    for ref in ("origin/dev", "dev"):', '    for ref in ("dev",):', "origin/dev ignored"),
     ("check-risk", "files = sorted(set(tracked) | set(untracked))\n", "files = sorted(f for f in set(tracked) | set(untracked) if (ROOT / f).is_file())\n", "deleted files ignored"),
-    ("check-risk", "    if not candidates:", "    if False:", "no base passes"),
-    ("check-risk", "    if session.is_file():", "    if False:", "session start ignored"),
-    ("check-risk", "            oldest = c", "            pass", "newer base kept"),
+    ("check-risk", '    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "', '    return "HEAD"\n    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "', "no base falls back to HEAD"),
     ("check-risk", '        if f.startswith(SKIP_PREFIXES) or f.endswith(".md"):\n            continue', "        pass", "agent-system files matched as app code"),
     ("check-risk", 'sys.stdout.write("\\0".join(sorted(set(tracked) | set(untracked))))', 'sys.stdout.write("\\0".join(sorted(set(tracked))))', "change set without untracked files"),
     ("check-risk", "            if not example or not regex.search(example):", "            if False:", "rule examples not validated"),
-    ("check", "        if name not in names:", "        if False:", "skipped checks run anyway"),
-    ("check", '    if files == []:\n        return 0', "    pass", "an empty change set runs checks"),
-    ("check", '    if files is not None and not any(f.startswith("scripts/") for f in files):', '    if files is not None and not any(f.startswith("scripts/check") for f in files):', "self-test only for scripts/check"),
-    ("check", "    if error:", "    if False:", "change-set error hidden"),
-    ("check", "        except Exception:", "        except ZeroDivisionError:", "hook crash not handled"),
-    ("check", 'traceback.format_exc(), continuing)', 'traceback.format_exc(), False)', "crash ignores continuing"),
-    ("check", '"ls-files", "-z", "--cached", "--others"', '"ls-files", "-z", "--others"', "committed project marker not seen"),
-    ("check", "    if project:", "    if False:", "project markers ignored"),
-    ("check", "    os.replace(tmp.name, target)", "    pass", "session start not recorded"),
     ("check-lessons", " and (today - added).days > GRACE_DAYS", "", "grace period removed"),
     ("check-lessons", "    if missing:", "    if False:", "missing fields accepted"),
     ("check-lessons", 'text.split("## Entries", 1)[1])[1:]', 'text.split("## Entries", 1)[1])[2:]', "first lesson skipped"),
@@ -283,12 +262,20 @@ MUTANTS = [
 ]
 
 
+def rule_lines():
+    lines = (ROOT / "scripts/risk-paths").read_text(encoding="utf-8").splitlines()
+    return sum(1 for l in lines if l.strip() and not l.lstrip().startswith("#"))
+
+
 def all_cases():
     p = subprocess.run([sys.executable, "-I", str(ROOT / "scripts/check-risk"), "--rules"],
                        cwd=ROOT, capture_output=True, text=True)
     if p.returncode != 0:
         return None, [f"check-risk --rules failed: {(p.stdout + p.stderr).strip()}"]
-    return STATIC + rule_cases(json.loads(p.stdout)) + check_cases(), []
+    rules = json.loads(p.stdout)
+    if len(rules) != rule_lines():
+        return None, [f"check-risk --rules returned {len(rules)} rules for {rule_lines()} rule lines"]
+    return STATIC + rule_cases(rules) + check_cases(), []
 
 
 def run_cases():
