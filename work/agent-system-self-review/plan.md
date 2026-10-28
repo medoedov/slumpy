@@ -187,3 +187,5 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   index comparison, the fence branch of a mutant kept as equivalent: outside the frontmatter
   nothing is blanked). `EQUIVALENT`: 8 entries, each equivalent on every input (the module guard,
   `None` returned where the value becomes the exit code, the closing-fence operand).
+- Full run on 209ce14: all 638 mutants killed (37 written, 609 generated, 8 equivalent), 41
+  minutes; `scripts/test-checks` 185 cases.

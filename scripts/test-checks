@@ -15,7 +15,7 @@ each written mutant in MUTANTS and each mutant generated from the code of the ch
 mutated script, must fail on each. A surviving mutant is logic no case observes, unless EQUIVALENT
 gives the reason it cannot change what the check reports. A written mutant whose text no longer
 occurs exactly once, or an EQUIVALENT entry that matches no generated mutant, is stale and fails
-the run. Run it after every change to scripts/ (on demand: about 20 minutes).
+the run. Run it after every change to scripts/ (on demand: about 40 minutes).
 """
 import ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 

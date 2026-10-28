@@ -10,7 +10,7 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
   Apple iOS.
 - Mechanism ledger and regular upkeep: `docs/agent-system.md`.
 - The checks catch listed cases only. After changing `scripts/`, run `scripts/test-checks` and
-  `scripts/test-checks --mutants` (about 20 minutes; every mutant is killed or listed as
+  `scripts/test-checks --mutants` (about 40 minutes; every mutant is killed or listed as
   equivalent with its reason).
 
 ## Project facts
