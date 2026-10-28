@@ -130,6 +130,7 @@ def is_error(p, text=""):
     except json.JSONDecodeError:
         return False
     return p.returncode == 0 and out.get("decision") == "block" and text in out.get("reason", "")
+def context(p): return json.loads(p.stdout)["hookSpecificOutput"]["additionalContext"]
 def is_message(p): return p.returncode == 0 and '"systemMessage"' in p.stdout and '"decision"' not in p.stdout
 def is_silent(p): return p.returncode == 0 and p.stdout.strip() == ""
 
@@ -160,7 +161,8 @@ SUCCESS = {"check-layers": "core files clean", "check-pointers": "all section po
 def lines_of(path): return len((ROOT / path).read_text(encoding="utf-8").splitlines())
 # A failure each check must report, for the data-driven cases over CHECKS, and the detail it prints.
 PLANT_TEXT = {"check-layers": f"core-process.md:{lines_of('.claude/rules/core-process.md') + 2}: platform or project term: Slumpy uses iOS 18.",
-              "check-pointers": "has no section 'Risk tiers'", "check-risk": "App/Store.swift",
+              "check-pointers": "has no section 'Risk tiers'",
+              "check-risk": "security-pass trigger without an added 'Security pass:' line in a work/*/plan.md (scripts/risk-paths): App/Store.swift",
               "check-lessons": "lesson 'Old trap'", "check-upkeep": "upkeep 'Old task' is due"}
 PLANT = {"check-layers": [CORE_BAD], "check-pointers": [POINTER_BAD], "check-risk": [KEYCHAIN],
          "check-lessons": [OVERDUE], "check-upkeep": [UPKEEP_DUE]}
@@ -219,9 +221,11 @@ def check_cases():
         cases.append((f"{name} reports its planted failure and not its success line",
                       dict(runs=one(plant), script=[name], expect=lambda o, n=name: fails_with(PLANT_TEXT[n])(o) and SUCCESS[n] not in o[-1].stdout)))
         cases.append((f"scripts/check reports a failure of {name}",
-                      dict(runs=one(plant), script=["check"], expect=lambda o, n=name: fails(o) and f"[FAIL] {n}" in o[-1].stdout and f"\n{n}:\n" in o[-1].stdout and PLANT_TEXT[n] in o[-1].stdout)))
+                      dict(runs=one(plant), script=["check"], expect=lambda o, n=name: fails(o) and f"[FAIL] {n}" in o[-1].stdout and f"\n\n{n}:\n" in o[-1].stdout and PLANT_TEXT[n] in o[-1].stdout)))
         cases.append((f"the hook blocks on a failure of {name}",
-                      dict(runs=one(plant, stdin=HOOK), script=["check", "--hook"], expect=lambda o, n=name: is_block(o[-1], f"{n}:"))))
+                      dict(runs=one(plant, stdin=HOOK), script=["check", "--hook"], expect=lambda o, n=name: is_block(o[-1])
+                           and context(o[-1]).startswith("scripts/check failed; fix before finishing:\n[")
+                           and all(t in context(o[-1]) for t in (f"[FAIL] {n}: ", f"[not run] test-checks: on demand\n\n{n}:\n", PLANT_TEXT[n])))))
     return cases
 
 
@@ -251,6 +255,7 @@ STATIC = [
     ("deleted tracked Markdown file does not crash check-pointers", dict(runs=one([("backlog.md", None, "delete")]), script=["check-pointers"], expect=passes)),
     ("pointer with a path to a missing file", dict(runs=one([("work/feature/notes.md", "See `work/nope/plan.md`, «Log».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("work/feature/notes.md:1: `work/nope/plan.md` does not exist"))),
     ("a missing section is reported with its file and line", dict(runs=one([("work/feature/notes.md", "Intro.\nSee `core-process.md`, «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("work/feature/notes.md:2: `core-process.md` has no section 'Nope'"))),
+    ("the second of two quoted sections is checked", dict(runs=one([("work/feature/notes.md", "See `core-process.md`, «Done» и «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=fails_with("has no section 'Nope'"))),
     ("pointer with a double-quoted missing section", dict(runs=one([("work/feature/notes.md", 'See `core-process.md`, "Nope".\n', "write")], commit=True), script=["check-pointers"], expect=fails)),
     ("pointer with an unquoted missing section", dict(runs=one([("work/feature/notes.md", "See `core-process.md`, Nope.\n", "write")], commit=True), script=["check-pointers"], expect=fails)),
     ("pointer to a file outside the repository is skipped", dict(runs=one([("work/feature/notes.md", "See `framework.md`, Overview.\n", "write")], commit=True), script=["check-pointers"], expect=passes)),
@@ -289,6 +294,8 @@ STATIC = [
     ("a text rule without an example fails", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\s*\n", "append")]), script=["check-risk"], expect=fails)),
     ("a nested repository in the change set does not crash the check", dict(runs=one([("Packages/Logic/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")], git=[["init", "-q", "Packages/Logic"]]), script=["check-risk"], expect=lambda o: "Traceback (most recent call last)" not in o[-1].stderr)),
     ("a file named like a glob reads only its own diff", dict(runs=one([("*.swift", "let a = 1\n", "write"), ("docs/example.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True), script=["check-risk"], expect=passes)),
+    ("a rule matching every name passes when only agent-system files changed", dict(runs=one([("scripts/risk-paths", "\nt2  *\n", "append")]), script=["check-risk"], expect=passes)),
+    ("a t2 signal names the rule and the file", dict(runs=one([PKG]), script=["check-risk"], expect=fails_with("T2 signal without a new ADR or an added 'T1 because' line in a work/*/plan.md (scripts/risk-paths): Package.swift"))),
     ("a malformed rule fails the check", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\bFoo\\b  ## no match here\n", "append")]), script=["check-risk"], expect=fails)),
     # check-lessons
     ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=clean("check-lessons"))),
@@ -324,11 +331,12 @@ STATIC = [
     ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
-    ("the hook blocks when there is no base, the change set first", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set") and o[-1].stdout.index("change set:") < o[-1].stdout.index("check-layers:\\n"))),
+    ("the hook blocks when there is no base, the change set first", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set: check-risk: no base") and o[-1].stdout.index("change set:") < o[-1].stdout.index("check-layers:\\n"))),
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
-    ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "crashed"))),
+    ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "scripts/check --hook crashed:\nTraceback") and is_error(o[-1], "RuntimeError: crash requested by the self-test"))),
     ("the hook reports its own crash as a message while continuing", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "crashed" in o[-1].stdout)),
     ("scripts/check reports a check that prints nothing", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: \n" in o[-1].stdout)),
+    ("scripts/check reports a check's error output", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit('broken lessons')\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: broken lessons\n" in o[-1].stdout)),
     ("scripts/check summarizes a check by its last line", dict(runs=one([("scripts/check-lessons", "import sys\nprint('first')\nprint('last')\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: last\n" in o[-1].stdout)),
     ("the hook reads stdin that is not JSON as not continuing", dict(runs=one([CORE_BAD], stdin="not json"), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook gives a message while continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
@@ -452,6 +460,8 @@ EQUIVALENT = {
     ("check", "main", "statement removed at column 0", "return 0"): NONE_EXIT,
     ("check-risk", "main", "statement removed at column 0", "return 0"): NONE_EXIT,
     ("check-risk", "check", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check", "run_hook", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check-layers", "lines", "operand 1 of and dropped at column 5", 'elif in_fm and line == "---":'): "outside the frontmatter in_fm is already False, and only frontmatter lines are ever blanked",
 }
 
 

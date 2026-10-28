@@ -21,7 +21,7 @@ end = start
 while end < len(lines) and lines[end].strip():
     end += 1
 table = [l.strip() for l in lines[start:end]]
-stray = [l for i, l in enumerate(lines) if "|" in l and not start <= i < end]
+stray = [l for l in lines[:start] + lines[end:] if "|" in l]
 if stray or any(not l.startswith("|") for l in table):
     sys.exit("check-upkeep: the Upkeep table must be one block of rows that start with '|'")
 if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):

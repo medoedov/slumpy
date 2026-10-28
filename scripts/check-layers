@@ -32,15 +32,13 @@ RESTATE = re.compile(r"\bT[0-2]\b|\breviewer\b|decided by the owner|owner decide
 
 
 def lines(path):
-    """File lines with the frontmatter fences and its `paths` list blanked."""
+    """File lines with the frontmatter `paths` list blanked."""
     out, in_fm, in_paths = [], False, False
     for i, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
         if i == 0 and line == "---":
             in_fm = True
-            line = ""
         elif in_fm and line == "---":
             in_fm = False
-            line = ""
         elif in_fm and line.startswith("paths:"):
             in_paths, line = True, ""
         elif in_fm and in_paths and re.match(r"\s+- ", line):

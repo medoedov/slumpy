@@ -177,3 +177,13 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   stale comment. Pre-existing: an untracked nested repository hides its files from `check-risk`
   (recorded in `docs/tech-debt.md`); cases read the clock once. Item 9 revised above; a fresh pair
   of rounds follows, once per change.
+- Revised item 9 applied (90f4e26 and the next commit): seams `SLUMPY_TEST_HOOK_CRASH` and
+  `SLUMPY_NOW`; dates in `check-upkeep` and `check-lessons` without the machine's zone;
+  `check-risk` split into dispatch and `check()`; the hook's entry moved to `run_hook()`; keys by
+  function; chained comparisons and binary operands in the generator; cases for every input from
+  round 2. A run with 653 mutants left 21 survivors: message texts no case read (now asserted in
+  full), a second quoted section, a rule matching an empty name, and four bits of logic with no
+  observable effect, deleted (blanking fence lines, the stdout of a failed change set, a chained
+  index comparison, the fence branch of a mutant kept as equivalent: outside the frontmatter
+  nothing is blanked). `EQUIVALENT`: 8 entries, each equivalent on every input (the module guard,
+  `None` returned where the value becomes the exit code, the closing-fence operand).

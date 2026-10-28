@@ -57,3 +57,13 @@ this list; remove an entry when it is fixed.
 - **Fix:** add untracked Markdown files (`git ls-files --others --exclude-standard`) to the scan,
   with a case.
 - **Found:** 2026-10-28, review of the self-review fixes, round 1 (pre-existing).
+
+### An untracked nested repository hides its files from check-risk
+
+- **Where:** `scripts/check-risk`, `change_set` (`git ls-files --others`).
+- **Problem:** git lists an untracked nested repository as one directory entry (`Packages/Logic/`),
+  so a `Package.swift` or a Keychain call inside it passes with "evidence present". Realistic when
+  a local package gets its own repository.
+- **Fix:** fail on a directory entry in the change set, with the reason; the case "a nested
+  repository in the change set does not crash the check" then expects the failure.
+- **Found:** 2026-10-28, review of the self-review fixes, round 2 (pre-existing).
