@@ -8,9 +8,12 @@
       "Bash(swift test *)",
       "Bash(scripts/check)",
       "Bash(scripts/check *)",
-      "Bash(python3 -I scripts/*)"
+      "Bash(scripts/check-*)",
+      "Bash(scripts/test-checks)"
     ],
     "ask": [
+      "Bash(xcodebuild *archive*)",
+      "Bash(xcodebuild *-allowProvisioningUpdates*)",
       "mcp__github__merge_pull_request",
       "Bash(gh pr merge *)"
     ],

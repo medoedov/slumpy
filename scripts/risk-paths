@@ -1,11 +1,15 @@
-# Paths and text that make a change need written evidence (read by scripts/check-risk).
-# Project layer: the globs follow this project's planned layout (architecture.md, Targets and
-# Package); revise them when the Xcode skeleton exists.
+# Rules for scripts/check-risk. This header owns the evidence rules; other files point here.
+# Project layer: the patterns follow this project's planned layout (architecture.md, Targets and
+# Package) and approximate the platform pack's lists (platform.md: new platform capabilities and
+# security-pass triggers own those lists). Revise at the skeleton ADR and at ADR-0002.
 #
-#   t2        the change needs an ADR in docs/decisions/ or a line "T1 because ..." in a
-#             work/*/plan.md, either changed by the same change set
-#   security  the change needs "security pass" in a work/*/plan.md changed by the same change set
-#   *-text    a regular expression matched against the lines the change adds
+# Evidence counts only when the same change set adds it:
+#   t2        a new ADR file in docs/decisions/, or an added line in a work/*/plan.md that starts
+#             (after an optional "- ") with "T1 because"
+#   security  an added line in a work/*/plan.md that starts (after an optional "- ") with
+#             "Security pass:"
+# A path rule also applies to a deleted file. A *-text rule is a regular expression matched
+# against the lines the change set adds.
 #
 # category       pattern
 t2               **/*.entitlements
@@ -14,8 +18,9 @@ t2               **/project.yml
 t2               **/*.xcodeproj/project.pbxproj
 t2               **/Migrations/**
 t2               **/*Schema*.swift
-t2-text          \bimport (GRDB|Firebase|Supabase|Alamofire|RevenueCat)\b
+t2-text          @Model\b|registerMigration|VersionedSchema|SchemaMigrationPlan
+t2-text          \bimport (GRDB|StoreKit|AuthenticationServices|Firebase|Supabase|Alamofire|RevenueCat)\b|\bURLSession\b
 security         **/*.entitlements
-security         **/Info.plist
 security         **/PrivacyInfo.xcprivacy
-security-text    \b(SecItem\w*|kSecClass|NSAppTransportSecurity|requestAuthorization|AuthorizationCenter)\b
+security-text    \b(SecItem\w*|kSecClass|requestAuthorization|AuthorizationCenter)\b
+security-text    NSAppTransportSecurity|NS\w*UsageDescription|UIBackgroundModes

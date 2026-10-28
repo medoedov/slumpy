@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""Self-test of the checks: each planted violation must fail its check, and a clean copy must pass.
-
-Works on throwaway git copies of the agent-system files, never on the repository itself.
-"""
-import json, pathlib, shutil, subprocess, sys, tempfile
+"""Self-test of the checks: each planted violation must fail its check, each valid change must
+pass, and an input a check cannot read must fail it. Works on throwaway git copies of the
+agent-system files, never on the repository itself. Add a case for every new rule or input."""
+import datetime, json, os, pathlib, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 COPY = ["CLAUDE.md", "README.md", "backlog.md", ".claude", "docs", "work", "scripts"]
 GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
        "-c", "commit.gpgsign=false"]
+ENV = dict(os.environ, SLUMPY_IN_TEST_CHECKS="1")
+TODAY = datetime.date.today().isoformat()
+LESSON = ("\n### {title}\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** this entry only.\n"
+          "- **Stale when:** z\n- **Added:** {added}\n")
+
+
+def sh(d, *cmd):
+    subprocess.run(GIT + list(cmd), cwd=d, check=True, capture_output=True)
 
 
 def make_template(tmp):
@@ -20,55 +27,101 @@ def make_template(tmp):
             shutil.copytree(src, t / name, ignore=shutil.ignore_patterns("__pycache__"))
         elif src.exists():
             shutil.copy2(src, t / name)
-    for cmd in (["init", "-q", "-b", "dev"], ["add", "-A"], ["commit", "-q", "-m", "base"],
-                ["checkout", "-q", "-b", "work"]):
-        subprocess.run(GIT + cmd, cwd=t, check=True, capture_output=True)
+    sh(t, "init", "-q", "-b", "dev")
+    sh(t, "add", "-A")
+    sh(t, "commit", "-q", "-m", "base")
+    sh(t, "checkout", "-q", "-b", "work")
     return t
 
 
-def case(template, tmp, n, edits, script, expect_fail, stdin=None, expect_code=None):
-    d = tmp / f"case{n}"
-    shutil.copytree(template, d)
+def apply(d, edits):
     for path, text, mode in edits:
         f = d / path
+        if mode == "delete":
+            f.unlink()
+            continue
         f.parent.mkdir(parents=True, exist_ok=True)
         if mode == "append":
             f.write_text(f.read_text(encoding="utf-8") + text, encoding="utf-8")
         elif mode == "replace":
             old, new = text
             s = f.read_text(encoding="utf-8")
-            assert old in s, f"case {n}: '{old}' not in {path}"
+            assert old in s, f"'{old}' not in {path}"
             f.write_text(s.replace(old, new, 1), encoding="utf-8")
         else:
             f.write_text(text, encoding="utf-8")
-    p = subprocess.run([sys.executable, "-I", str(d / "scripts" / script[0]), *script[1:]], cwd=d,
-                       capture_output=True, text=True, input=stdin)
-    if expect_code is not None:
-        ok = p.returncode == expect_code
-    else:
-        ok = (p.returncode != 0) == expect_fail
-    shutil.rmtree(d)
-    return ok, p.returncode
 
+
+def run_case(template, tmp, n, c):
+    d = tmp / f"case{n}"
+    shutil.copytree(template, d)
+    if c.get("base"):                       # committed on dev before the work branch
+        sh(d, "checkout", "-q", "dev")
+        apply(d, c["base"])
+        sh(d, "add", "-A")
+        sh(d, "commit", "-q", "-m", "base change")
+        sh(d, "checkout", "-q", "work")
+        sh(d, "merge", "-q", "--ff-only", "dev")
+    apply(d, c.get("edits", []))
+    if c.get("commit"):
+        sh(d, "add", "-A")
+        sh(d, "commit", "-q", "-m", "work change")
+    for cmd in c.get("git", []):
+        sh(d, *cmd)
+    outs = []
+    for stdin in c.get("stdins", [None]):
+        p = subprocess.run([sys.executable, "-I", str(d / "scripts" / c["script"][0]),
+                            *c["script"][1:]], cwd=d, capture_output=True, text=True,
+                           input=stdin, env=ENV)
+        outs.append(p)
+    shutil.rmtree(d)
+    return c["expect"](outs)
+
+
+fails = lambda outs: outs[-1].returncode != 0
+passes = lambda outs: outs[-1].returncode == 0
+blocks = lambda outs: outs[-1].returncode == 0 and '"decision": "block"' in outs[-1].stdout
+silent = lambda outs: outs[-1].returncode == 0 and outs[-1].stdout.strip() == ""
+HOOK = json.dumps({"stop_hook_active": False})
+ADR_NEW = ("docs/decisions/0099-test.md", "# ADR-0099\n", "write")
+PKG = ("Package.swift", "// swift-tools-version: 6.0\n", "write")
 
 CASES = [
-    # (description, edits, script, expect_fail)
-    ("clean copy passes check-layers", [], ["check-layers"], False),
-    ("clean copy passes check-pointers", [], ["check-pointers"], False),
-    ("clean copy passes check-risk", [], ["check-risk"], False),
-    ("clean copy passes check-lessons", [], ["check-lessons"], False),
-    ("Cyrillic in a core skill", [(".claude/skills/product-spec/SKILL.md", "\nМожно ответить.\n", "append")], ["check-layers"], True),
-    ("project term in core-process", [(".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")], ["check-layers"], True),
-    ("tier label in the platform pack", [(".claude/rules/platform.md", "\n- New extension (T2 the first time).\n", "append")], ["check-layers"], True),
-    ("reviewer rule in swift.md", [(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")], ["check-layers"], True),
-    ("unnamed core rule file", [(".claude/rules/core-extra.md", "# Extra\n", "write")], ["check-layers"], True),
-    ("renamed section breaks a pointer", [(".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")], ["check-pointers"], True),
-    ("entitlements without evidence", [("App/App.entitlements", "<plist/>\n", "write")], ["check-risk"], True),
-    ("entitlements with ADR line and security pass", [("App/App.entitlements", "<plist/>\n", "write"),
-        ("work/feature/plan.md", "T1 because the entitlement repeats ADR-0001.\nReview: code, round 1, security pass, clean.\n", "write")], ["check-risk"], False),
-    ("Keychain call without security pass", [("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")], ["check-risk"], True),
-    ("overdue lesson guarded by this entry only", [("docs/lessons.md", "\n### Old trap\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** this entry only.\n- **Stale when:** z\n- **Added:** 2000-01-01\n", "append")], ["check-lessons"], True),
-    ("lesson with a missing field", [("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")], ["check-lessons"], True),
+    ("clean copy passes check-layers", dict(script=["check-layers"], expect=passes)),
+    ("clean copy passes check-pointers", dict(script=["check-pointers"], expect=passes)),
+    ("clean copy passes check-risk", dict(script=["check-risk"], expect=passes)),
+    ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=passes)),
+    ("Cyrillic in a core skill", dict(edits=[(".claude/skills/product-spec/SKILL.md", "\nМожно ответить.\n", "append")], script=["check-layers"], expect=fails)),
+    ("project term in core-process", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy uses iOS 18.\n", "append")], script=["check-layers"], expect=fails)),
+    ("tier label in the platform pack", dict(edits=[(".claude/rules/platform.md", "\n- New extension (T2 the first time).\n", "append")], script=["check-layers"], expect=fails)),
+    ("reviewer rule in swift.md", dict(edits=[(".claude/rules/swift.md", "\nThe reviewer treats these as findings.\n", "append")], script=["check-layers"], expect=fails)),
+    ("unnamed core rule file", dict(edits=[(".claude/rules/core-extra.md", "# Extra\n", "write")], script=["check-layers"], expect=fails)),
+    ("renamed section breaks a pointer", dict(edits=[(".claude/rules/core-process.md", ("## Risk tiers", "## Risk levels"), "replace")], script=["check-pointers"], expect=fails)),
+    ("deleted tracked Markdown file does not crash check-pointers", dict(edits=[("work/agent-system-gates/plan.md", None, "delete")], script=["check-pointers"], expect=passes)),
+    ("t2 path at the root without evidence", dict(edits=[PKG], script=["check-risk"], expect=fails)),
+    ("t2 path with a new ADR", dict(edits=[PKG, ADR_NEW], script=["check-risk"], expect=passes)),
+    ("t2 path with an edit to an old ADR only", dict(edits=[PKG, ("docs/decisions/0001-stack-and-project-structure.md", "\nTypo fix.\n", "append")], script=["check-risk"], expect=fails)),
+    ("t2 path with an added T1 line", dict(edits=[PKG, ("work/feature/plan.md", "- T1 because the package only adds a test target.\n", "write")], script=["check-risk"], expect=passes)),
+    ("t2 text in an added line", dict(edits=[("Core/Session.swift", "@Model final class Session {}\n", "write")], script=["check-risk"], expect=fails)),
+    ("entitlements without evidence", dict(edits=[("App/App.entitlements", "<plist/>\n", "write")], script=["check-risk"], expect=fails)),
+    ("entitlements with T1 and security lines", dict(edits=[("App/App.entitlements", "<plist/>\n", "write"), ("work/feature/plan.md", "T1 because the entitlement repeats ADR-0001.\nSecurity pass: clean, reviewer code round 1.\n", "write")], script=["check-risk"], expect=passes)),
+    ("old security line in a touched plan does not count", dict(base=[("work/feature/plan.md", "Security pass: clean.\n", "write")], edits=[("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write"), ("work/feature/plan.md", "- Step 2 done.\n", "append")], script=["check-risk"], expect=fails)),
+    ("security phrase inside prose does not count", dict(edits=[("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write"), ("work/feature/plan.md", "- Review: no security pass needed.\n", "write")], script=["check-risk"], expect=fails)),
+    ("usage description in project.yml", dict(edits=[("project.yml", "INFOPLIST_KEY_NSCameraUsageDescription: x\n", "write"), ("work/feature/plan.md", "T1 because only a string.\n", "write")], script=["check-risk"], expect=fails)),
+    ("folder with a space, untracked", dict(edits=[("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")], script=["check-risk"], expect=fails)),
+    ("folder with a space, committed", dict(edits=[("Slumpy Monitor/Slumpy Monitor.entitlements", "<plist/>\n", "write")], commit=True, script=["check-risk"], expect=fails)),
+    ("non-ASCII file name with a Keychain call", dict(edits=[("App/Хранилище.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True, script=["check-risk"], expect=fails)),
+    ("deleted entitlements file", dict(base=[("App/App.entitlements", "<plist/>\n", "write")], edits=[("App/App.entitlements", None, "delete")], script=["check-risk"], expect=fails)),
+    ("no base branch to compare with", dict(git=[["branch", "-D", "dev"]], script=["check-risk"], expect=fails)),
+    ("recent lesson guarded by this entry only passes", dict(edits=[("docs/lessons.md", LESSON.format(title="New trap", added=TODAY), "append")], script=["check-lessons"], expect=passes)),
+    ("overdue lesson guarded by this entry only", dict(edits=[("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")], script=["check-lessons"], expect=fails)),
+    ("lesson with a missing field", dict(edits=[("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")], script=["check-lessons"], expect=fails)),
+    ("Xcode package without build in scripts/check", dict(edits=[PKG, ADR_NEW], script=["check"], expect=fails)),
+    ("hook blocks a failing check", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[HOOK], expect=blocks)),
+    ("hook blocks when a check crashes", dict(edits=[("docs/lessons.md", ("## Entries", "## Items"), "replace")], script=["check", "--hook"], stdins=[HOOK], expect=blocks)),
+    ("hook does not block a turn that changed nothing", dict(base=[("docs/lessons.md", LESSON.format(title="Old trap", added="2000-01-01"), "append")], script=["check", "--hook"], stdins=[HOOK], expect=silent)),
+    ("hook does not block twice on the same state", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[HOOK, HOOK], expect=lambda o: '"decision": "block"' in o[0].stdout and '"systemMessage"' in o[1].stdout and '"decision"' not in o[1].stdout)),
+    ("hook does not block when already continuing", dict(edits=[(".claude/rules/core-process.md", "\nSlumpy\n", "append")], script=["check", "--hook"], stdins=[json.dumps({"stop_hook_active": True})], expect=lambda o: '"systemMessage"' in o[0].stdout and '"decision"' not in o[0].stdout)),
 ]
 
 
@@ -77,25 +130,18 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         template = make_template(tmp)
-        for n, (desc, edits, script, expect_fail) in enumerate(CASES):
-            ok, code = case(template, tmp, n, edits, script, expect_fail)
+        for n, (desc, c) in enumerate(CASES):
+            try:
+                ok = run_case(template, tmp, n, c)
+            except Exception as e:  # a broken case is a failure, never a pass
+                ok, desc = False, f"{desc} (case error: {e})"
             if not ok:
-                failures.append(f"{desc}: {script[0]} exited {code}")
-        hook_cases = [
-            ("hook blocks a failing check with exit 2", json.dumps({"stop_hook_active": False}), 2),
-            ("hook does not block twice in a row", json.dumps({"stop_hook_active": True}), 0),
-        ]
-        bad = [(".claude/rules/core-process.md", "\nSlumpy\n", "append")]
-        for i, (desc, stdin, code) in enumerate(hook_cases):
-            ok, got = case(template, tmp, 100 + i, bad, ["check", "--hook"], True, stdin, code)
-            if not ok:
-                failures.append(f"{desc}: check --hook exited {got}")
-    total = len(CASES) + 2
+                failures.append(desc)
     if failures:
         print("\n".join(failures))
-        print(f"test-checks: {len(failures)} of {total} cases failed")
+        print(f"test-checks: {len(failures)} of {len(CASES)} cases failed")
         return 1
-    print(f"test-checks: {total} cases pass")
+    print(f"test-checks: {len(CASES)} cases pass")
     return 0
 
 
