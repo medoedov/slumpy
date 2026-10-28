@@ -226,3 +226,5 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   the generated `.lower()` drop, removed from the written list). The `--` before a pathspec only
   matters for a root-level file whose `(literal)` twin is tracked; the `+++` test only for an
   added line that contains `+++`. Cases for both; both killed.
+- Full run on 87644d5: all 822 mutants killed (36 written, 795 generated, 9 equivalent), 17
+  minutes on 4 cores (the earlier 40 to 75 minutes ran beside the measurement); 234 cases.
