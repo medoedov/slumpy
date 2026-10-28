@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fails when the agent-system layers mix.
 
-- Core files (named in the first sentence of .claude/rules/core-process.md; every
+- Core files (named in core-process.md before the words "are the core"; every
   .claude/rules/core-*.md must be named there) hold no listed platform or project term and no
   non-English text. Only the frontmatter `paths` list is skipped, in every file (globs are set per
   project).
@@ -52,8 +52,7 @@ def lines(path):
 
 
 def core_files():
-    text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())
-    sentence = text.split(" are the core", 1)[0]
+    sentence = " ".join(lines(PROCESS)).split(" are the core")[0]
     found, problems = [PROCESS], []
     for name in re.findall(r"`([^`]+)`", sentence):
         for candidate in (ROOT / ".claude/rules" / name, ROOT / ".claude/agents" / f"{name}.md",

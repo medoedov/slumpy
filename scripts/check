@@ -11,9 +11,10 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
         failure keeps the session working through `additionalContext` (shown as hook feedback,
         not as a hook error); while the session is already continuing because of this hook, it
         shows the failures as a system message instead. A crash of the hook itself is a real
-        error and blocks with a JSON decision.
+        error and blocks with a JSON decision. SLUMPY_TEST_HOOK_CRASH set makes the hook raise,
+        for the self-test of that path.
 """
-import json, pathlib, subprocess, sys, traceback
+import json, os, pathlib, subprocess, sys, traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "check-upkeep"]
@@ -50,6 +51,8 @@ def respond(reason, continuing, error=False):
 
 
 def hook(continuing):
+    if os.environ.get("SLUMPY_TEST_HOOK_CRASH"):
+        raise RuntimeError("crash requested by the self-test")
     changed = script("check-risk", "--changed")
     if changed.returncode == 0 and not changed.stdout.strip("\0"):
         return 0  # the change set is empty: this turn changed nothing
@@ -62,18 +65,22 @@ def hook(continuing):
     return 0
 
 
+def run_hook():
+    continuing = False
+    try:
+        continuing = bool(json.loads(sys.stdin.read()).get("stop_hook_active"))
+    except (json.JSONDecodeError, OSError):
+        pass  # no input or not JSON: not continuing
+    try:
+        return hook(continuing)
+    except Exception:
+        respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True)
+        return 0
+
+
 def main():
     if "--hook" in sys.argv:
-        continuing = False
-        try:
-            continuing = bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))
-        except (json.JSONDecodeError, OSError):
-            pass
-        try:
-            return hook(continuing)
-        except Exception:
-            respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True)
-            return 0
+        return run_hook()
     failed, report = run_checks()
     print("\n".join(report))
     if failed:

@@ -25,8 +25,11 @@ GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
        "-c", "commit.gpgsign=false"]
 ENV = dict(os.environ, SLUMPY_IN_TEST_CHECKS="1")
 TODAY = datetime.date.today().isoformat()
-def DAYS_AGO(n): return (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
-LATEST = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()  # today in UTC+14
+# Fixed instants for the date cases (SLUMPY_NOW). On 2030-06-15 at these hours, today in UTC+14 and
+# in UTC-12 differ from today in UTC+15, UTC+13, UTC-11, and UTC-13, so a shifted zone changes a
+# result: 09:30 UTC is 06-15 in UTC+14 and 06-16 in UTC+15; 10:30 is 06-16 in UTC+14 and 06-15 in
+# UTC+13; 11:30 is 06-14 in UTC-12 and 06-15 in UTC-11; 12:30 is 06-15 in UTC-12 and 06-14 in UTC-13.
+def AT(hour): return {"SLUMPY_NOW": f"2030-06-15T{hour}:30:00+00:00"}
 LESSON = ("\n### {title}\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** {guard}\n"
           "- **Stale when:** z\n- **Added:** {added}\n")
 
@@ -99,7 +102,8 @@ def run_case(template, tmp, n, c):
         args = step.get("script", c["script"])
         outs.append(subprocess.run([sys.executable, "-I", str(d / "scripts" / args[0]), *args[1:]],
                                    cwd=d, capture_output=True, text=True,
-                                   input=step.get("stdin"), env=ENV, timeout=60))
+                                   input=step.get("stdin"), env=dict(ENV, **c.get("env", {})),
+                                   timeout=60))
     shutil.rmtree(d, ignore_errors=True)
     return c["expect"](outs)
 
@@ -119,6 +123,13 @@ def is_block(p, text=""):
     spec = out.get("hookSpecificOutput", {})
     return (p.returncode == 0 and "decision" not in out and spec.get("hookEventName") == "Stop"
             and text in spec.get("additionalContext", ""))
+def is_error(p, text=""):
+    """The hook reports its own crash: one JSON decision that blocks, nothing else on stdout."""
+    try:
+        out = json.loads(p.stdout)
+    except json.JSONDecodeError:
+        return False
+    return p.returncode == 0 and out.get("decision") == "block" and text in out.get("reason", "")
 def is_message(p): return p.returncode == 0 and '"systemMessage"' in p.stdout and '"decision"' not in p.stdout
 def is_silent(p): return p.returncode == 0 and p.stdout.strip() == ""
 
@@ -135,6 +146,8 @@ UPKEEP = "docs/agent-system.md"
 UPKEEP_HEAD = "| Task | Every | Last done | How |\n|---|---|---|---|\n"
 def upkeep_row(row): return (UPKEEP, (UPKEEP_HEAD, UPKEEP_HEAD + row + "\n"), "replace")
 UPKEEP_DUE = upkeep_row("| Old task | 30 days | 2000-01-01 | x |")
+def lessons_doc(entry): return ("docs/lessons.md", "# Lessons\n\n## Entries\n" + entry, "write")
+def upkeep_task(row): return upkeep_doc(UPKEEP_HEAD + row + "\n")
 def upkeep_doc(body): return (UPKEEP, "# Agent system\n\n## Upkeep\n\n" + body + "\n## Mechanism ledger\n\n| # | x |\n|---|---|\n| 1 | y |\n", "write")
 T1_LINE = "- T1 because the test needs it.\n"
 SEC_LINE = "- Security pass: clean, reviewer code round 1.\n"
@@ -229,6 +242,8 @@ STATIC = [
     ("project term in a core skill's frontmatter description", dict(runs=one([(".claude/skills/engineering-design/SKILL.md", ("Technical brief before code", "Technical brief before Swift code"), "replace")]), script=["check-layers"], expect=fails)),
     ("term in a frontmatter list other than paths", dict(runs=one([(".claude/agents/reviewer.md", ("skills:\n  - engineering-design\n", "skills:\n  - engineering-design\n  - swift-helper\n"), "replace")]), script=["check-layers"], expect=fails)),
     ("term in a frontmatter list after the paths list", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n', '  - "**/*.swift"\nnote:\n  - Slumpy\n'), "replace")]), script=["check-layers"], expect=fails)),
+    ("a body line starting with paths: in a core file is scanned", dict(runs=one([(".claude/rules/core-process.md", "\npaths: Slumpy builds for iOS.\n", "append")]), script=["check-layers"], expect=fails)),
+    ("a list item right after a core file's frontmatter is scanned", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n---\n', '  - "**/*.swift"\n---\n  - Slumpy uses iOS.\n'), "replace")]), script=["check-layers"], expect=fails)),
     ("rule file in no layer", dict(runs=one([(".claude/rules/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     ("rule file in a subfolder in no layer", dict(runs=one([(".claude/rules/sub/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
@@ -272,12 +287,14 @@ STATIC = [
     ("a rule line with one word fails with its line number", dict(runs=one([("scripts/risk-paths", "\nsecurity-text\n", "append")]), script=["check-risk"], expect=fails_with(f"risk-paths:{lines_of('scripts/risk-paths') + 2}"))),
     ("a rule with an unknown category fails", dict(runs=one([("scripts/risk-paths", "\ndanger  **/*.x\n", "append")]), script=["check-risk"], expect=fails)),
     ("a text rule without an example fails", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\s*\n", "append")]), script=["check-risk"], expect=fails)),
+    ("a nested repository in the change set does not crash the check", dict(runs=one([("Packages/Logic/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")], git=[["init", "-q", "Packages/Logic"]]), script=["check-risk"], expect=lambda o: "Traceback (most recent call last)" not in o[-1].stderr)),
+    ("a file named like a glob reads only its own diff", dict(runs=one([("*.swift", "let a = 1\n", "write"), ("docs/example.swift", "let s = SecItemAdd(q, nil)\n", "write")], commit=True), script=["check-risk"], expect=passes)),
     ("a malformed rule fails the check", dict(runs=one([("scripts/risk-paths", "\nsecurity-text  \\bFoo\\b  ## no match here\n", "append")]), script=["check-risk"], expect=fails)),
     # check-lessons
     ("clean copy passes check-lessons", dict(script=["check-lessons"], expect=clean("check-lessons"))),
     ("recent lesson guarded by this entry only passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="New", guard="this entry only.", added=TODAY), "append")]), script=["check-lessons"], expect=passes)),
-    ("lesson unguarded for exactly the grace period passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Edge", guard="this entry only.", added=DAYS_AGO(30)), "append")]), script=["check-lessons"], expect=passes)),
-    ("lesson unguarded a day past the grace period", dict(runs=one([("docs/lessons.md", LESSON.format(title="Late", guard="this entry only.", added=DAYS_AGO(31)), "append")]), script=["check-lessons"], expect=fails)),
+    ("lesson unguarded for exactly the grace period passes", dict(env=AT(11), runs=one([lessons_doc(LESSON.format(title="Edge", guard="this entry only.", added="2030-05-15"))]), script=["check-lessons"], expect=passes)),
+    ("lesson unguarded a day past the grace period", dict(env=AT(12), runs=one([lessons_doc(LESSON.format(title="Late", guard="this entry only.", added="2030-05-15"))]), script=["check-lessons"], expect=fails_with("lesson 'Late'"))),
     ("old lesson guarded by a test passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Guarded", guard="a case in scripts/test-checks.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=passes)),
     ("lesson date followed by a note", dict(runs=one([("docs/lessons.md", LESSON.format(title="Noted", guard="a test.", added=TODAY + " (moved from the audit)"), "append")]), script=["check-lessons"], expect=passes)),
     ("a lesson that mentions the Entries heading does not end the list", dict(runs=one([("docs/lessons.md", LESSON.format(title="Heading", guard="a test.", added=TODAY).replace("- **Symptom:** x", "- **Symptom:** the ## Entries heading was renamed"), "append"), OVERDUE]), script=["check-lessons"], expect=fails_with("lesson 'Old trap'"))),
@@ -287,13 +304,13 @@ STATIC = [
     ("lesson missing only its cause", dict(runs=one([("docs/lessons.md", LESSON.format(title="No cause", guard="a test.", added=TODAY).replace("- **Cause:** y\n", ""), "append")]), script=["check-lessons"], expect=fails)),
     # check-upkeep
     ("clean copy passes check-upkeep", dict(script=["check-upkeep"], expect=clean("check-upkeep"))),
-    ("upkeep task at its interval passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(30)} | x |")]), script=["check-upkeep"], expect=passes)),
-    ("upkeep task a day past its interval", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(31)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep task at its interval passes", dict(env=AT(11), runs=one([upkeep_task("| Task | 30 days | 2030-05-15 | x |")]), script=["check-upkeep"], expect=passes)),
+    ("upkeep task a day past its interval", dict(env=AT(12), runs=one([upkeep_task("| Task | 30 days | 2030-05-15 | x |")]), script=["check-upkeep"], expect=fails_with("upkeep 'Task' is due"))),
     ("upkeep task done today passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {TODAY} | x |")]), script=["check-upkeep"], expect=passes)),
-    ("upkeep date of today in UTC+14 passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {LATEST} | x |")]), script=["check-upkeep"], expect=passes)),
-    ("upkeep date after today in UTC+14", dict(runs=one([upkeep_row(f"| Task | 30 days | {LATEST + datetime.timedelta(days=1)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep date of today in UTC+14 passes", dict(env=AT(10), runs=one([upkeep_task("| Task | 30 days | 2030-06-16 | x |")]), script=["check-upkeep"], expect=passes)),
+    ("upkeep date after today in UTC+14", dict(env=AT("09"), runs=one([upkeep_task("| Task | 30 days | 2030-06-16 | x |")]), script=["check-upkeep"], expect=fails_with("in the future"))),
     ("upkeep dated interval with a dash for the date", dict(runs=one([upkeep_row("| Task | 30 days | — | x |")]), script=["check-upkeep"], expect=fails)),
-    ("upkeep interval in months", dict(runs=one([upkeep_row(f"| Task | 6 months | {DAYS_AGO(3)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep interval in months", dict(env=AT(10), runs=one([upkeep_task("| Task | 6 months | 2030-06-11 | x |")]), script=["check-upkeep"], expect=fails)),
     ("upkeep row without its leading pipe", dict(runs=one([upkeep_row(f"New | 30 days | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
     ("upkeep row after a blank line", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| New | 30 days | {TODAY} | x |\n\n| Old | 30 days | 2000-01-01 | x |\n")]), script=["check-upkeep"], expect=fails)),
     ("upkeep interval that does not parse", dict(runs=one([upkeep_row(f"| Task | monthly | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
@@ -301,12 +318,18 @@ STATIC = [
     ("upkeep table without its header row", dict(runs=one([upkeep_doc(f"| Old | 30 days | 2000-01-01 | x |\n| New | 30 days | {TODAY} | x |\n| Newer | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
     ("upkeep table with no tasks", dict(runs=one([upkeep_doc("| Task | Every | Last done | How |\n|---|---|---|---|\n")]), script=["check-upkeep"], expect=fails_with("no tasks"))),
     ("upkeep table of one line", dict(runs=one([upkeep_doc("| Task | Every | Last done | How |\n")]), script=["check-upkeep"], expect=fails)),
+    ("a | above the upkeep table", dict(runs=one([upkeep_doc(f"Use `a | b` for alternatives.\n\n| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
+    ("a line without pipes right under the upkeep table", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\nOld task 30 days 2000-01-01\n")]), script=["check-upkeep"], expect=fails)),
     ("a paragraph after the upkeep table passes", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n\nA note after the table.\n")]), script=["check-upkeep"], expect=passes)),
     ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
-    ("the hook blocks when there is no base", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set"))),
+    ("the hook blocks when there is no base, the change set first", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set") and o[-1].stdout.index("change set:") < o[-1].stdout.index("check-layers:\\n"))),
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
+    ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "crashed"))),
+    ("the hook reports its own crash as a message while continuing", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "crashed" in o[-1].stdout)),
+    ("scripts/check reports a check that prints nothing", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: \n" in o[-1].stdout)),
+    ("scripts/check summarizes a check by its last line", dict(runs=one([("scripts/check-lessons", "import sys\nprint('first')\nprint('last')\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: last\n" in o[-1].stdout)),
     ("the hook reads stdin that is not JSON as not continuing", dict(runs=one([CORE_BAD], stdin="not json"), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook gives a message while continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
     ("the hook stays silent when nothing changed", dict(base=[OVERDUE], runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
@@ -318,8 +341,6 @@ STATIC = [
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
 # check's crash handler in --hook is not listed: no input the cases can build crashes the hook.
-# check-upkeep's cell-count and parse branches are not listed: without them the row crashes the
-# script, which fails it just the same.
 MUTANTS = [
     ("check", "    if changed.returncode == 0 and not changed.stdout.strip(\"\\0\"):", "    if True:", "the hook never runs the checks"),
     ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
@@ -341,7 +362,7 @@ MUTANTS = [
     ("check-risk", '        if f.startswith(SKIP_PREFIXES) or f.endswith(".md"):\n            continue', "        pass", "agent-system files matched as app code"),
     ("check-risk", 'sys.stdout.write("\\0".join(sorted(set(tracked) | set(untracked))))', 'sys.stdout.write("\\0".join(sorted(set(tracked))))', "change set without untracked files"),
     ("check-risk", "            if not example or not regex.search(example):", "            if False:", "rule examples not validated"),
-    ("check-lessons", " and (today - added).days > GRACE_DAYS", "", "grace period removed"),
+    ("check-lessons", " and (earliest - added).days > GRACE_DAYS", "", "grace period removed"),
     ("check-lessons", "    if missing:", "    if False:", "missing fields accepted"),
     ("check-lessons", 'text.split("## Entries", 1)[1])[1:]', 'text.split("## Entries", 1)[1])[2:]', "first lesson skipped"),
     ("check-lessons", '.strip().lower()', ".strip()", "guard case-sensitive"),
@@ -350,12 +371,12 @@ MUTANTS = [
     ("check-layers", '            problems.append(f"core file not named in core-process.md: {f.relative_to(ROOT)}")', "            pass", "unnamed core file accepted"),
     ("check-pointers", "if not any(s.startswith(key) for c in candidates for s in sections(c)):", "if False:", "pointers never checked"),
     ("check-pointers", '            if "/" in name:', "            if False:", "path pointers resolved by file name"),
-    ("check-pointers", 'print(f"{f}:{n}: `{name}` does not exist")\n                    status = 1', "pass", "missing path accepted"),
+    ("check-pointers", 'problems.append(f"{f}:{n}: `{name}` does not exist")', "pass", "missing path accepted"),
     ("check-pointers", "dict.fromkeys((os.path.normpath(name), here))", "dict.fromkeys((os.path.normpath(name),))", "path relative to the pointing file not resolved"),
     ("check-pointers", "if (ROOT / p).is_file()]", "if p in files]", "untracked target reported missing"),
     ("check-layers", "    if f not in core and f not in platform:", "    if False:", "rule file in no layer accepted"),
     ("check-layers", '.claude/rules").rglob("*.md")', '.claude/rules").glob("*.md")', "rule files in subfolders not checked"),
-    ("check-upkeep", '.split("\\n## ", 1)[0]', "", "rows after the section read as tasks"),
+    ("check-upkeep", '.split("\\n## ")[0]', "", "rows after the section read as tasks"),
     ("check-pointers", " and (ROOT / f).is_file()]", "]", "deleted file crashes the scan"),
     ("check-pointers", 'FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")', 'FROZEN = ("AGENTS.md",)', "frozen files scanned"),
 ]
@@ -410,55 +431,32 @@ def run_cases():
 
 
 # Generated mutants: every condition forced true and false, each operand of and/or dropped, each
-# `not` removed, each single comparison flipped, each integer moved by one (an exit code or return
-# value only between zero and non-zero), each statement removed.
-# A survivor is logic no case observes, unless EQUIVALENT lists it with the reason it cannot change
-# behavior; an EQUIVALENT entry that matches no generated mutant is stale and fails the run.
+# operand of a binary operator dropped, each `not` removed, each operator of a comparison flipped,
+# each integer moved by one (an exit code or return value only between zero and non-zero), each
+# statement removed. A survivor is logic no case observes. EQUIVALENT lists only mutants that
+# cannot change what a check reports on any input, each with its reason; code no case could reach
+# is made reachable by a test seam (SLUMPY_TEST_HOOK_CRASH, SLUMPY_NOW) instead of being listed.
+# An entry is keyed by script, enclosing function, mutation, and line, and must match exactly one
+# generated mutant; one that matches none or several fails the run.
 GENERATED_FROM = ["check", "check-risk", "check-lessons", "check-layers", "check-pointers",
                   "check-upkeep"]
+OPS = {ast.Gt: ">", ast.GtE: ">=", ast.Lt: "<", ast.LtE: "<=", ast.Eq: "==", ast.NotEq: "!=",
+       ast.In: "in", ast.NotIn: "not in", ast.Is: "is", ast.IsNot: "is not"}
 FLIP = {ast.Gt: ">=", ast.GtE: ">", ast.Lt: "<=", ast.LtE: "<", ast.Eq: "!=", ast.NotEq: "==",
         ast.In: "not in", ast.NotIn: "in", ast.Is: "is not", ast.IsNot: "is"}
-# (script, mutation, the original line stripped): why the mutant cannot change what the check reports.
-CRASH = "the hook's crash handler: no input the cases can build crashes the hook"
-NONE_EXIT = "returning None exits with 0 as well"
+NONE_EXIT = "the function's value becomes the exit code, and None exits with 0 as 0 does"
 EQUIVALENT = {
-    ("check", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
-    ("check", "statement removed at column 0", "return 0"): NONE_EXIT,
-    ("check", "statement removed at column 0, occurrence 2", "return 0"): NONE_EXIT,
-    ("check", "statement removed at column 0, occurrence 3", "return 0"): NONE_EXIT,
-    ("check", "exit code 0 to 1 at column 7, occurrence 3", "return 0"): CRASH,
-    ("check", "condition always false at column 5", "elif error:"): CRASH,
-    ("check", "statement removed at column 0", 'out = {"decision": "block", "reason": reason}'): CRASH,
-    ("check", "statement removed at column 0", 'respond("scripts/check --hook crashed:\\n" + traceback.format_exc(), continuing, error=True)'): CRASH,
-    ("check", "condition always true at column 31", 'last = out.splitlines()[-1] if out else ""'): "every check prints at least one line",
-    ("check", "1 to 0 at column 25", 'last = out.splitlines()[-1] if out else ""'): "the summary shows one line of a check's output and the full output follows; which line is cosmetic",
-    ("check", "0 to 1 at column 14", 'failed.insert(0, "change set: " + (changed.stdout + changed.stderr).strip())'): "the order of the reasons in the message is cosmetic",
-    ("check", "operand 2 of or dropped at column 29", 'continuing = bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))'): "an empty stdin fails to parse and leaves continuing False, as {} does",
-    ("check-risk", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
-    ("check-risk", "statement removed at column 0", "return 0"): NONE_EXIT,
-    ("check-risk", "condition always true at column 51", 'return [n for n in out(*args, "-z").split("\\0") if n]'): "an empty name matches no rule and is no file, and the hook strips NUL separators",
-    ("check-risk", "condition always true at column 59", "added = {f: added_lines(b, f, untracked) for f in files if (ROOT / f).is_file()}"): "the diff of a deleted file adds no lines",
-    ("check-layers", "statement removed at column 0", 'line = ""'): "a fence line holds no term and no Cyrillic",
-    ("check-layers", "statement removed at column 0, occurrence 2", 'line = ""'): "a fence line holds no term and no Cyrillic",
-    ("check-layers", "operand 1 of and dropped at column 5", 'elif in_fm and line == "---":'): "outside the frontmatter in_fm is already False, and the line holds no term",
-    ("check-layers", "operand 1 of and dropped at column 5", 'elif in_fm and line.startswith("paths:"):'): "outside the frontmatter only the 'paths:' line itself is blanked; its list items still need in_fm",
-    ("check-layers", "operand 1 of and dropped at column 5", r'elif in_fm and in_paths and re.match(r"\s+- ", line):'): "after the closing fence the first body line, never an indented list item, resets in_paths",
-    ("check-layers", "condition always true at column 49", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "blank lines add only spaces to the joined paragraph",
-    ("check-layers", "1 to 2 at column 42", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "line 1 is the blank line after the title",
-    ("check-layers", "1 to 0 at column 42", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "the title holds no backticked file name",
-    ("check-layers", "1 to 2 at column 39", 'sentence = text.split(" are the core", 1)[0]'): "a higher maxsplit keeps the same first part",
-    ("check-pointers", "operand 1 of and dropped at column 3", "if f and not f.startswith(FROZEN) and (ROOT / f).is_file()]"): "an empty name is no file, so the last operand drops it too",
-    ("check-pointers", "statement removed at column 0, occurrence 2", "continue"): "with no candidates the next test skips the pointer as well",
-    ("check-pointers", "1 to 2 at column 9", "status = 1"): "status is only compared with 0 and passed to sys.exit",
-    ("check-pointers", "1 to 2 at column 9, occurrence 2", "status = 1"): "status is only compared with 0 and passed to sys.exit",
-    ("check-upkeep", "1 to 2 at column 36", 'lines = text.split("\\n## Upkeep\\n", 1)[1].split("\\n## ", 1)[0].splitlines()'): "the section still ends at the next heading",
-    ("check-upkeep", "1 to 2 at column 57", 'lines = text.split("\\n## Upkeep\\n", 1)[1].split("\\n## ", 1)[0].splitlines()'): "a higher maxsplit keeps the same first part",
-    ("check-upkeep", "14 to 15 at column 74", "latest = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()"): "an hour's shift moves the latest date during one hour a day only",
-    ("check-upkeep", "14 to 13 at column 74", "latest = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()"): "an hour's shift moves the latest date during one hour a day only",
+    ("check", "<module>", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
+    ("check-risk", "<module>", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
+    ("check", "hook", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check", "main", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check-risk", "main", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check-risk", "check", "statement removed at column 0", "return 0"): NONE_EXIT,
 }
 
 
 def generated_mutants(root=ROOT):
+    """(script, start, end, replacement, mutation, line, enclosing function) for every mutant."""
     out = []
     for script in GENERATED_FROM:
         src = (root / "scripts" / script).read_text(encoding="utf-8")
@@ -471,12 +469,19 @@ def generated_mutants(root=ROOT):
         tree = ast.parse(src)
         in_fstring = {id(n) for j in ast.walk(tree) if isinstance(j, ast.JoinedStr)
                       for n in ast.walk(j)}
+        owner = {}                                # innermost enclosing function of each node
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef):
+                for n in ast.walk(fn):
+                    owner[id(n)] = fn.name
         def seg(n):
             return src[pos(n.lineno, n.col_offset):pos(n.end_lineno, n.end_col_offset)]
         def add(n, new, what):
             a, b = pos(n.lineno, n.col_offset), pos(n.end_lineno, n.end_col_offset)
-            column = a - starts[n.lineno - 1] - (len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip()))
-            out.append((script, a, b, new, f"{what} at column {column}", lines[n.lineno - 1].strip()))
+            text = lines[n.lineno - 1]
+            column = a - starts[n.lineno - 1] - (len(text) - len(text.lstrip()))
+            out.append((script, a, b, new, f"{what} at column {column}", text.strip(),
+                        owner.get(id(n), "<module>")))
         exit_codes = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Return) and n.value} | {
             id(n.args[0]) for n in ast.walk(tree) if isinstance(n, ast.Call) and n.args
             and ast.unparse(n.func) == "sys.exit"}
@@ -493,11 +498,17 @@ def generated_mutants(root=ROOT):
                 for i in range(len(n.values)):
                     rest = [seg(v) for j, v in enumerate(n.values) if j != i]
                     add(n, "(" + op.join(rest) + ")", f"operand {i + 1} of {op.strip()} dropped")
+            if isinstance(n, ast.BinOp):
+                add(n, "(" + seg(n.left) + ")", "right operand dropped")
+                add(n, "(" + seg(n.right) + ")", "left operand dropped")
             if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
                 add(n, "(" + seg(n.operand) + ")", "not removed")
-            if isinstance(n, ast.Compare) and len(n.ops) == 1 and type(n.ops[0]) in FLIP:
-                new_op = FLIP[type(n.ops[0])]
-                add(n, f"({seg(n.left)} {new_op} {seg(n.comparators[0])})", f"comparison to {new_op}")
+            if isinstance(n, ast.Compare) and all(type(o) in OPS for o in n.ops):
+                for i, o in enumerate(n.ops):
+                    parts = [seg(n.left)]
+                    for j, (op_j, right) in enumerate(zip(n.ops, n.comparators)):
+                        parts += [FLIP[type(op_j)] if j == i else OPS[type(op_j)], seg(right)]
+                    add(n, "(" + " ".join(parts) + ")", f"comparison {i + 1} to {FLIP[type(o)]}")
             if isinstance(n, ast.Constant) and type(n.value) is int and id(n) in exit_codes:
                 add(n, "1" if n.value == 0 else "0", f"exit code {n.value} to {1 if n.value == 0 else 0}")
             elif isinstance(n, ast.Constant) and type(n.value) is int:
@@ -508,12 +519,12 @@ def generated_mutants(root=ROOT):
                               ast.Raise)) or (isinstance(n, ast.Expr)
                                               and not isinstance(n.value, ast.Constant)):
                 add(n, "pass", "statement removed")
-    seen = {}                                     # the same mutation on identical lines: number them
-    for i, (script, a, b, new, what, line) in enumerate(out):
-        k = seen[script, what, line] = seen.get((script, what, line), 0) + 1
-        if k > 1:
-            out[i] = (script, a, b, new, f"{what}, occurrence {k}", line)
     return out
+
+
+def key(m):
+    script, _, _, _, what, line, function = m
+    return script, function, what, line
 
 
 def run_copy(mutant=None):
@@ -521,7 +532,7 @@ def run_copy(mutant=None):
         d = pathlib.Path(tmp) / "copy"
         copy_files(ROOT, d)
         env = dict(ENV)
-        if mutant and len(mutant) == 4:            # hand-written: (script, old, new, label)
+        if mutant and len(mutant) == 4:            # written: (script, old, new, label)
             script, old, new, label = mutant
             f = d / "scripts" / script
             s = f.read_text(encoding="utf-8")
@@ -529,22 +540,22 @@ def run_copy(mutant=None):
                 return f"stale mutant (text found {s.count(old)} times): {label}"
             f.write_text(s.replace(old, new), encoding="utf-8")
             name = f"{label} ({script})"
-        elif mutant:                               # generated: (script, start, end, new, what, line)
-            script, a, b, new, what, line = mutant
+        elif mutant:                               # generated, see generated_mutants
+            script, a, b, new, what, line, function = mutant
             f = d / "scripts" / script
             s = f.read_text(encoding="utf-8")
             f.write_text(s[:a] + new + s[b:], encoding="utf-8")
-            name = f"{script}: {what}: {line}"
+            name = f"{script}, {function}: {what}: {line}"
         if mutant:
             env.update(SLUMPY_CASES_FOR=script, SLUMPY_FAIL_FAST="1")
         try:
             p = subprocess.run([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
                                capture_output=True, text=True, env=env, timeout=600)
-            failed = p.returncode != 0
+            failed, output = p.returncode != 0, p.stdout
         except subprocess.TimeoutExpired:
-            failed = True
+            failed, output = True, "the self-test timed out"
         if mutant is None:
-            return None if not failed else "baseline fails; mutants not measured:\n" + p.stdout
+            return None if not failed else "baseline fails; mutants not measured:\n" + output
         return None if failed else f"surviving mutant: {name}"
 
 
@@ -555,9 +566,12 @@ def main():
             print(baseline)
             return 1
         generated = generated_mutants()
-        keys = {(m[0], m[4], m[5]) for m in generated}
-        stale = [f"stale EQUIVALENT entry: {k}" for k in EQUIVALENT if k not in keys]
-        todo = MUTANTS + [m for m in generated if (m[0], m[4], m[5]) not in EQUIVALENT]
+        count = {}
+        for m in generated:
+            count[key(m)] = count.get(key(m), 0) + 1
+        stale = [f"EQUIVALENT entry matches {count.get(k, 0)} mutants, not one: {k}"
+                 for k in EQUIVALENT if count.get(k, 0) != 1]
+        todo = MUTANTS + [m for m in generated if key(m) not in EQUIVALENT]
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             problems = stale + [r for r in pool.map(run_copy, todo) if r]
         total = len(MUTANTS) + len(generated)

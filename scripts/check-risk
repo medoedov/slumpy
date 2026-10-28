@@ -79,12 +79,15 @@ def match(name, glob):
 def main():
     if "--rules" in sys.argv:
         print(json.dumps(load_rules()))
-        return 0
-    if "--changed" in sys.argv:
+    elif "--changed" in sys.argv:
         tracked, untracked = change_set(base())
         sys.stdout.write("\0".join(sorted(set(tracked) | set(untracked))))
-        return 0
+    else:
+        return check()
+    return 0
 
+
+def check():
     rules = load_rules()
     b = base()
     tracked, untracked = change_set(b)

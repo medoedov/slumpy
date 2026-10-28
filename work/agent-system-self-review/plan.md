@@ -25,6 +25,33 @@ Close the weak spots the self-review of 2026-10-28 found that can be fixed witho
 Conditions kept when moving the review rules (lesson "An adapted or generalized rule loses the
 condition that limits it"): the table in the next section maps each one to its new place.
 
+## Item 9, revised after review round 2 (`rethink approach`)
+
+Round 2 found that `EQUIVALENT` exempted mutants that do change what a check reports (on inputs
+the author judged unlikely), that occurrence-numbered keys could pass an exemption to a new line,
+and that the generator lacked two operators. The author was still deciding which logic needs no
+case. Revised approach:
+
+- `EQUIVALENT` holds only mutants that are equivalent on every input. Logic whose mutants are
+  equivalent only for today's files is deleted (`check-layers` joins the whole first paragraph,
+  maxsplit arguments that cannot matter, `check-pointers` reports through one problem list) or
+  gets a case.
+- Code no case could reach becomes reachable through two test seams instead of a list of
+  exemptions: `SLUMPY_TEST_HOOK_CRASH` makes the hook raise, so its crash handler is tested;
+  `SLUMPY_NOW` sets the clock of `check-upkeep` and `check-lessons`, so the date edges are tested at
+  fixed instants. Both checks compute dates without the machine's zone: a date is in the future if
+  it is later than today in UTC+14, and an age counts from today in UTC−12.
+- A key is the script, the enclosing function, the mutation, and the line; an `EQUIVALENT` entry
+  must match exactly one generated mutant, or the run fails as stale or ambiguous. No occurrence
+  numbers.
+- The generator also flips each operator of a chained comparison and drops each operand of a
+  binary operator.
+- A case for each input the reviewer found: a body line starting with `paths:` and a list item
+  right after the frontmatter in a core file; a nested repository in the change set (no
+  traceback; failing on it is a separate debt); a root file named `*.swift` beside a trigger in
+  `docs/`; a `|` above the upkeep table; a row without its leading pipe right under the table;
+  a check that prints nothing or two lines; the order of reasons in the hook message.
+
 ## Conditions of the moved review rules
 | Condition (where it was) | Where it is now |
 |---|---|
@@ -141,3 +168,12 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
 - Run 3 (8c9191d): 568 mutants, 2 survived, both from cases that tested the wrong thing (a lesson
   case that failed for a missing field instead of the overdue entry; a frontmatter case whose key
   held no list). Fixed; both mutants and a related one are killed.
+- Reviewer, code, round 2 (718a614): `rethink approach` for item 9 only; the rest of the diff is
+  clean and round-1 findings 1–7 and 9–12 are resolved, finding 8 accepted as disputed. Blocking:
+  `EQUIVALENT` exempted mutants that change a check's report (a body `paths:` line, a list item
+  after the fence, a nested repository, the crash handler, the clock), with unstable keys; three
+  reviewer mutants survived (the literal pathspec, a chained comparison, the end of the upkeep
+  table). Non-blocking: a baseline timeout crashes the run; ledger row 26 is prose, not a gate; a
+  stale comment. Pre-existing: an untracked nested repository hides its files from `check-risk`
+  (recorded in `docs/tech-debt.md`); cases read the clock once. Item 9 revised above; a fresh pair
+  of rounds follows, once per change.
