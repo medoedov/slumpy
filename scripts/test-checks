@@ -10,9 +10,12 @@ with a planted failure, so a rule or check without a working case fails the self
 with every new skip path or input.
 
 --mutants: runs the unmodified self-test first (a failing baseline fails the run), then applies
-each mutant in MUTANTS to a copy of the scripts; the self-test must fail on each. A surviving
-mutant is logic no case observes; a mutant whose text no longer occurs exactly once is stale and
-fails the run. Run it after every change to scripts/ (on demand: it takes minutes).
+each written mutant in MUTANTS and each mutant generated from the code of the checks
+(GENERATED_FROM) to a copy of the scripts; the self-test, limited to the cases that run the
+mutated script, must fail on each. A surviving mutant is logic no case observes, unless EQUIVALENT
+gives the reason it cannot change what the check reports. A written mutant whose text no longer
+occurs exactly once, or an EQUIVALENT entry that matches no generated mutant, is stale and fails
+the run. Run it after every change to scripts/ (on demand: about 20 minutes).
 """
 import ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
@@ -225,7 +228,7 @@ STATIC = [
     ("a paths list in a core file's body, after its frontmatter, is scanned", dict(runs=one([(".claude/rules/core-code.md", "\npaths:\n  - Slumpy\n", "append")]), script=["check-layers"], expect=fails)),
     ("project term in a core skill's frontmatter description", dict(runs=one([(".claude/skills/engineering-design/SKILL.md", ("Technical brief before code", "Technical brief before Swift code"), "replace")]), script=["check-layers"], expect=fails)),
     ("term in a frontmatter list other than paths", dict(runs=one([(".claude/agents/reviewer.md", ("skills:\n  - engineering-design\n", "skills:\n  - engineering-design\n  - swift-helper\n"), "replace")]), script=["check-layers"], expect=fails)),
-    ("term in a frontmatter key after the paths list", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n', '  - "**/*.swift"\nnote: Slumpy\n'), "replace")]), script=["check-layers"], expect=fails)),
+    ("term in a frontmatter list after the paths list", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n', '  - "**/*.swift"\nnote:\n  - Slumpy\n'), "replace")]), script=["check-layers"], expect=fails)),
     ("rule file in no layer", dict(runs=one([(".claude/rules/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     ("rule file in a subfolder in no layer", dict(runs=one([(".claude/rules/sub/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
@@ -277,7 +280,7 @@ STATIC = [
     ("lesson unguarded a day past the grace period", dict(runs=one([("docs/lessons.md", LESSON.format(title="Late", guard="this entry only.", added=DAYS_AGO(31)), "append")]), script=["check-lessons"], expect=fails)),
     ("old lesson guarded by a test passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Guarded", guard="a case in scripts/test-checks.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=passes)),
     ("lesson date followed by a note", dict(runs=one([("docs/lessons.md", LESSON.format(title="Noted", guard="a test.", added=TODAY + " (moved from the audit)"), "append")]), script=["check-lessons"], expect=passes)),
-    ("a lesson that mentions the Entries heading does not end the list", dict(runs=one([("docs/lessons.md", LESSON.format(title="Heading", guard="a test.", added=TODAY).replace("- **Symptom:** x", "- **Symptom:** the ## Entries heading was renamed"), "append"), OVERDUE]), script=["check-lessons"], expect=fails)),
+    ("a lesson that mentions the Entries heading does not end the list", dict(runs=one([("docs/lessons.md", LESSON.format(title="Heading", guard="a test.", added=TODAY).replace("- **Symptom:** x", "- **Symptom:** the ## Entries heading was renamed"), "append"), OVERDUE]), script=["check-lessons"], expect=fails_with("lesson 'Old trap'"))),
     ("overdue lesson as the first entry", dict(runs=one([("docs/lessons.md", LESSON.format(title="First", guard="this entry only.", added="2000-01-01").lstrip("\n") + "\n", "prepend-entry")]), script=["check-lessons"], expect=fails)),
     ("overdue lesson with a capitalized guard", dict(runs=one([("docs/lessons.md", LESSON.format(title="Caps", guard="This entry only.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails)),
     ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),

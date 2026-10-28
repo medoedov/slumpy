@@ -44,8 +44,16 @@ this list; remove an entry when it is fixed.
   the self-test inside `scripts/check` and the hook, and the failure of `scripts/check` once an
   Xcode project exists were not shipped: the last review round found logic in them that no case
   observed.
-- **Fix:** generate mutants mechanically (an `ast` walk over `check` and `check-risk` that forces
-  each condition, drops each operand, removes each early return), with an allowlist of equivalent
-  mutants and reasons; then bring the three parts back, each through review. The project-marker
-  failure is due at the skeleton ADR at the latest.
+- **Fix:** mutants are generated since 2026-10-28 (`scripts/test-checks`, `GENERATED_FROM`); bring
+  the three parts back, each through review. The project-marker failure is due at the skeleton
+  ADR at the latest.
 - **Found:** 2026-10-28, gates review, fresh round 2.
+
+### check-pointers scans only tracked Markdown
+
+- **Where:** `scripts/check-pointers`, the `git ls-files` list.
+- **Problem:** a pointer in a new, uncommitted file (a new plan.md) is not checked when the Stop
+  hook runs; it is checked after the commit.
+- **Fix:** add untracked Markdown files (`git ls-files --others --exclude-standard`) to the scan,
+  with a case.
+- **Found:** 2026-10-28, review of the self-review fixes, round 1 (pre-existing).
