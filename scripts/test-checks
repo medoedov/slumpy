@@ -203,7 +203,7 @@ def check_cases():
         cases.append((f"{name} reports its planted failure and not its success line",
                       dict(runs=one(plant), script=[name], expect=lambda o, n=name: fails_with(PLANT_TEXT[n])(o) and SUCCESS[n] not in o[-1].stdout)))
         cases.append((f"scripts/check reports a failure of {name}",
-                      dict(runs=one(plant), script=["check"], expect=lambda o, n=name: fails(o) and f"[FAIL] {n}" in o[-1].stdout and PLANT_TEXT[n] in o[-1].stdout)))
+                      dict(runs=one(plant), script=["check"], expect=lambda o, n=name: fails(o) and f"[FAIL] {n}" in o[-1].stdout and f"\n{n}:\n" in o[-1].stdout and PLANT_TEXT[n] in o[-1].stdout)))
         cases.append((f"the hook blocks on a failure of {name}",
                       dict(runs=one(plant, stdin=HOOK), script=["check", "--hook"], expect=lambda o, n=name: is_block(o[-1], f"{n}:"))))
     return cases
@@ -223,6 +223,9 @@ STATIC = [
     ("project term in a core file's title line", dict(runs=one([(".claude/rules/core-process.md", ("# Agent process (core)", "# Agent process (core) for Slumpy"), "replace")]), script=["check-layers"], expect=fails)),
     ("a paths list in a core file's body, after a rule line, is scanned", dict(runs=one([(".claude/rules/core-process.md", "\n---\npaths:\n  - Slumpy\n", "append")]), script=["check-layers"], expect=fails)),
     ("a paths list in a core file's body, after its frontmatter, is scanned", dict(runs=one([(".claude/rules/core-code.md", "\npaths:\n  - Slumpy\n", "append")]), script=["check-layers"], expect=fails)),
+    ("project term in a core skill's frontmatter description", dict(runs=one([(".claude/skills/engineering-design/SKILL.md", ("Technical brief before code", "Technical brief before Swift code"), "replace")]), script=["check-layers"], expect=fails)),
+    ("term in a frontmatter list other than paths", dict(runs=one([(".claude/agents/reviewer.md", ("skills:\n  - engineering-design\n", "skills:\n  - engineering-design\n  - swift-helper\n"), "replace")]), script=["check-layers"], expect=fails)),
+    ("term in a frontmatter key after the paths list", dict(runs=one([(".claude/rules/core-code.md", ('  - "**/*.swift"\n', '  - "**/*.swift"\nnote: Slumpy\n'), "replace")]), script=["check-layers"], expect=fails)),
     ("rule file in no layer", dict(runs=one([(".claude/rules/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     ("rule file in a subfolder in no layer", dict(runs=one([(".claude/rules/sub/extra.md", "# Extra\n", "write")]), script=["check-layers"], expect=fails)),
     # check-pointers
@@ -258,7 +261,8 @@ STATIC = [
     ("no base to compare with", dict(runs=one(git=[["branch", "-D", "dev"]]), script=["check-risk"], expect=lambda o: fails(o) and "no base" in o[-1].stdout + o[-1].stderr)),
     ("only origin/dev as the base", dict(runs=one(git=[["remote", "add", "origin", "{template}"], ["fetch", "-q", "origin", "dev"], ["branch", "-D", "dev"]]), script=["check-risk"], expect=passes)),
     ("a removed trigger line needs no evidence", dict(base=[KEYCHAIN], runs=one([("App/Store.swift", "let s = 1\n", "write")]), script=["check-risk"], expect=passes)),
-    ("a file name is not its content", dict(base=[("App/URLSessionClient.swift", "let a = 1\n", "write")], runs=one([("App/URLSessionClient.swift", "let a = 2\n", "write")]), script=["check-risk"], expect=passes)),
+    ("a file name is not its content", dict(base=[("App/URLSession+Retry.swift", "let a = 1\n", "write")], runs=one([("App/URLSession+Retry.swift", "let a = 2\n", "write")]), script=["check-risk"], expect=passes)),
+    ("a rule without **/ matches only its own glob", dict(runs=one([("scripts/risk-paths", "\nt2  abcRoot.yml\n", "append"), ("Root.yml", "x\n", "write")]), script=["check-risk"], expect=passes)),
     ("committed trigger at the start of a line without evidence", dict(runs=one([("App/Shop.swift", "import StoreKit\n", "write")], commit=True), script=["check-risk"], expect=fails)),
     ("committed t2 path with a committed T1 line", dict(runs=one([PKG, (PLAN, T1_LINE, "write")], commit=True), script=["check-risk"], expect=passes)),
     ("a blank line between rules is skipped", dict(runs=one([("scripts/risk-paths", ("t2               **/project.yml\n", "t2               **/project.yml\n\n"), "replace")]), script=["check-risk"], expect=passes)),
@@ -273,6 +277,7 @@ STATIC = [
     ("lesson unguarded a day past the grace period", dict(runs=one([("docs/lessons.md", LESSON.format(title="Late", guard="this entry only.", added=DAYS_AGO(31)), "append")]), script=["check-lessons"], expect=fails)),
     ("old lesson guarded by a test passes", dict(runs=one([("docs/lessons.md", LESSON.format(title="Guarded", guard="a case in scripts/test-checks.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=passes)),
     ("lesson date followed by a note", dict(runs=one([("docs/lessons.md", LESSON.format(title="Noted", guard="a test.", added=TODAY + " (moved from the audit)"), "append")]), script=["check-lessons"], expect=passes)),
+    ("a lesson that mentions the Entries heading does not end the list", dict(runs=one([("docs/lessons.md", LESSON.format(title="Heading", guard="a test.", added=TODAY).replace("- **Symptom:** x", "- **Symptom:** the ## Entries heading was renamed"), "append"), OVERDUE]), script=["check-lessons"], expect=fails)),
     ("overdue lesson as the first entry", dict(runs=one([("docs/lessons.md", LESSON.format(title="First", guard="this entry only.", added="2000-01-01").lstrip("\n") + "\n", "prepend-entry")]), script=["check-lessons"], expect=fails)),
     ("overdue lesson with a capitalized guard", dict(runs=one([("docs/lessons.md", LESSON.format(title="Caps", guard="This entry only.", added="2000-01-01"), "append")]), script=["check-lessons"], expect=fails)),
     ("lesson with a missing field", dict(runs=one([("docs/lessons.md", "\n### Broken\n\n- **Symptom:** x\n", "append")]), script=["check-lessons"], expect=fails)),
@@ -338,7 +343,7 @@ MUTANTS = [
     ("check-lessons", 'text.split("## Entries", 1)[1])[1:]', 'text.split("## Entries", 1)[1])[2:]', "first lesson skipped"),
     ("check-lessons", '.strip().lower()', ".strip()", "guard case-sensitive"),
     ("check-layers", 'problems += scan(platform + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")', "pass", "restating scan off"),
-    ("check-layers", 'problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)', "pass", "language scan off"),
+    ("check-layers", 'problems += scan(core, CYRILLIC, "non-English text")', "pass", "language scan off"),
     ("check-layers", '            problems.append(f"core file not named in core-process.md: {f.relative_to(ROOT)}")', "            pass", "unnamed core file accepted"),
     ("check-pointers", "if not any(s.startswith(key) for c in candidates for s in sections(c)):", "if False:", "pointers never checked"),
     ("check-pointers", '            if "/" in name:', "            if False:", "path pointers resolved by file name"),
@@ -411,7 +416,42 @@ GENERATED_FROM = ["check", "check-risk", "check-lessons", "check-layers", "check
 FLIP = {ast.Gt: ">=", ast.GtE: ">", ast.Lt: "<=", ast.LtE: "<", ast.Eq: "!=", ast.NotEq: "==",
         ast.In: "not in", ast.NotIn: "in", ast.Is: "is not", ast.IsNot: "is"}
 # (script, mutation, the original line stripped): why the mutant cannot change what the check reports.
+CRASH = "the hook's crash handler: no input the cases can build crashes the hook"
+NONE_EXIT = "returning None exits with 0 as well"
 EQUIVALENT = {
+    ("check", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
+    ("check", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check", "statement removed at column 0, occurrence 2", "return 0"): NONE_EXIT,
+    ("check", "statement removed at column 0, occurrence 3", "return 0"): NONE_EXIT,
+    ("check", "exit code 0 to 1 at column 7, occurrence 3", "return 0"): CRASH,
+    ("check", "condition always false at column 5", "elif error:"): CRASH,
+    ("check", "statement removed at column 0", 'out = {"decision": "block", "reason": reason}'): CRASH,
+    ("check", "statement removed at column 0", 'respond("scripts/check --hook crashed:\\n" + traceback.format_exc(), continuing, error=True)'): CRASH,
+    ("check", "condition always true at column 31", 'last = out.splitlines()[-1] if out else ""'): "every check prints at least one line",
+    ("check", "1 to 0 at column 25", 'last = out.splitlines()[-1] if out else ""'): "the summary shows one line of a check's output and the full output follows; which line is cosmetic",
+    ("check", "0 to 1 at column 14", 'failed.insert(0, "change set: " + (changed.stdout + changed.stderr).strip())'): "the order of the reasons in the message is cosmetic",
+    ("check", "operand 2 of or dropped at column 29", 'continuing = bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))'): "an empty stdin fails to parse and leaves continuing False, as {} does",
+    ("check-risk", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
+    ("check-risk", "statement removed at column 0", "return 0"): NONE_EXIT,
+    ("check-risk", "condition always true at column 51", 'return [n for n in out(*args, "-z").split("\\0") if n]'): "an empty name matches no rule and is no file, and the hook strips NUL separators",
+    ("check-risk", "condition always true at column 59", "added = {f: added_lines(b, f, untracked) for f in files if (ROOT / f).is_file()}"): "the diff of a deleted file adds no lines",
+    ("check-layers", "statement removed at column 0", 'line = ""'): "a fence line holds no term and no Cyrillic",
+    ("check-layers", "statement removed at column 0, occurrence 2", 'line = ""'): "a fence line holds no term and no Cyrillic",
+    ("check-layers", "operand 1 of and dropped at column 5", 'elif in_fm and line == "---":'): "outside the frontmatter in_fm is already False, and the line holds no term",
+    ("check-layers", "operand 1 of and dropped at column 5", 'elif in_fm and line.startswith("paths:"):'): "outside the frontmatter only the 'paths:' line itself is blanked; its list items still need in_fm",
+    ("check-layers", "operand 1 of and dropped at column 5", r'elif in_fm and in_paths and re.match(r"\s+- ", line):'): "after the closing fence the first body line, never an indented list item, resets in_paths",
+    ("check-layers", "condition always true at column 49", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "blank lines add only spaces to the joined paragraph",
+    ("check-layers", "1 to 2 at column 42", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "line 1 is the blank line after the title",
+    ("check-layers", "1 to 0 at column 42", 'text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())'): "the title holds no backticked file name",
+    ("check-layers", "1 to 2 at column 39", 'sentence = text.split(" are the core", 1)[0]'): "a higher maxsplit keeps the same first part",
+    ("check-pointers", "operand 1 of and dropped at column 3", "if f and not f.startswith(FROZEN) and (ROOT / f).is_file()]"): "an empty name is no file, so the last operand drops it too",
+    ("check-pointers", "statement removed at column 0, occurrence 2", "continue"): "with no candidates the next test skips the pointer as well",
+    ("check-pointers", "1 to 2 at column 9", "status = 1"): "status is only compared with 0 and passed to sys.exit",
+    ("check-pointers", "1 to 2 at column 9, occurrence 2", "status = 1"): "status is only compared with 0 and passed to sys.exit",
+    ("check-upkeep", "1 to 2 at column 36", 'lines = text.split("\\n## Upkeep\\n", 1)[1].split("\\n## ", 1)[0].splitlines()'): "the section still ends at the next heading",
+    ("check-upkeep", "1 to 2 at column 57", 'lines = text.split("\\n## Upkeep\\n", 1)[1].split("\\n## ", 1)[0].splitlines()'): "a higher maxsplit keeps the same first part",
+    ("check-upkeep", "14 to 15 at column 74", "latest = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()"): "an hour's shift moves the latest date during one hour a day only",
+    ("check-upkeep", "14 to 13 at column 74", "latest = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()"): "an hour's shift moves the latest date during one hour a day only",
 }
 
 
@@ -465,6 +505,11 @@ def generated_mutants(root=ROOT):
                               ast.Raise)) or (isinstance(n, ast.Expr)
                                               and not isinstance(n.value, ast.Constant)):
                 add(n, "pass", "statement removed")
+    seen = {}                                     # the same mutation on identical lines: number them
+    for i, (script, a, b, new, what, line) in enumerate(out):
+        k = seen[script, what, line] = seen.get((script, what, line), 0) + 1
+        if k > 1:
+            out[i] = (script, a, b, new, f"{what}, occurrence {k}", line)
     return out
 
 
