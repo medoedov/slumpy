@@ -102,3 +102,8 @@ The last column lists each condition of the old rule and where it is kept; the r
   the docs rule moved to core-process, Where things live. Probes: Cyrillic, project and platform
   terms, a tier label, a reviewer rule, decision-rights text, an unnamed core file, a broken term
   list, and renamed sections all fail the checks.
+- Reviewer, code, fresh round 2 (34e8b5a): `fix and verify`. All fresh round-1 findings resolved.
+  One new blocking finding: CLAUDE.md triggered check-layers only after core edits, although the
+  check now also guards the platform pack and CLAUDE.md; the trigger now names all three. Two
+  non-blocking gaps in the scripts' coverage went to `docs/tech-debt.md`. Verified by running both
+  checks; no further round.

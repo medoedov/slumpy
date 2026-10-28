@@ -8,8 +8,8 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 
 - Layers and their files: `.claude/rules/core-process.md`, first paragraph. Platform pack here:
   Apple iOS.
-- Run `scripts/check-layers` after editing a core file and `scripts/check-pointers` after moving or
-  renaming a section; both catch listed cases only.
+- Run `scripts/check-layers` after editing a core file, a platform-pack file, or CLAUDE.md, and
+  `scripts/check-pointers` after moving or renaming a section; both catch listed cases only.
 
 ## Project facts
 
