@@ -104,3 +104,7 @@ session to Accept edits and asked the agent to apply them.
   scripts, and a Limits sentence was wrong. Per the rule, the three parts are left out (section
   above) and the sentence corrected; the shipped rest re-verified: 112 cases, 29 of 29 mutants
   after a passing baseline.
+- Settings applied (ed9df17). Smoke test in a real session (`claude -p` in a throwaway worktree with
+  a planted core violation, edit tools withheld): the Stop hook blocked with the failing check as
+  the reason, the session continued, the second stop got a system message instead of a block, and
+  the session ended. The app shows the block as "Stop hook error occurred"; see `docs/tech-debt.md`.

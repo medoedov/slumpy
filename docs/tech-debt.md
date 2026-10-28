@@ -70,3 +70,14 @@ an entry when it is fixed.
 - **Fix:** when the pointer has a path, resolve that path only and report a missing file.
 - **Found:** 2026-10-28, while re-verifying the gates after the last review round.
 
+### The Stop hook's block shows as an error notification
+
+- **Where:** `scripts/check`, `respond`.
+- **Problem:** a block with `"decision": "block"` makes the app show "Stop hook error occurred",
+  which reads as a malfunction to the owner. The hooks reference says
+  `hookSpecificOutput.additionalContext` on Stop continues the session through the same loop
+  protections without an error notification.
+- **Fix:** return `additionalContext` instead of the block decision; update the hook cases in
+  `scripts/test-checks` and rerun `--mutants`.
+- **Found:** 2026-10-28, smoke test of the applied hook.
+
