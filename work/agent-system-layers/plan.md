@@ -107,3 +107,7 @@ The last column lists each condition of the old rule and where it is kept; the r
   check now also guards the platform pack and CLAUDE.md; the trigger now names all three. Two
   non-blocking gaps in the scripts' coverage went to `docs/tech-debt.md`. Verified by running both
   checks; no further round.
+- Eval (21d668d): `work/agent-system-audit/baseline.md`, section 16. Product, review, and design
+  not worse; the design skill fires more often; traps proportionate 2/4 against 4/4, both misses in
+  runs where the design skill fired; cost lower in every group (−12% to −39%). Accepted by the
+  adoption rule; T1, T2 proportionality is a watch item for the pilot.

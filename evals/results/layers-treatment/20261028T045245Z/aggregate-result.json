@@ -1,0 +1,925 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.312",
+  "startedAt": "2026-10-28T04:52:45.783Z",
+  "durationSeconds": 233,
+  "costUsd": 1.6111280000000001,
+  "partial": false,
+  "suite": {
+    "root": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/layers/evals/.build/repo",
+    "ablation": "none",
+    "modelOverride": "claude-opus-5-5",
+    "judgeModel": "claude-sonnet-5-5",
+    "tagFilters": [
+      "review"
+    ],
+    "threshold": 1,
+    "concurrency": 2,
+    "plugins": [
+      {
+        "name": "sys",
+        "version": "0.0.0",
+        "path": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/layers/evals/.build/repo"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "r1-leaky-storage-error",
+      "dir": "evals/review/r1-leaky-storage-error",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6 со строгой проверкой многопоточности, хранение через GRDB. Файлов проекта у тебя нет, только дифф ниже. Место, где создаётся `AddBookView`, обновлено в этом же изменении и в дифф не попало. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/Slumpy/Library/BookStore.swift\n+++ b/Slumpy/Library/BookStore.swift\n@@ -1,20 +1,32 @@\n import Foundation\n import GRDB\n \n struct Book: Codable, FetchableRecord, PersistableRecord, Identifiable, Sendable {\n     var id: UUID\n     var title: String\n     var author: String\n     var isbn: String?\n }\n \n final class BookStore: Sendable {\n     private let dbQueue: DatabaseQueue\n \n     init(dbQueue: DatabaseQueue) {\n         self.dbQueue = dbQueue\n     }\n \n     func allBooks() throws -> [Book] {\n         try dbQueue.read { db in try Book.order(Column(\"title\")).fetchAll(db) }\n     }\n+\n+    /// Inserts a book. The `book` table has a UNIQUE index on `isbn`.\n+    func add(_ book: Book) throws {\n+        try dbQueue.write { db in try book.insert(db) }\n+    }\n }\n--- a/Slumpy/Library/AddBookView.swift\n+++ b/Slumpy/Library/AddBookView.swift\n@@ -1,25 +1,49 @@\n import SwiftUI\n+import GRDB\n \n struct AddBookView: View {\n     let store: BookStore\n+    let onAdded: () -> Void\n     @State private var title = \"\"\n     @State private var author = \"\"\n     @State private var isbn = \"\"\n+    @State private var alertMessage: String?\n \n     var body: some View {\n         Form {\n             TextField(\"Название\", text: $title)\n             TextField(\"Автор\", text: $author)\n             TextField(\"ISBN\", text: $isbn)\n-            Button(\"Добавить\") {}\n+            Button(\"Добавить\", action: save)\n+                .disabled(title.isEmpty)\n         }\n+        .alert(alertMessage ?? \"\", isPresented: Binding(\n+            get: { alertMessage != nil },\n+            set: { if !$0 { alertMessage = nil } }\n+        )) {}\n+    }\n+\n+    private func save() {\n+        let book = Book(id: UUID(), title: title, author: author, isbn: isbn.isEmpty ? nil : isbn)\n+        do {\n+            try store.add(book)\n+            onAdded()\n+        } catch let error as DatabaseError where error.extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE {\n+            alertMessage = \"Эта книга уже есть в библиотеке\"\n+        } catch {\n+            alertMessage = \"Не удалось сохранить книгу\"\n+        }\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a leaky abstraction. AddBookView imports GRDB and pattern-matches `DatabaseError` with `.SQLITE_CONSTRAINT_UNIQUE`, so the UI layer depends on the storage library and its SQLite error codes. The fix is for BookStore to translate storage errors into its own domain error (for example `BookStoreError.duplicateISBN`) so the view never sees GRDB types.\n\nPASS if the response flags, as something to fix, that the view depends on GRDB / DatabaseError / SQLite constraint codes (storage details leaking into the UI) or explicitly recommends mapping the storage error to a domain error inside BookStore.\nFAIL if the response does not raise this point, or mentions it only as an optional style nit while saying the change is fine to merge as is.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a leaky abstraction. AddBookView imports GRDB and pattern-matches `DatabaseError` with `.SQLITE_CONSTRAINT_UNIQUE`, so the UI layer depends on the storage library and its SQLite error codes. The fix is for BookStore to translate storage errors into its own domain error (for example `BookStoreError.duplicateISBN`) so the view never sees GRDB types.\n\nPASS if the response flags, as something to fix, that the view depends on GRDB / DatabaseError / SQLite constraint codes (storage details leaking into the UI) or explicitly recommends mapping the storage error to a domain error inside BookStore.\nFAIL if the response does not raise this point, or mentions it only as an optional style nit while saying the change is fine to merge as is.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is that AddBookView depends on GRDB's DatabaseError and SQLite result codes. Everything else is correct for this app: synchronous GRDB `dbQueue.write` from a button action is acceptable for a single small insert; `BookStore` being `Sendable` is correct because `DatabaseQueue` is Sendable; the alert binding works; the unique index on isbn exists; generic \"could not save\" for other errors is acceptable; `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` correctly targets the unique-index violation; the caller of AddBookView was updated. Missing input trimming / ISBN normalization is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is that AddBookView depends on GRDB's DatabaseError and SQLite result codes. Everything else is correct for this app: synchronous GRDB `dbQueue.write` from a button action is acceptable for a single small insert; `BookStore` being `Sendable` is correct because `DatabaseQueue` is Sendable; the alert binding works; the unique index on isbn exists; generic \"could not save\" for other errors is acceptable; `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` correctly targets the unique-index violation; the caller of AddBookView was updated. Missing input trimming / ISBN normalization is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.2563626,
+            "judgeCostUsd": 0.030424000000000007,
+            "durationSeconds": 79,
+            "startedAt": "2026-10-28T04:52:46.064Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-fsBhe8/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Ревью\n\nПеред мержем стоит исправить одну вещь: не обрезаются пробелы в полях ввода. Ошибок многопоточности и неправильного использования GRDB в диффе я не нашёл. Проект я не собирал, это только чтение диффа.\n\n### Исправить до мержа\n\n**1. Пробелы в ISBN вызывают ложное «уже есть», пробелы в названии проходят проверку.**\n`isbn.isEmpty ? nil : isbn` превращает в `nil` только пустую строку. Если пользователь случайно ввёл пробел, в базу запишется `isbn = \" \"`. Вторая такая книга упадёт на UNIQUE, и пользователь увидит «Эта книга уже есть в библиотеке», хотя книги разные. С `title` похожая история: `.disabled(title.isEmpty)` пропускает название из одних пробелов.\n\n```swift\nlet trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)\nlet trimmedISBN = isbn.trimmingCharacters(in: .whitespacesAndNewlines)\nlet book = Book(id: UUID(), title: trimmedTitle, author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: trimmedISBN.isEmpty ? nil : trimmedISBN)\n```\n\n`.disabled` тоже должен проверять название после обрезки пробелов.\n\n### Желательно, но мерж не блокирует\n\n**2. Разбор ошибки GRDB лучше перенести в `BookStore`.** Сейчас View импортирует GRDB и опирается на детали схемы: в комментарии у `add` написано про UNIQUE-индекс, и View ловит `SQLITE_CONSTRAINT_UNIQUE`. Лучше, чтобы `BookStore.add` бросал свою ошибку, например `BookStoreError.duplicateISBN`. Тогда View не будет зависеть от GRDB, а при смене схемы или добавлении второго UNIQUE-индекса правка будет в одном месте.\n\n**3. Нет теста на `add`.** Стоит проверить три случая на реальной базе в памяти:\n- повторный ISBN даёт ошибку дубликата;\n- две книги без ISBN добавляются (в SQLite значения NULL не нарушают UNIQUE);\n- после добавления книга появляется в `allBooks()`.\n\nЕсли ошибку перенести в `BookStore` по пункту 2, тест будет проверять ровно то, что видит View.\n\n**4. Пустой заголовок алерта при закрытии.** После нажатия OK сеттер обнуляет `alertMessage`, и пока алерт анимированно закрывается, его заголовок может мигнуть пустой строкой. Это лечится вариантом `.alert(_:isPresented:presenting:)` или отдельным `Bool` для показа.\n\n**5. Ошибка в общем `catch` никак не логируется.** Пользователь увидит «Не удалось сохранить книгу», а причина потеряется. Стоит записать `error` в лог.\n\n**6. Запись идёт синхронно на главном потоке.** Для одного INSERT это нормально. Но если `dbQueue` в этот момент занят долгой записью, интерфейс подвиснет. Позже можно перейти на `try await dbQueue.write`.\n\n### Что я не смог проверить по диффу\n\n- Есть ли в миграциях UNIQUE-индекс на `isbn`, о котором говорит комментарий. Если его нет, ветка с дубликатом никогда не сработает, и все дубликаты молча запишутся в базу.\n- Что делает `onAdded` в вызывающем коде. После успешного сохранения поля формы не очищаются. Если `onAdded` не закрывает экран, повторное нажатие «Добавить» запишет вторую копию книги без ISBN, а для книги с ISBN покажет «уже есть»."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Ревью\n\nПеред мержем стоит исправить одну вещь: не обрезаются пробелы в полях ввода. Ошибок многопоточности и неправильного использования GRDB в диффе я не нашёл. Проект я не собирал, это только чтение диффа.\n\n### Исправить до мержа\n\n**1. Пробелы в ISBN вызывают ложное «уже есть», пробелы в названии проходят проверку.**\n`isbn.isEmpty ? nil : isbn` превращает в `nil` только пустую строку. Если пользователь случайно ввёл пробел, в базу запишется `isbn = \" \"`. Вторая такая книга упадёт на UNIQUE, и пользователь увидит «Эта книга уже есть в библиотеке», хотя книги разные. С `title` похожая история: `.disabled(title.isEmpty)` пропускает название из одних пробелов.\n\n```swift\nlet trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)\nlet trimmedISBN = isbn.trimmingCharacters(in: .whitespacesAndNewlines)\nlet book = Book(id: UUID(), title: trimmedTitle, author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: trimmedISBN.isEmpty ? nil : trimmedISBN)\n```\n\n`.disabled` тоже должен проверять название после обрезки пробелов.\n\n### Желательно, но мерж не блокирует\n\n**2. Разбор ошибки GRDB лучше перенести в `BookStore`.** Сейчас View импортирует GRDB и опирается на детали схемы: в комментарии у `add` написано про UNIQUE-индекс, и View ловит `SQLITE_CONSTRAINT_UNIQUE`. Лучше, чтобы `BookStore.add` бросал свою ошибку, например `BookStoreError.duplicateISBN`. Тогда View не будет зависеть от GRDB, а при смене схемы или добавлении второго UNIQUE-индекса правка будет в одном месте.\n\n**3. Нет теста на `add`.** Стоит проверить три случая на реальной базе в памяти:\n- повторный ISBN даёт ошибку дубликата;\n- две книги без ISBN добавляются (в SQLite значения NULL не нарушают UNIQUE);\n- после добавления книга появляется в `allBooks()`.\n\nЕсли ошибку перенести в `BookStore` по пункту 2, тест будет проверять ровно то, что видит View.\n\n**4. Пустой заголовок алерта при закрытии.** После нажатия OK сеттер обнуляет `alertMessage`, и пока алерт анимированно закрывается, его заголовок может мигнуть пустой строкой. Это лечится вариантом `.alert(_:isPresented:presenting:)` или отдельным `Bool` для показа.\n\n**5. Ошибка в общем `catch` никак не логируется.** Пользователь увидит «Не удалось сохранить книгу», а причина потеряется. Стоит записать `error` в лог.\n\n**6. Запись идёт синхронно на главном потоке.** Для одного INSERT это нормально. Но если `dbQueue` в этот момент занят долгой записью, интерфейс подвиснет. Позже можно перейти на `try await dbQueue.write`.\n\n### Что я не смог проверить по диффу\n\n- Есть ли в миграциях UNIQUE-индекс на `isbn`, о котором говорит комментарий. Если его нет, ветка с дубликатом никогда не сработает, и все дубликаты молча запишутся в базу.\n- Что делает `onAdded` в вызывающем коде. После успешного сохранения поля формы не очищаются. Если `onAdded` не закрывает экран, повторное нажатие «Добавить» запишет вторую копию книги без ISBN, а для книги с ISBN покажет «уже есть»."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r2-unchecked-sendable-race",
+      "dir": "evals/review/r2-unchecked-sendable-race",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6 со строгой проверкой многопоточности. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- /dev/null\n+++ b/Slumpy/Stats/SessionStats.swift\n@@ -0,0 +1,24 @@\n+import Foundation\n+\n+/// Running totals shown on the stats screen and in the Live Activity.\n+final class SessionStats: @unchecked Sendable {\n+    static let shared = SessionStats()\n+\n+    private(set) var totalMinutes = 0\n+    private(set) var finishedSessionIDs: [UUID] = []\n+\n+    func record(sessionID: UUID, minutes: Int) {\n+        guard !finishedSessionIDs.contains(sessionID) else { return }\n+        finishedSessionIDs.append(sessionID)\n+        totalMinutes += minutes\n+    }\n+}\n--- a/Slumpy/Session/SessionImporter.swift\n+++ b/Slumpy/Session/SessionImporter.swift\n@@ -10,12 +10,19 @@ struct SessionImporter {\n     let store: SessionStore\n \n     /// Imports sessions saved by the DeviceActivity extension while the app was closed.\n     func importPending() async throws {\n         let pending = try await store.pendingSessions()\n-        for session in pending {\n-            try await store.markImported(session.id)\n+        try await withThrowingTaskGroup(of: Void.self) { group in\n+            for session in pending {\n+                group.addTask {\n+                    try await store.markImported(session.id)\n+                    SessionStats.shared.record(sessionID: session.id, minutes: session.minutes)\n+                }\n+            }\n         }\n     }\n }\n--- a/Slumpy/Session/ReadingSessionModel.swift\n+++ b/Slumpy/Session/ReadingSessionModel.swift\n@@ -40,6 +40,7 @@ final class ReadingSessionModel {\n     func finish() {\n         timer.stop()\n         let minutes = Int(timer.elapsed / 60)\n+        SessionStats.shared.record(sessionID: currentSessionID, minutes: minutes)\n         state = .finished(minutes: minutes)\n     }\n }\n```\n\n`ReadingSessionModel` объявлен как `@MainActor @Observable`.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a data race. `SessionStats` has unsynchronized mutable state (`totalMinutes`, `finishedSessionIDs`) and is marked `@unchecked Sendable`, which silences the compiler. `record` is called concurrently from task-group child tasks and from the main actor, so the check-then-append and `+=` race (lost updates, duplicate counting, possible crash on array mutation).\n\nPASS if the response flags that `@unchecked Sendable` hides unsynchronized mutable state that is accessed concurrently (a data race) and proposes a real fix such as making it an actor, isolating it to the MainActor, or protecting it with a lock/Mutex.\nFAIL if the race is not identified as a must-fix problem.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a data race. `SessionStats` has unsynchronized mutable state (`totalMinutes`, `finishedSessionIDs`) and is marked `@unchecked Sendable`, which silences the compiler. `record` is called concurrently from task-group child tasks and from the main actor, so the check-then-append and `+=` race (lost updates, duplicate counting, possible crash on array mutation).\n\nPASS if the response flags that `@unchecked Sendable` hides unsynchronized mutable state that is accessed concurrently (a data race) and proposes a real fix such as making it an actor, isolating it to the MainActor, or protecting it with a lock/Mutex.\nFAIL if the race is not identified as a must-fix problem.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the data race in `SessionStats` hidden by `@unchecked Sendable`. Other points are acceptable: using a task group to mark sessions imported in parallel is fine if the store is safe for concurrent calls (assume it is an actor); `Int(timer.elapsed / 60)` truncation is the intended rule; a singleton for these totals is a design choice, not a defect by itself.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the data race in `SessionStats` hidden by `@unchecked Sendable`. Other points are acceptable: using a task group to mark sessions imported in parallel is fine if the store is safe for concurrent calls (assume it is an actor); `Int(timer.elapsed / 60)` truncation is the intended rule; a singleton for these totals is a design choice, not a defect by itself.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.18552059999999998,
+            "judgeCostUsd": 0.043899999999999995,
+            "durationSeconds": 58,
+            "startedAt": "2026-10-28T04:52:46.065Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-VX26eS/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Ревью: в таком виде мержить нельзя\n\n### Исправить до мержа\n\n**1. `SessionStats` — гонка данных, которую скрывает `@unchecked Sendable`.**\nУ класса изменяемое состояние (`totalMinutes`, `finishedSessionIDs`), и оно ничем не защищено. В Swift 6 компилятор не пропустил бы `static let shared` с несендабельным типом, а `@unchecked` просто отключил эту проверку. При этом гонка возникает в самом диффе:\n- в `SessionImporter` каждый `group.addTask` выполняется параллельно на глобальном пуле, и все они одновременно вызывают `record`. Одновременный `append` в массив может уронить приложение, а `totalMinutes +=` может терять прибавления;\n- `ReadingSessionModel.finish()` вызывает `record` с главного актора, и это может совпасть по времени с импортом.\n\nПроверка `contains`, а затем `append` — это не атомарная операция, так что дедупликация при гонке тоже не работает.\n\n**2. Экран статистики не узнает об изменениях.**\n`SessionStats` — обычный класс, а не `@Observable`, поэтому SwiftUI не перерисует экран, когда `record` меняет итоги.\n\nПункты 1 и 2 решаются одним изменением:\n```swift\n@MainActor @Observable\nfinal class SessionStats {\n    static let shared = SessionStats()\n    private(set) var totalMinutes = 0\n    private(set) var finishedSessionIDs: Set<UUID> = []\n\n    func record(sessionID: UUID, minutes: Int) {\n        guard finishedSessionIDs.insert(sessionID).inserted else { return }\n        totalMinutes += minutes\n    }\n}\n```\nВ импортере вызов станет `await SessionStats.shared.record(...)`. `Set` вместо массива нужен попутно: проверка `contains` у массива — O(n), а список растёт без ограничений.\n\n**3. `withThrowingTaskGroup` молча теряет ошибки `markImported`.**\nТело группы не забирает результаты дочерних задач: в нём нет ни `for try await`, ни `try await group.waitForAll()`. В таком случае группа при выходе дожидается задач, но их ошибки отбрасывает. До изменения сбой `markImported` пробрасывался из `importPending()`, теперь он пропадает. Кроме того, если `SessionStore` — actor, параллельность ничего не ускоряет. Если не actor, параллельная запись в хранилище — ещё одна потенциальная гонка. Советую вернуть последовательный цикл:\n```swift\nfor session in pending {\n    try await store.markImported(session.id)\n    await SessionStats.shared.record(sessionID: session.id, minutes: session.minutes)\n}\n```\n\n**4. Нет тестов.**\nНужно проверить хотя бы три вещи:\n- одна и та же сессия, записанная дважды (через `finish()` и через импорт), считается один раз;\n- импорт нескольких сессий даёт правильную сумму;\n- ошибка `markImported` пробрасывается из `importPending()`.\n\n### Вопросы к автору (по диффу не проверить, но могут оказаться багами)\n\n- **Итоги не сохраняются.** `SessionStats` живёт только в памяти. После перезапуска `totalMinutes` снова 0, а импортер добавляет только ещё не импортированные сессии. Если «running totals» должны быть общими за всё время, их надо хранить или считать из `SessionStore`. Отсюда же проблема порядка: `markImported` срабатывает раньше `record`. Если процесс упадёт между ними, сессия уже помечена импортированной, но в статистику не попала, и потом её никто не досчитает.\n- **Live Activity.** Комментарий обещает, что итоги видны в Live Activity. Но Live Activity отрисовывается в процессе расширения, и синглтон из процесса приложения туда не попадёт. Нужен `Activity.update(...)` или общий App Group. В диффе нет ни того, ни другого.\n- **Двойной учёт между процессами.** Если расширение DeviceActivity сохраняет как pending ту же сессию, которую приложение уже завершило через `finish()`, дедупликация по ID сработает только в рамках одного запуска.\n\n### Мелочь, на мерж не влияет\n\n`Int(timer.elapsed / 60)` отбрасывает дробную часть: сессия на 59 секунд запишется как 0 минут, и её ID попадёт в список завершённых. Если так задумано, ничего менять не нужно.\n\nУ меня был только дифф, проект я не собирал. Выводы про ошибки группы задач и про проверку Sendable в Swift 6 основаны на поведении языка, а не на запуске кода."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Ревью: в таком виде мержить нельзя\n\n### Исправить до мержа\n\n**1. `SessionStats` — гонка данных, которую скрывает `@unchecked Sendable`.**\nУ класса изменяемое состояние (`totalMinutes`, `finishedSessionIDs`), и оно ничем не защищено. В Swift 6 компилятор не пропустил бы `static let shared` с несендабельным типом, а `@unchecked` просто отключил эту проверку. При этом гонка возникает в самом диффе:\n- в `SessionImporter` каждый `group.addTask` выполняется параллельно на глобальном пуле, и все они одновременно вызывают `record`. Одновременный `append` в массив может уронить приложение, а `totalMinutes +=` может терять прибавления;\n- `ReadingSessionModel.finish()` вызывает `record` с главного актора, и это может совпасть по времени с импортом.\n\nПроверка `contains`, а затем `append` — это не атомарная операция, так что дедупликация при гонке тоже не работает.\n\n**2. Экран статистики не узнает об изменениях.**\n`SessionStats` — обычный класс, а не `@Observable`, поэтому SwiftUI не перерисует экран, когда `record` меняет итоги.\n\nПункты 1 и 2 решаются одним изменением:\n```swift\n@MainActor @Observable\nfinal class SessionStats {\n    static let shared = SessionStats()\n    private(set) var totalMinutes = 0\n    private(set) var finishedSessionIDs: Set<UUID> = []\n\n    func record(sessionID: UUID, minutes: Int) {\n        guard finishedSessionIDs.insert(sessionID).inserted else { return }\n        totalMinutes += minutes\n    }\n}\n```\nВ импортере вызов станет `await SessionStats.shared.record(...)`. `Set` вместо массива нужен попутно: проверка `contains` у массива — O(n), а список растёт без ограничений.\n\n**3. `withThrowingTaskGroup` молча теряет ошибки `markImported`.**\nТело группы не забирает результаты дочерних задач: в нём нет ни `for try await`, ни `try await group.waitForAll()`. В таком случае группа при выходе дожидается задач, но их ошибки отбрасывает. До изменения сбой `markImported` пробрасывался из `importPending()`, теперь он пропадает. Кроме того, если `SessionStore` — actor, параллельность ничего не ускоряет. Если не actor, параллельная запись в хранилище — ещё одна потенциальная гонка. Советую вернуть последовательный цикл:\n```swift\nfor session in pending {\n    try await store.markImported(session.id)\n    await SessionStats.shared.record(sessionID: session.id, minutes: session.minutes)\n}\n```\n\n**4. Нет тестов.**\nНужно проверить хотя бы три вещи:\n- одна и та же сессия, записанная дважды (через `finish()` и через импорт), считается один раз;\n- импорт нескольких сессий даёт правильную сумму;\n- ошибка `markImported` пробрасывается из `importPending()`.\n\n### Вопросы к автору (по диффу не проверить, но могут оказаться багами)\n\n- **Итоги не сохраняются.** `SessionStats` живёт только в памяти. После перезапуска `totalMinutes` снова 0, а импортер добавляет только ещё не импортированные сессии. Если «running totals» должны быть общими за всё время, их надо хранить или считать из `SessionStore`. Отсюда же проблема порядка: `markImported` срабатывает раньше `record`. Если процесс упадёт между ними, сессия уже помечена импортированной, но в статистику не попала, и потом её никто не досчитает.\n- **Live Activity.** Комментарий обещает, что итоги видны в Live Activity. Но Live Activity отрисовывается в процессе расширения, и синглтон из процесса приложения туда не попадёт. Нужен `Activity.update(...)` или общий App Group. В диффе нет ни того, ни другого.\n- **Двойной учёт между процессами.** Если расширение DeviceActivity сохраняет как pending ту же сессию, которую приложение уже завершило через `finish()`, дедупликация по ID сработает только в рамках одного запуска.\n\n### Мелочь, на мерж не влияет\n\n`Int(timer.elapsed / 60)` отбрасывает дробную часть: сессия на 59 секунд запишется как 0 минут, и её ID попадёт в список завершённых. Если так задумано, ничего менять не нужно.\n\nУ меня был только дифф, проект я не собирал. Выводы про ошибки группы задач и про проверку Sendable в Swift 6 основаны на поведении языка, а не на запуске кода."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r3-today-calendar-current",
+      "dir": "evals/review/r3-today-calendar-current",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/SlumpyCore/Sources/SlumpyCore/ReadingSession.swift\n+++ b/SlumpyCore/Sources/SlumpyCore/ReadingSession.swift\n@@ -1,9 +1,14 @@\n import Foundation\n \n+/// Product rule (approved): a session's minutes belong to the calendar day on which the session\n+/// started, in the time zone where the user was at that moment. That time zone is stored with\n+/// the session, so travelling later does not move past sessions to another day.\n public struct ReadingSession: Codable, Sendable, Identifiable {\n     public let id: UUID\n     public let startedAt: Date\n     public let duration: TimeInterval\n+    /// IANA identifier captured when the session started, e.g. \"Europe/Moscow\".\n+    public let timeZoneIdentifier: String\n }\n--- a/SlumpyCore/Sources/SlumpyCore/DailyProgress.swift\n+++ b/SlumpyCore/Sources/SlumpyCore/DailyProgress.swift\n@@ -1,12 +1,17 @@\n import Foundation\n \n public enum DailyProgress {\n-    public static func minutesToday(_ sessions: [ReadingSession]) -> Int {\n-        0\n+    /// Minutes read \"today\" for the daily goal ring.\n+    public static func minutesToday(_ sessions: [ReadingSession], now: Date = .now) -> Int {\n+        let calendar = Calendar.current\n+        let total = sessions\n+            .filter { calendar.isDate($0.startedAt, inSameDayAs: now) }\n+            .reduce(0) { $0 + $1.duration }\n+        return Int(total / 60)\n     }\n }\n--- a/SlumpyCore/Tests/SlumpyCoreTests/DailyProgressTests.swift\n+++ b/SlumpyCore/Tests/SlumpyCoreTests/DailyProgressTests.swift\n@@ -0,0 +1,14 @@\n+import Foundation\n+import Testing\n+@testable import SlumpyCore\n+\n+@Test func countsOnlyTodaysSessions() {\n+    let now = Date()\n+    let today = ReadingSession(id: UUID(), startedAt: now.addingTimeInterval(-600), duration: 1200, timeZoneIdentifier: \"Europe/Moscow\")\n+    let yesterday = ReadingSession(id: UUID(), startedAt: now.addingTimeInterval(-86_400 * 2), duration: 1800, timeZoneIdentifier: \"Europe/Moscow\")\n+    #expect(DailyProgress.minutesToday([today, yesterday], now: now) == 20)\n+}\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is that `minutesToday` uses `Calendar.current`, i.e. the device's current time zone, and ignores each session's stored `timeZoneIdentifier`. That contradicts the approved rule documented in the same diff: after travel (or around time zone changes), sessions are attributed to the wrong day. The fix is to evaluate the session's day in a calendar whose `timeZone` is the session's stored zone (and to decide explicitly which zone defines \"today\"), with tests that pin time zones instead of using `Date()` / the machine's zone.\n\nPASS if the response flags, as something to fix, that the day computation uses Calendar.current / the device time zone instead of the session's stored time zone (or otherwise identifies that travel / time zone changes make the result wrong relative to the stated rule).\nFAIL if the response does not raise this, or raises it only as an optional remark while approving the change.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is that `minutesToday` uses `Calendar.current`, i.e. the device's current time zone, and ignores each session's stored `timeZoneIdentifier`. That contradicts the approved rule documented in the same diff: after travel (or around time zone changes), sessions are attributed to the wrong day. The fix is to evaluate the session's day in a calendar whose `timeZone` is the session's stored zone (and to decide explicitly which zone defines \"today\"), with tests that pin time zones instead of using `Date()` / the machine's zone.\n\nPASS if the response flags, as something to fix, that the day computation uses Calendar.current / the device time zone instead of the session's stored time zone (or otherwise identifies that travel / time zone changes make the result wrong relative to the stated rule).\nFAIL if the response does not raise this, or raises it only as an optional remark while approving the change.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is ignoring the stored session time zone (Calendar.current). Acceptable as is: attributing a whole session to its start day is the approved product rule; truncating to whole minutes is intended; `ReadingSession` being a Codable/Sendable struct is correct; adding a non-optional field to this Codable struct is fine because sessions are not persisted yet. Pointing out that the test depends on the machine's clock/time zone, or is flaky around midnight, is a correct observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is ignoring the stored session time zone (Calendar.current). Acceptable as is: attributing a whole session to its start day is the approved product rule; truncating to whole minutes is intended; `ReadingSession` being a Codable/Sendable struct is correct; adding a non-optional field to this Codable struct is fine because sessions are not persisted yet. Pointing out that the test depends on the machine's clock/time zone, or is flaky around midnight, is a correct observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.17077399999999998,
+            "judgeCostUsd": 0.031075999999999993,
+            "durationSeconds": 46,
+            "startedAt": "2026-10-28T04:53:43.759Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-DgaVcw/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Вердикт: мержить пока нельзя.** Код нарушает продуктовое правило, которое записано в этом же диффе, а тест эту ошибку не ловит.\n\n## Что исправить до мержа\n\n### 1. `minutesToday` не использует сохранённый часовой пояс (баг)\n`Calendar.current` берёт часовой пояс устройства на момент вызова. Поле `timeZoneIdentifier` пишется, но нигде не читается. Получается ровно то, что правило запрещает: сессия, начатая в 00:30 по Москве, после перелёта в Нью-Йорк окажется во «вчера» по местному времени и попадёт в чужой день.\n\nПравильно так: день сессии считается в её собственном поясе, «сегодня» считается в текущем поясе пользователя, и сравниваются календарные даты (год, месяц, день), а не моменты времени. Например:\n\n```swift\npublic static func minutesToday(\n    _ sessions: [ReadingSession],\n    now: Date = .now,\n    timeZone: TimeZone = .current\n) -> Int {\n    let today = day(of: now, in: timeZone)\n    let seconds = sessions\n        .filter { day(of: $0.startedAt, in: TimeZone(identifier: $0.timeZoneIdentifier) ?? timeZone) == today }\n        .reduce(0) { $0 + $1.duration }\n    return Int(seconds / 60)\n}\n\nprivate static func day(of date: Date, in timeZone: TimeZone) -> DateComponents {\n    var calendar = Calendar(identifier: .gregorian)\n    calendar.timeZone = timeZone\n    return calendar.dateComponents([.year, .month, .day], from: date)\n}\n```\n\nПараметр `timeZone` нужен не только для удобства. Без него результат зависит от пояса машины, на которой идут тесты. Что делать, если идентификатор в сессии невалиден, в диффе не решено. В примере я подставил текущий пояс, но это нужно выбрать осознанно.\n\n### 2. Тест не проверяет правило и бывает нестабильным\n- Обе сессии в `Europe/Moscow`, «сегодня» считается в поясе машины. Тест проходит и с текущим неправильным кодом, то есть сломанное поведение он не ловит.\n- Он зависит от реального времени: если запустить его между 00:00 и 00:10 по местному времени, `now - 600` попадёт во вчера, и тест упадёт.\n- Сессия `yesterday` на самом деле начата два дня назад (`-86_400 * 2`), так что граница «вчера/сегодня» тоже не проверяется.\n\nНужны фиксированные даты и явные пояса. Хотя бы два случая, где день сессии в её поясе отличается от дня в текущем поясе:\n- **не должна считаться:** сессия начата 28.10 в 00:30 по Москве (в Нью-Йорке это ещё 27.10, 17:30). `now` = 27.10, 20:00 в Нью-Йорке, `timeZone: America/New_York`. Ожидаем 0, нынешний код вернёт минуты.\n- **должна считаться:** обратная ситуация, когда день сессии по её поясу совпадает с сегодняшним в текущем поясе, а в поясе устройства уже нет.\n\n### 3. Добавленное поле может сломать чтение старых данных (проверь)\nПо диффу не видно, сохраняются ли `ReadingSession` где-то через `Codable`. Если сохраняются, синтезированный `init(from:)` не прочитает старые записи без `timeZoneIdentifier`. Обычно падает декодирование всего массива, и вся история пропадает. В таком случае нужен `decodeIfPresent` с явно выбранным запасным значением или миграция. Если сессии пока нигде не хранятся, этот пункт можно пропустить.\n\n## Вопрос, не блокирующий мерж\nГде при старте сессии заполняется `timeZoneIdentifier` (`TimeZone.current.identifier`)? В диффе этого места нет. Memberwise init у публичной структуры `internal`, поэтому из app-таргета без `@testable` сессию создать не получится. Это было и до изменения, но стоит убедиться, что запись поля действительно где-то есть."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Вердикт: мержить пока нельзя.** Код нарушает продуктовое правило, которое записано в этом же диффе, а тест эту ошибку не ловит.\n\n## Что исправить до мержа\n\n### 1. `minutesToday` не использует сохранённый часовой пояс (баг)\n`Calendar.current` берёт часовой пояс устройства на момент вызова. Поле `timeZoneIdentifier` пишется, но нигде не читается. Получается ровно то, что правило запрещает: сессия, начатая в 00:30 по Москве, после перелёта в Нью-Йорк окажется во «вчера» по местному времени и попадёт в чужой день.\n\nПравильно так: день сессии считается в её собственном поясе, «сегодня» считается в текущем поясе пользователя, и сравниваются календарные даты (год, месяц, день), а не моменты времени. Например:\n\n```swift\npublic static func minutesToday(\n    _ sessions: [ReadingSession],\n    now: Date = .now,\n    timeZone: TimeZone = .current\n) -> Int {\n    let today = day(of: now, in: timeZone)\n    let seconds = sessions\n        .filter { day(of: $0.startedAt, in: TimeZone(identifier: $0.timeZoneIdentifier) ?? timeZone) == today }\n        .reduce(0) { $0 + $1.duration }\n    return Int(seconds / 60)\n}\n\nprivate static func day(of date: Date, in timeZone: TimeZone) -> DateComponents {\n    var calendar = Calendar(identifier: .gregorian)\n    calendar.timeZone = timeZone\n    return calendar.dateComponents([.year, .month, .day], from: date)\n}\n```\n\nПараметр `timeZone` нужен не только для удобства. Без него результат зависит от пояса машины, на которой идут тесты. Что делать, если идентификатор в сессии невалиден, в диффе не решено. В примере я подставил текущий пояс, но это нужно выбрать осознанно.\n\n### 2. Тест не проверяет правило и бывает нестабильным\n- Обе сессии в `Europe/Moscow`, «сегодня» считается в поясе машины. Тест проходит и с текущим неправильным кодом, то есть сломанное поведение он не ловит.\n- Он зависит от реального времени: если запустить его между 00:00 и 00:10 по местному времени, `now - 600` попадёт во вчера, и тест упадёт.\n- Сессия `yesterday` на самом деле начата два дня назад (`-86_400 * 2`), так что граница «вчера/сегодня» тоже не проверяется.\n\nНужны фиксированные даты и явные пояса. Хотя бы два случая, где день сессии в её поясе отличается от дня в текущем поясе:\n- **не должна считаться:** сессия начата 28.10 в 00:30 по Москве (в Нью-Йорке это ещё 27.10, 17:30). `now` = 27.10, 20:00 в Нью-Йорке, `timeZone: America/New_York`. Ожидаем 0, нынешний код вернёт минуты.\n- **должна считаться:** обратная ситуация, когда день сессии по её поясу совпадает с сегодняшним в текущем поясе, а в поясе устройства уже нет.\n\n### 3. Добавленное поле может сломать чтение старых данных (проверь)\nПо диффу не видно, сохраняются ли `ReadingSession` где-то через `Codable`. Если сохраняются, синтезированный `init(from:)` не прочитает старые записи без `timeZoneIdentifier`. Обычно падает декодирование всего массива, и вся история пропадает. В таком случае нужен `decodeIfPresent` с явно выбранным запасным значением или миграция. Если сессии пока нигде не хранятся, этот пункт можно пропустить.\n\n## Вопрос, не блокирующий мерж\nГде при старте сессии заполняется `timeZoneIdentifier` (`TimeZone.current.identifier`)? В диффе этого места нет. Memberwise init у публичной структуры `internal`, поэтому из app-таргета без `@testable` сессию создать не получится. Это было и до изменения, но стоит убедиться, что запись поля действительно где-то есть."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r4-timer-retain-cycle",
+      "dir": "evals/review/r4-timer-retain-cycle",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- /dev/null\n+++ b/Slumpy/Session/SessionTimer.swift\n@@ -0,0 +1,32 @@\n+import Foundation\n+import Observation\n+\n+/// Ticks once per second while the reading-session screen is open.\n+/// Created by ReadingSessionView as @State and dropped when the screen closes.\n+@MainActor\n+@Observable\n+final class SessionTimer {\n+    private(set) var elapsed: TimeInterval = 0\n+    private var timer: Timer?\n+    private var startedAt: Date?\n+\n+    func start() {\n+        startedAt = .now\n+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in\n+            MainActor.assumeIsolated {\n+                self.tick()\n+            }\n+        }\n+    }\n+\n+    private func tick() {\n+        guard let startedAt else { return }\n+        elapsed = Date.now.timeIntervalSince(startedAt)\n+    }\n+\n+    deinit {\n+        timer?.invalidate()\n+    }\n+}\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a retain cycle. A repeating `Timer` is retained by the run loop and strongly retains its closure, which strongly captures `self`. So `SessionTimer` is never deallocated when the screen closes, `deinit` (the only place that invalidates the timer) never runs, and the timer keeps firing and leaking. Fix: capture `[weak self]` and/or add an explicit `stop()` that invalidates the timer, called when the screen disappears.\n\nPASS if the response identifies the strong capture of self by the repeating timer closure (retain cycle / leak / deinit never called / timer never invalidated) as something to fix.\nFAIL if this is not identified as a must-fix problem.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a retain cycle. A repeating `Timer` is retained by the run loop and strongly retains its closure, which strongly captures `self`. So `SessionTimer` is never deallocated when the screen closes, `deinit` (the only place that invalidates the timer) never runs, and the timer keeps firing and leaking. Fix: capture `[weak self]` and/or add an explicit `stop()` that invalidates the timer, called when the screen disappears.\n\nPASS if the response identifies the strong capture of self by the repeating timer closure (retain cycle / leak / deinit never called / timer never invalidated) as something to fix.\nFAIL if this is not identified as a must-fix problem.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the retain cycle through the repeating Timer closure. Acceptable as is: `MainActor.assumeIsolated` is valid here because a scheduled Timer created on the main thread fires on the main run loop; computing elapsed from `startedAt` instead of counting ticks is correct; `@MainActor @Observable final class` is the intended pattern. Remarks that `deinit` of a MainActor class cannot touch isolated state in Swift 6, or that a missing `stop()` API is needed, are correct observations, not false alarms.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the retain cycle through the repeating Timer closure. Acceptable as is: `MainActor.assumeIsolated` is valid here because a scheduled Timer created on the main thread fires on the main run loop; computing elapsed from `startedAt` instead of counting ticks is correct; `@MainActor @Observable final class` is the intended pattern. Remarks that `deinit` of a MainActor class cannot touch isolated state in Swift 6, or that a missing `stop()` API is needed, are correct observations, not false alarms.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.21279320000000002,
+            "judgeCostUsd": 0.052902000000000005,
+            "durationSeconds": 59,
+            "startedAt": "2026-10-28T04:54:04.812Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-kWKAeB/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью `SessionTimer.swift`\n\nМержить пока нельзя. Ниже то, что нужно исправить. Код я не собирал, смотрел только дифф.\n\n## Исправить до мержа\n\n**1. Цикл удержания: таймер не останавливается, когда экран закрыт.**\nRun loop держит `Timer`, таймер держит свой closure, а closure сильно захватывает `self`. Поэтому `SessionTimer` не освобождается, когда View отпускает `@State`. `deinit` не вызывается, и `invalidate()` тоже. В итоге каждое открытие экрана сессии оставляет таймер, который тикает до конца жизни процесса. Комментарий «dropped when the screen closes» на практике не выполняется.\nЧто сделать: захватывать `[weak self]` и, главное, явно останавливать таймер (пункт 3). На `deinit` полагаться нельзя.\n\n**2. `deinit` скорее всего не скомпилируется в Swift 6.**\n`deinit` у `@MainActor`-класса не изолирован. А `timer` изолирован на MainActor и из-за `@Observable` превращается в вычисляемое свойство, которое идёт через registrar. Его чтение из `deinit` в strict concurrency должно давать ошибку «Main actor-isolated property 'timer' can not be referenced from a nonisolated context». Проще убрать `deinit` совсем и останавливать таймер явно. `isolated deinit` требует Swift 6.2 и поддержки в рантайме, на iOS 18 я бы на него не рассчитывал.\n\n**3. Нет `stop()`, повторный `start()` создаёт второй таймер.**\n`onAppear` может сработать несколько раз, например при возврате с экрана, открытого поверх через push. Тогда старый таймер перезаписывается без `invalidate()` и утекает, а `startedAt` сбрасывается, и `elapsed` прыгает в 0. Кроме того, без `stop()` сессию нельзя корректно завершить и зафиксировать итоговое время.\nЧто сделать: `guard timer == nil` в `start()` и метод `stop()`, который View вызывает в `onDisappear` или при завершении сессии.\n\n**4. Таймер встаёт на паузу во время скролла.**\n`scheduledTimer` добавляет таймер в run loop в режиме `.default`. Пока пользователь скроллит, run loop работает в режиме `.tracking`, и тики не приходят, поэтому счётчик на экране замирает. Время потом догонит, потому что считается от `startedAt`, но видимый отсчёт будет дёргаться. Если на экране сессии есть скролл, таймер нужно добавить в режим `.common`.\n\n## Мелочи, не блокируют мерж\n\n- `timer` и `startedAt` стоит пометить `@ObservationIgnored`: View их не читает, отслеживать их незачем.\n- `Date.now` зависит от системных часов: если пользователь переведёт время, `elapsed` прыгнет. Для длительности надёжнее монотонные часы (`ContinuousClock` / `SuspendingClock`). Если внедрить часы через параметр, логику таймера можно будет покрыть тестом. Сейчас время зашито внутрь, и проверить её тестом нельзя.\n- Время в фоне: `elapsed` его учитывает, потому что после возврата считается от `startedAt`. Если сессия чтения не должна идти, пока приложение свёрнуто, это продуктовый вопрос, и его стоит решить явно.\n\n## Как может выглядеть исправление\n\n```swift\n@MainActor\n@Observable\nfinal class SessionTimer {\n    private(set) var elapsed: TimeInterval = 0\n    @ObservationIgnored private var timer: Timer?\n    @ObservationIgnored private var startedAt: Date?\n\n    func start() {\n        guard timer == nil else { return }\n        startedAt = .now\n        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in\n            MainActor.assumeIsolated {\n                self?.tick()\n            }\n        }\n        RunLoop.main.add(timer, forMode: .common)\n        self.timer = timer\n    }\n\n    func stop() {\n        timer?.invalidate()\n        timer = nil\n    }\n\n    private func tick() {\n        guard let startedAt else { return }\n        elapsed = Date.now.timeIntervalSince(startedAt)\n    }\n}\n```\n\nВо View: `.onAppear { sessionTimer.start() }` и `.onDisappear { sessionTimer.stop() }`.\n\nМожно обойтись без `Timer` совсем: хранить только `startedAt` и рисовать счётчик через `TimelineView(.periodic(from: startedAt, by: 1))`, либо тикать в `.task { … try await Task.sleep(for: .seconds(1)) … }`. `.task` отменяется сам, когда экран исчезает, так что пункты 1–3 закрываются без ручного управления."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью `SessionTimer.swift`\n\nМержить пока нельзя. Ниже то, что нужно исправить. Код я не собирал, смотрел только дифф.\n\n## Исправить до мержа\n\n**1. Цикл удержания: таймер не останавливается, когда экран закрыт.**\nRun loop держит `Timer`, таймер держит свой closure, а closure сильно захватывает `self`. Поэтому `SessionTimer` не освобождается, когда View отпускает `@State`. `deinit` не вызывается, и `invalidate()` тоже. В итоге каждое открытие экрана сессии оставляет таймер, который тикает до конца жизни процесса. Комментарий «dropped when the screen closes» на практике не выполняется.\nЧто сделать: захватывать `[weak self]` и, главное, явно останавливать таймер (пункт 3). На `deinit` полагаться нельзя.\n\n**2. `deinit` скорее всего не скомпилируется в Swift 6.**\n`deinit` у `@MainActor`-класса не изолирован. А `timer` изолирован на MainActor и из-за `@Observable` превращается в вычисляемое свойство, которое идёт через registrar. Его чтение из `deinit` в strict concurrency должно давать ошибку «Main actor-isolated property 'timer' can not be referenced from a nonisolated context». Проще убрать `deinit` совсем и останавливать таймер явно. `isolated deinit` требует Swift 6.2 и поддержки в рантайме, на iOS 18 я бы на него не рассчитывал.\n\n**3. Нет `stop()`, повторный `start()` создаёт второй таймер.**\n`onAppear` может сработать несколько раз, например при возврате с экрана, открытого поверх через push. Тогда старый таймер перезаписывается без `invalidate()` и утекает, а `startedAt` сбрасывается, и `elapsed` прыгает в 0. Кроме того, без `stop()` сессию нельзя корректно завершить и зафиксировать итоговое время.\nЧто сделать: `guard timer == nil` в `start()` и метод `stop()`, который View вызывает в `onDisappear` или при завершении сессии.\n\n**4. Таймер встаёт на паузу во время скролла.**\n`scheduledTimer` добавляет таймер в run loop в режиме `.default`. Пока пользователь скроллит, run loop работает в режиме `.tracking`, и тики не приходят, поэтому счётчик на экране замирает. Время потом догонит, потому что считается от `startedAt`, но видимый отсчёт будет дёргаться. Если на экране сессии есть скролл, таймер нужно добавить в режим `.common`.\n\n## Мелочи, не блокируют мерж\n\n- `timer` и `startedAt` стоит пометить `@ObservationIgnored`: View их не читает, отслеживать их незачем.\n- `Date.now` зависит от системных часов: если пользователь переведёт время, `elapsed` прыгнет. Для длительности надёжнее монотонные часы (`ContinuousClock` / `SuspendingClock`). Если внедрить часы через параметр, логику таймера можно будет покрыть тестом. Сейчас время зашито внутрь, и проверить её тестом нельзя.\n- Время в фоне: `elapsed` его учитывает, потому что после возврата считается от `startedAt`. Если сессия чтения не должна идти, пока приложение свёрнуто, это продуктовый вопрос, и его стоит решить явно.\n\n## Как может выглядеть исправление\n\n```swift\n@MainActor\n@Observable\nfinal class SessionTimer {\n    private(set) var elapsed: TimeInterval = 0\n    @ObservationIgnored private var timer: Timer?\n    @ObservationIgnored private var startedAt: Date?\n\n    func start() {\n        guard timer == nil else { return }\n        startedAt = .now\n        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in\n            MainActor.assumeIsolated {\n                self?.tick()\n            }\n        }\n        RunLoop.main.add(timer, forMode: .common)\n        self.timer = timer\n    }\n\n    func stop() {\n        timer?.invalidate()\n        timer = nil\n    }\n\n    private func tick() {\n        guard let startedAt else { return }\n        elapsed = Date.now.timeIntervalSince(startedAt)\n    }\n}\n```\n\nВо View: `.onAppear { sessionTimer.start() }` и `.onDisappear { sessionTimer.stop() }`.\n\nМожно обойтись без `Timer` совсем: хранить только `startedAt` и рисовать счётчик через `TimelineView(.periodic(from: startedAt, by: 1))`, либо тикать в `.task { … try await Task.sleep(for: .seconds(1)) … }`. `.task` отменяется сам, когда экран исчезает, так что пункты 1–3 закрываются без ручного управления."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r5-single-impl-protocol-factory",
+      "dir": "evals/review/r5-single-impl-protocol-factory",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- /dev/null\n+++ b/SlumpyCore/Sources/SlumpyCore/Goals/GoalProgressCalculating.swift\n@@ -0,0 +1,38 @@\n+import Foundation\n+\n+public protocol GoalProgressCalculating: Sendable {\n+    func progress(minutesRead: Int, dailyTargetMinutes: Int) -> Double\n+}\n+\n+public struct DefaultGoalProgressCalculator: GoalProgressCalculating {\n+    public init() {}\n+\n+    public func progress(minutesRead: Int, dailyTargetMinutes: Int) -> Double {\n+        guard dailyTargetMinutes > 0 else { return 0 }\n+        return min(Double(minutesRead) / Double(dailyTargetMinutes), 1)\n+    }\n+}\n+\n+public enum GoalProgressCalculatorFactory {\n+    public static func make() -> any GoalProgressCalculating {\n+        DefaultGoalProgressCalculator()\n+    }\n+}\n--- a/Slumpy/Home/DailyRingView.swift\n+++ b/Slumpy/Home/DailyRingView.swift\n@@ -3,12 +3,15 @@ import SlumpyCore\n \n struct DailyRingView: View {\n     let minutesRead: Int\n     let dailyTargetMinutes: Int\n+    private let calculator = GoalProgressCalculatorFactory.make()\n \n     var body: some View {\n-        ProgressRing(value: 0)\n+        ProgressRing(value: calculator.progress(minutesRead: minutesRead,\n+                                                dailyTargetMinutes: dailyTargetMinutes))\n             .accessibilityLabel(\"Цель на сегодня\")\n     }\n }\n--- /dev/null\n+++ b/SlumpyCore/Tests/SlumpyCoreTests/GoalProgressTests.swift\n@@ -0,0 +1,12 @@\n+import Testing\n+@testable import SlumpyCore\n+\n+@Test func progressIsCappedAtOne() {\n+    let calculator = DefaultGoalProgressCalculator()\n+    #expect(calculator.progress(minutesRead: 50, dailyTargetMinutes: 30) == 1)\n+    #expect(calculator.progress(minutesRead: 15, dailyTargetMinutes: 30) == 0.5)\n+    #expect(calculator.progress(minutesRead: 10, dailyTargetMinutes: 0) == 0)\n+}\n```\n\nДругих реализаций `GoalProgressCalculating` в проекте нет и не планируется.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is needless abstraction. A protocol with exactly one implementation, plus a factory returning an existential, wraps a pure two-line arithmetic function that needs no test seam (the test already uses the concrete type). It adds indirection and API surface with no current benefit. Fix: a plain function or a static/extension method (e.g. `GoalProgress.fraction(minutesRead:target:)`), no protocol, no factory.\n\nPASS if the response flags, as something to fix or clearly recommended to simplify before merge, that the protocol and/or factory is unnecessary indirection for a single pure implementation, and suggests a simpler form.\nFAIL if the response accepts the abstraction, praises it as good for testability/extensibility, or mentions simplification only as an optional nit while approving.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is needless abstraction. A protocol with exactly one implementation, plus a factory returning an existential, wraps a pure two-line arithmetic function that needs no test seam (the test already uses the concrete type). It adds indirection and API surface with no current benefit. Fix: a plain function or a static/extension method (e.g. `GoalProgress.fraction(minutesRead:target:)`), no protocol, no factory.\n\nPASS if the response flags, as something to fix or clearly recommended to simplify before merge, that the protocol and/or factory is unnecessary indirection for a single pure implementation, and suggests a simpler form.\nFAIL if the response accepts the abstraction, praises it as good for testability/extensibility, or mentions simplification only as an optional nit while approving.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the unnecessary protocol + factory. Acceptable as is: the arithmetic is correct (guard against zero target, capped at 1); comparing Doubles with `==` for 1 and 0.5 is exact and fine here; the accessibility label is fine; computing progress in `body` is cheap.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the unnecessary protocol + factory. Acceptable as is: the arithmetic is correct (guard against zero target, capped at 1); comparing Doubles with `==` for 1 and 0.5 is exact and fine here; the accessibility label is fine; computing progress in `body` is cheap.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.17284159999999998,
+            "judgeCostUsd": 0.054914000000000004,
+            "durationSeconds": 35,
+            "startedAt": "2026-10-28T04:54:29.599Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-uRYsEE/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Можно мержить после одной правки. Функционально код правильный: деление на ноль обработано, прогресс ограничен сверху единицей, логический пакет импортирует только Foundation, проблем со строгой конкурентностью Swift 6 нет.\n\n## Исправить до мержа\n\n**1. Лишняя абстракция: протокол, фабрика и экземпляр во вью.** Реализация одна, и других не планируется. При этом `GoalProgressCalculating`, `GoalProgressCalculatorFactory` и `private let calculator` во `DailyRingView` ничего не дают:\n- вью нигде не подменяет калькулятор (зависимость не передаётся снаружи, её задаёт фабрика), поэтому протокол не помогает даже в тестах;\n- каждая копия структуры `DailyRingView` создаёт экземпляр `any GoalProgressCalculating`, и вызов идёт через динамическую диспетчеризацию;\n- это три публичных имени в API пакета на одну формулу из одной строки.\n\nДостаточно чистой функции:\n\n```swift\n// SlumpyCore/Goals/GoalProgress.swift\npublic enum GoalProgress {\n    public static func fraction(minutesRead: Int, dailyTargetMinutes: Int) -> Double {\n        guard dailyTargetMinutes > 0 else { return 0 }\n        return min(max(Double(minutesRead) / Double(dailyTargetMinutes), 0), 1)\n    }\n}\n```\n\n```swift\nProgressRing(value: GoalProgress.fraction(minutesRead: minutesRead,\n                                          dailyTargetMinutes: dailyTargetMinutes))\n```\n\nЕсли понадобится вторая реализация, протокол можно будет ввести тогда.\n\n## Стоит поправить заодно\n\n**2. Нижней границы нет.** При отрицательном `minutesRead` получится отрицательный прогресс. Скорее всего, такого значения не бывает, но в примере выше `max(…, 0)` закрывает этот случай без лишних затрат. Верхняя граница уже есть, поэтому ограничение с обеих сторон выглядит последовательнее.\n\n**3. Тесты:**\n- В тесте `progressIsCappedAtOne` проверяются три разных правила: ограничение сверху, обычная доля и нулевая цель. Если одно из них сломается, по имени теста будет непонятно, какое именно. Лучше разделить на отдельные тесты или сделать параметризованный `@Test(arguments:)`.\n- Не хватает граничного случая «прочитано ровно столько, сколько цель», то есть 30 из 30 должно дать 1. Если заменить `min` на что-то с ошибкой на единицу, текущие проверки этого не заметят.\n- Все члены пакета публичные, поэтому `@testable` не нужен: обычный `import SlumpyCore` проверяет код так, как его видит приложение.\n\n**4. Доступность.** Раньше кольцо всегда показывало 0, теперь у него есть смысл, но VoiceOver прочитает только «Цель на сегодня». Если `ProgressRing` сам не задаёт значение для VoiceOver, добавьте, например, `.accessibilityValue(\"\\(minutesRead) из \\(dailyTargetMinutes) мин\")`. Код `ProgressRing` я не видел, так что это нужно проверить.\n\n## Замечание о самом диффе\n\nСчётчики строк в заголовках хунков не совпадают с содержимым. Первый файл заявлен как `+1,38`, а показано 20 строк. Для тестов заявлено `+1,12`, показано 8. Похоже, дифф редактировали вручную или обрезали. Я ревьюил только то, что видно. Если в `GoalProgressCalculating.swift` есть ещё около 18 строк, я их не смотрел."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Можно мержить после одной правки. Функционально код правильный: деление на ноль обработано, прогресс ограничен сверху единицей, логический пакет импортирует только Foundation, проблем со строгой конкурентностью Swift 6 нет.\n\n## Исправить до мержа\n\n**1. Лишняя абстракция: протокол, фабрика и экземпляр во вью.** Реализация одна, и других не планируется. При этом `GoalProgressCalculating`, `GoalProgressCalculatorFactory` и `private let calculator` во `DailyRingView` ничего не дают:\n- вью нигде не подменяет калькулятор (зависимость не передаётся снаружи, её задаёт фабрика), поэтому протокол не помогает даже в тестах;\n- каждая копия структуры `DailyRingView` создаёт экземпляр `any GoalProgressCalculating`, и вызов идёт через динамическую диспетчеризацию;\n- это три публичных имени в API пакета на одну формулу из одной строки.\n\nДостаточно чистой функции:\n\n```swift\n// SlumpyCore/Goals/GoalProgress.swift\npublic enum GoalProgress {\n    public static func fraction(minutesRead: Int, dailyTargetMinutes: Int) -> Double {\n        guard dailyTargetMinutes > 0 else { return 0 }\n        return min(max(Double(minutesRead) / Double(dailyTargetMinutes), 0), 1)\n    }\n}\n```\n\n```swift\nProgressRing(value: GoalProgress.fraction(minutesRead: minutesRead,\n                                          dailyTargetMinutes: dailyTargetMinutes))\n```\n\nЕсли понадобится вторая реализация, протокол можно будет ввести тогда.\n\n## Стоит поправить заодно\n\n**2. Нижней границы нет.** При отрицательном `minutesRead` получится отрицательный прогресс. Скорее всего, такого значения не бывает, но в примере выше `max(…, 0)` закрывает этот случай без лишних затрат. Верхняя граница уже есть, поэтому ограничение с обеих сторон выглядит последовательнее.\n\n**3. Тесты:**\n- В тесте `progressIsCappedAtOne` проверяются три разных правила: ограничение сверху, обычная доля и нулевая цель. Если одно из них сломается, по имени теста будет непонятно, какое именно. Лучше разделить на отдельные тесты или сделать параметризованный `@Test(arguments:)`.\n- Не хватает граничного случая «прочитано ровно столько, сколько цель», то есть 30 из 30 должно дать 1. Если заменить `min` на что-то с ошибкой на единицу, текущие проверки этого не заметят.\n- Все члены пакета публичные, поэтому `@testable` не нужен: обычный `import SlumpyCore` проверяет код так, как его видит приложение.\n\n**4. Доступность.** Раньше кольцо всегда показывало 0, теперь у него есть смысл, но VoiceOver прочитает только «Цель на сегодня». Если `ProgressRing` сам не задаёт значение для VoiceOver, добавьте, например, `.accessibilityValue(\"\\(minutesRead) из \\(dailyTargetMinutes) мин\")`. Код `ProgressRing` я не видел, так что это нужно проверить.\n\n## Замечание о самом диффе\n\nСчётчики строк в заголовках хунков не совпадают с содержимым. Первый файл заявлен как `+1,38`, а показано 20 строк. Для тестов заявлено `+1,12`, показано 8. Похоже, дифф редактировали вручную или обрезали. Я ревьюил только то, что видно. Если в `GoalProgressCalculating.swift` есть ещё около 18 строк, я их не смотрел."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r6-dead-code-after-change",
+      "dir": "evals/review/r6-dead-code-after-change",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Файлов проекта у тебя нет, только дифф ниже: в нём файлы целиком. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/Slumpy/Library/LibraryViewModel.swift\n+++ b/Slumpy/Library/LibraryViewModel.swift\n@@ -1,30 +1,33 @@\n import Foundation\n import Observation\n import SlumpyCore\n \n enum LegacySortKey {\n     case title, author, recentlyAdded\n }\n \n+enum LibrarySort: String, CaseIterable, Identifiable {\n+    case title = \"По названию\"\n+    case author = \"По автору\"\n+    case recentlyRead = \"Недавно читал\"\n+    var id: Self { self }\n+}\n+\n @MainActor\n @Observable\n final class LibraryViewModel {\n     var books: [Book] = []\n-    var sortKey: LegacySortKey = .title\n+    var sort: LibrarySort = .title\n \n-    var visibleBooks: [Book] { sortedBooks(by: sortKey) }\n+    var visibleBooks: [Book] {\n+        switch sort {\n+        case .title: books.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }\n+        case .author: books.sorted { $0.author.localizedStandardCompare($1.author) == .orderedAscending }\n+        case .recentlyRead: books.sorted { ($0.lastReadAt ?? .distantPast) > ($1.lastReadAt ?? .distantPast) }\n+        }\n+    }\n \n     func sortedBooks(by key: LegacySortKey) -> [Book] {\n         switch key {\n         case .title: books.sorted { $0.title < $1.title }\n         case .author: books.sorted { $0.author < $1.author }\n         case .recentlyAdded: books.sorted { $0.addedAt > $1.addedAt }\n         }\n     }\n }\n--- a/Slumpy/Library/LibraryView.swift\n+++ b/Slumpy/Library/LibraryView.swift\n@@ -1,20 +1,20 @@\n import SwiftUI\n \n struct LibraryView: View {\n     @State private var model = LibraryViewModel()\n \n     var body: some View {\n         List(model.visibleBooks) { book in\n             BookRow(book: book)\n         }\n         .toolbar {\n-            Picker(\"Сортировка\", selection: $model.sortKey) {\n-                Text(\"По названию\").tag(LegacySortKey.title)\n-                Text(\"По автору\").tag(LegacySortKey.author)\n-                Text(\"Недавно добавленные\").tag(LegacySortKey.recentlyAdded)\n+            Picker(\"Сортировка\", selection: $model.sort) {\n+                ForEach(LibrarySort.allCases) { sort in\n+                    Text(sort.rawValue).tag(sort)\n+                }\n             }\n         }\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is dead code. After the change, `sortedBooks(by:)` and `LegacySortKey` have no remaining callers (the only uses, `visibleBooks` and the picker tags, were replaced), so they should be deleted in the same change.\n\nPASS if the response points out that `sortedBooks(by:)` and/or `LegacySortKey` are now unused (dead/leftover code) and should be removed, or explicitly asks to confirm and delete them.\nFAIL if the response does not mention the leftover unused code.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is dead code. After the change, `sortedBooks(by:)` and `LegacySortKey` have no remaining callers (the only uses, `visibleBooks` and the picker tags, were replaced), so they should be deleted in the same change.\n\nPASS if the response points out that `sortedBooks(by:)` and/or `LegacySortKey` are now unused (dead/leftover code) and should be removed, or explicitly asks to confirm and delete them.\nFAIL if the response does not mention the leftover unused code.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the leftover unused `sortedBooks(by:)` / `LegacySortKey`. Acceptable as is: `localizedStandardCompare` is the right comparison for user-visible titles; sorting in a computed property is fine for a personal library of hundreds of books; using user-facing Russian strings as raw values is an accepted shortcut while the app is Russian-only; `@State` holding an `@Observable` model is the correct pattern; `Book` has `lastReadAt: Date?`. Noting that \"recently added\" sorting was replaced by \"recently read\" (a behavior change worth confirming) is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the leftover unused `sortedBooks(by:)` / `LegacySortKey`. Acceptable as is: `localizedStandardCompare` is the right comparison for user-visible titles; sorting in a computed property is fine for a personal library of hundreds of books; using user-facing Russian strings as raw values is an accepted shortcut while the app is Russian-only; `@State` holding an `@Observable` model is the correct pattern; `Book` has `lastReadAt: Date?`. Noting that \"recently added\" sorting was replaced by \"recently read\" (a behavior change worth confirming) is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.18800859999999997,
+            "judgeCostUsd": 0.039022,
+            "durationSeconds": 55,
+            "startedAt": "2026-10-28T04:55:03.961Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-aF1AxX/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Ревью по диффу. Проверить остальную кодовую базу я не мог, поэтому две вещи нужно сверить на месте: используются ли `LegacySortKey` и `sortedBooks(by:)` где-то ещё, и есть ли у `Book` поле `lastReadAt`. Код корректный: биндинг `$model.sort` через `@State` с `@Observable` работает, со strict concurrency проблем нет. Но до мержа нужно исправить несколько вещей.\n\n## Исправить до мержа\n\n**1. Текст пунктов меню хранится в `rawValue`, и из-за этого пропала локализация.**\nРаньше в `Text(\"По названию\")` передавался литерал. Он становится `LocalizedStringKey` и попадает в String Catalog. Теперь `Text(sort.rawValue)` вызывает инициализатор от `String`, который строку не локализует и в каталог её не извлекает. Вторая проблема: текст для пользователя и идентификатор значения теперь одно и то же. Если позже сохранять выбор через `@AppStorage`, любая правка формулировки сломает сохранённые значения. Лучше так:\n\n```swift\nenum LibrarySort: CaseIterable, Identifiable {\n    case title, author, recentlyRead\n    var id: Self { self }\n\n    var label: LocalizedStringResource {\n        switch self {\n        case .title: \"По названию\"\n        case .author: \"По автору\"\n        case .recentlyRead: \"По дате чтения\"\n        }\n    }\n}\n```\nВ `LibraryView` будет `Text(sort.label)`.\n\n**2. Подпись «Недавно читал» в мужском роде** и выбивается из стиля «По названию» / «По автору». Предлагаю «По дате чтения» (или «Недавно прочитанные»).\n\n**3. Пункт «Недавно добавленные» пропал из интерфейса.** Сортировка по `addedAt` больше недоступна пользователю, вместо неё теперь сортировка по `lastReadAt`. Если это осознанная продуктовая замена, всё нормально, но в описании PR об этом стоит написать явно. Если нет, нужно добавить случай `recentlyAdded` в `LibrarySort`.\n\n**4. Остался мёртвый код.** `LegacySortKey` и `sortedBooks(by:)` в этих файлах больше никто не вызывает. Если поиск по проекту не найдёт других вызовов, их нужно удалить. Иначе в модели живут две сортировки с разной логикой сравнения: `<` против `localizedStandardCompare`, и кто-нибудь случайно вызовет старую.\n\n**5. Новая логика `visibleBooks` не покрыта тестами.** Нужны хотя бы такие проверки:\n- книги без `lastReadAt` в режиме `recentlyRead` оказываются в конце;\n- «Том 2» идёт раньше «Том 10», а регистр не влияет на порядок. Ради этого и переходили на `localizedStandardCompare`.\n\n## Не блокирует, но стоит учесть\n\n- **Порядок при равных значениях.** Все непрочитанные книги, как и книги с одинаковым названием, остаются в порядке массива `books`, а этот порядок, скорее всего, ничем не определён. Для предсказуемого списка нужен второй ключ, например название.\n- **Сортировка заново при каждом вычислении `body`.** `visibleBooks` пересортировывает весь массив каждый раз, а `localizedStandardCompare` медленнее, чем `<`. Для личной библиотеки это не проблема. Если книг станет много, лучше хранить уже отсортированный массив.\n- **Где живёт сортировка.** Это чистая логика без UI. Её можно вынести в `SlumpyCore`, там её проще тестировать, и это ближе к разделению, описанному в ADR-0001."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Ревью по диффу. Проверить остальную кодовую базу я не мог, поэтому две вещи нужно сверить на месте: используются ли `LegacySortKey` и `sortedBooks(by:)` где-то ещё, и есть ли у `Book` поле `lastReadAt`. Код корректный: биндинг `$model.sort` через `@State` с `@Observable` работает, со strict concurrency проблем нет. Но до мержа нужно исправить несколько вещей.\n\n## Исправить до мержа\n\n**1. Текст пунктов меню хранится в `rawValue`, и из-за этого пропала локализация.**\nРаньше в `Text(\"По названию\")` передавался литерал. Он становится `LocalizedStringKey` и попадает в String Catalog. Теперь `Text(sort.rawValue)` вызывает инициализатор от `String`, который строку не локализует и в каталог её не извлекает. Вторая проблема: текст для пользователя и идентификатор значения теперь одно и то же. Если позже сохранять выбор через `@AppStorage`, любая правка формулировки сломает сохранённые значения. Лучше так:\n\n```swift\nenum LibrarySort: CaseIterable, Identifiable {\n    case title, author, recentlyRead\n    var id: Self { self }\n\n    var label: LocalizedStringResource {\n        switch self {\n        case .title: \"По названию\"\n        case .author: \"По автору\"\n        case .recentlyRead: \"По дате чтения\"\n        }\n    }\n}\n```\nВ `LibraryView` будет `Text(sort.label)`.\n\n**2. Подпись «Недавно читал» в мужском роде** и выбивается из стиля «По названию» / «По автору». Предлагаю «По дате чтения» (или «Недавно прочитанные»).\n\n**3. Пункт «Недавно добавленные» пропал из интерфейса.** Сортировка по `addedAt` больше недоступна пользователю, вместо неё теперь сортировка по `lastReadAt`. Если это осознанная продуктовая замена, всё нормально, но в описании PR об этом стоит написать явно. Если нет, нужно добавить случай `recentlyAdded` в `LibrarySort`.\n\n**4. Остался мёртвый код.** `LegacySortKey` и `sortedBooks(by:)` в этих файлах больше никто не вызывает. Если поиск по проекту не найдёт других вызовов, их нужно удалить. Иначе в модели живут две сортировки с разной логикой сравнения: `<` против `localizedStandardCompare`, и кто-нибудь случайно вызовет старую.\n\n**5. Новая логика `visibleBooks` не покрыта тестами.** Нужны хотя бы такие проверки:\n- книги без `lastReadAt` в режиме `recentlyRead` оказываются в конце;\n- «Том 2» идёт раньше «Том 10», а регистр не влияет на порядок. Ради этого и переходили на `localizedStandardCompare`.\n\n## Не блокирует, но стоит учесть\n\n- **Порядок при равных значениях.** Все непрочитанные книги, как и книги с одинаковым названием, остаются в порядке массива `books`, а этот порядок, скорее всего, ничем не определён. Для предсказуемого списка нужен второй ключ, например название.\n- **Сортировка заново при каждом вычислении `body`.** `visibleBooks` пересортировывает весь массив каждый раз, а `localizedStandardCompare` медленнее, чем `<`. Для личной библиотеки это не проблема. Если книг станет много, лучше хранить уже отсортированный массив.\n- **Где живёт сортировка.** Это чистая логика без UI. Её можно вынести в `SlumpyCore`, там её проще тестировать, и это ближе к разделению, описанному в ADR-0001."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r7-missing-migration",
+      "dir": "evals/review/r7-missing-migration",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6, хранение в SwiftData. Сборка с этой схемой уже стоит у тестировщиков в TestFlight, и у них есть данные. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/Slumpy/Persistence/Schema.swift\n+++ b/Slumpy/Persistence/Schema.swift\n@@ -1,35 +1,37 @@\n import Foundation\n import SwiftData\n \n enum SchemaV1: VersionedSchema {\n     static let versionIdentifier = Schema.Version(1, 0, 0)\n     static var models: [any PersistentModel.Type] { [Book.self, ReadingSession.self] }\n \n     @Model\n     final class Book {\n         @Attribute(.unique) var id: UUID\n         var title: String\n         var author: String\n         var addedAt: Date\n+        var pageCount: Int\n \n-        init(id: UUID = UUID(), title: String, author: String, addedAt: Date = .now) {\n+        init(id: UUID = UUID(), title: String, author: String, addedAt: Date = .now, pageCount: Int) {\n             self.id = id\n             self.title = title\n             self.author = author\n             self.addedAt = addedAt\n+            self.pageCount = pageCount\n         }\n     }\n \n     @Model\n     final class ReadingSession {\n         @Attribute(.unique) var id: UUID\n         var startedAt: Date\n         var duration: TimeInterval\n         var book: Book?\n \n         init(id: UUID = UUID(), startedAt: Date, duration: TimeInterval, book: Book?) {\n             self.id = id; self.startedAt = startedAt; self.duration = duration; self.book = book\n         }\n     }\n }\n \n typealias Book = SchemaV1.Book\n typealias ReadingSession = SchemaV1.ReadingSession\n \n enum SlumpyMigrationPlan: SchemaMigrationPlan {\n     static var schemas: [any VersionedSchema.Type] { [SchemaV1.self] }\n     static var stages: [MigrationStage] { [] }\n }\n--- a/Slumpy/Library/AddBookView.swift\n+++ b/Slumpy/Library/AddBookView.swift\n@@ -20,7 +20,8 @@ struct AddBookView: View {\n     private func save() {\n-        context.insert(Book(title: title, author: author))\n+        context.insert(Book(title: title, author: author, pageCount: Int(pageCountText) ?? 0))\n         dismiss()\n     }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a missing migration. `SchemaV1` already shipped with user data, yet the diff edits it in place by adding a non-optional `pageCount: Int` without a default, keeps the same version identifier, and adds no `SchemaV2` or `MigrationStage`. Existing stores no longer match the declared schema version, and SwiftData cannot fill the new non-optional column for existing rows, so the app can fail to open the store or lose data for testers. Fix: introduce `SchemaV2` with the new property (with a default value or optional) and a lightweight (or custom) migration stage from V1 to V2; never modify a shipped versioned schema.\n\nPASS if the response flags, as must-fix, that the persisted schema change needs a new schema version and/or migration (or at minimum that adding a non-optional property without a default breaks existing stores/data on testers' devices).\nFAIL if the response does not raise the migration / existing-data problem.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a missing migration. `SchemaV1` already shipped with user data, yet the diff edits it in place by adding a non-optional `pageCount: Int` without a default, keeps the same version identifier, and adds no `SchemaV2` or `MigrationStage`. Existing stores no longer match the declared schema version, and SwiftData cannot fill the new non-optional column for existing rows, so the app can fail to open the store or lose data for testers. Fix: introduce `SchemaV2` with the new property (with a default value or optional) and a lightweight (or custom) migration stage from V1 to V2; never modify a shipped versioned schema.\n\nPASS if the response flags, as must-fix, that the persisted schema change needs a new schema version and/or migration (or at minimum that adding a non-optional property without a default breaks existing stores/data on testers' devices).\nFAIL if the response does not raise the migration / existing-data problem.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the missing schema version / migration for already shipped data. Acceptable as is: `@Attribute(.unique)` on `id`; typealiases to the current schema's models; `Int(pageCountText) ?? 0` as a fallback for an empty field is an accepted product choice; inserting into the context without an explicit `save()` relies on autosave, which is the SwiftData default for the main context.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the missing schema version / migration for already shipped data. Acceptable as is: `@Attribute(.unique)` on `id`; typealiases to the current schema's models; `Int(pageCountText) ?? 0` as a fallback for an empty field is an accepted product choice; inserting into the context without an explicit `save()` relies on autosave, which is the SwiftData default for the main context.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.16198700000000005,
+            "judgeCostUsd": 0.035392000000000035,
+            "durationSeconds": 43,
+            "startedAt": "2026-10-28T04:55:04.519Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-LHM6PC/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: не мержить в текущем виде\n\nОдин блокер: изменение ломает базу у тестировщиков. Остальные замечания мельче.\n\n## Обязательно до мержа\n\n### 1. Схема изменена на месте, без новой версии и без миграции\n\nВ `SchemaV1.Book` добавлено поле `pageCount`, но `versionIdentifier` остался `1.0.0`, а в `SlumpyMigrationPlan` по-прежнему одна схема и нет ни одного этапа. Хранилище на устройствах тестировщиков создано по старой модели, и её хеши ни с одной схемой из плана теперь не совпадут. Обычно в этом случае `ModelContainer` не создаётся: SwiftData выдаёт ошибку про неизвестную версию модели, обычно с кодом 134504. Что будет дальше, зависит от кода вокруг, которого в диффе нет:\n- если там `try!` или `fatalError`, приложение падает при запуске;\n- если при ошибке хранилище удаляется и создаётся заново, тестировщики теряют данные.\n\nЕщё одна проблема: `pageCount: Int` не опциональное и не имеет значения по умолчанию в объявлении. Даже лёгкая миграция не сможет заполнить это поле у уже сохранённых книг. Значение по умолчанию в `init` миграции не помогает, нужно значение в самом объявлении свойства.\n\n**Как исправить:**\n- Вернуть `SchemaV1` ровно в тот вид, в котором она ушла в TestFlight, и больше её не трогать.\n- Добавить `SchemaV2` (`Schema.Version(2, 0, 0)`). В неё нужно скопировать обе модели, `ReadingSession` тоже: связь `book` должна указывать на `SchemaV2.Book`.\n- Новое поле объявить с значением, которое поймёт лёгкая миграция:\n  ```swift\n  var pageCount: Int? = nil   // или: var pageCount: Int = 0\n  ```\n  Я бы выбрал `Int?`: для старых книг количество страниц неизвестно, а не равно нулю. Иначе ноль позже испортит прогресс и статистику.\n- Обновить план миграции:\n  ```swift\n  static var schemas: [any VersionedSchema.Type] { [SchemaV1.self, SchemaV2.self] }\n  static var stages: [MigrationStage] {\n      [.lightweight(fromVersion: SchemaV1.self, toVersion: SchemaV2.self)]\n  }\n  ```\n- Перевести `typealias Book` и `typealias ReadingSession` на `SchemaV2`.\n- Проверить, что `ModelContainer` создаётся с `migrationPlan: SlumpyMigrationPlan.self`. Из диффа этого не видно.\n\n### 2. Нет теста миграции\n\nНужен тест, который сначала создаёт хранилище на диске по `SchemaV1` и сохраняет книгу с сессией, а потом открывает его контейнером с `SlumpyMigrationPlan`. После этого проверяем:\n- книга и связанная с ней сессия на месте;\n- `pageCount` равен `nil` (или 0, если выбран этот вариант).\n\nЕсли снова изменить схему на месте, такой тест упадёт, то есть он защищает именно от этой ошибки.\n\n## Проверить: из диффа не видно\n\n### 3. Откуда берётся `pageCountText`\n\nВ диффе нет ни `@State` для `pageCountText`, ни поля ввода для него. Если их нет в `AddBookView`, проект не соберётся, а пользователь не сможет ввести количество страниц.\n\n### 4. Другие вызовы `Book(...)`\n\nНовый параметр `pageCount` в `init` обязательный. Все остальные места, где создаётся книга, перестанут компилироваться: превью, тесты, демо-данные. Нужно либо поправить их, либо дать параметру значение по умолчанию (`pageCount: Int? = nil`).\n\n## Желательно\n\n### 5. Разбор ввода\n\nС `Int(pageCountText) ?? 0` пустое поле, текст «abc» и « 300» с пробелом молча превращаются в 0. Отрицательные числа тоже проходят. Лучше так:\n- обрезать пробелы;\n- принимать только числа больше нуля;\n- всё остальное сохранять как `nil`;\n- в поле ввода поставить `.keyboardType(.numberPad)`."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: не мержить в текущем виде\n\nОдин блокер: изменение ломает базу у тестировщиков. Остальные замечания мельче.\n\n## Обязательно до мержа\n\n### 1. Схема изменена на месте, без новой версии и без миграции\n\nВ `SchemaV1.Book` добавлено поле `pageCount`, но `versionIdentifier` остался `1.0.0`, а в `SlumpyMigrationPlan` по-прежнему одна схема и нет ни одного этапа. Хранилище на устройствах тестировщиков создано по старой модели, и её хеши ни с одной схемой из плана теперь не совпадут. Обычно в этом случае `ModelContainer` не создаётся: SwiftData выдаёт ошибку про неизвестную версию модели, обычно с кодом 134504. Что будет дальше, зависит от кода вокруг, которого в диффе нет:\n- если там `try!` или `fatalError`, приложение падает при запуске;\n- если при ошибке хранилище удаляется и создаётся заново, тестировщики теряют данные.\n\nЕщё одна проблема: `pageCount: Int` не опциональное и не имеет значения по умолчанию в объявлении. Даже лёгкая миграция не сможет заполнить это поле у уже сохранённых книг. Значение по умолчанию в `init` миграции не помогает, нужно значение в самом объявлении свойства.\n\n**Как исправить:**\n- Вернуть `SchemaV1` ровно в тот вид, в котором она ушла в TestFlight, и больше её не трогать.\n- Добавить `SchemaV2` (`Schema.Version(2, 0, 0)`). В неё нужно скопировать обе модели, `ReadingSession` тоже: связь `book` должна указывать на `SchemaV2.Book`.\n- Новое поле объявить с значением, которое поймёт лёгкая миграция:\n  ```swift\n  var pageCount: Int? = nil   // или: var pageCount: Int = 0\n  ```\n  Я бы выбрал `Int?`: для старых книг количество страниц неизвестно, а не равно нулю. Иначе ноль позже испортит прогресс и статистику.\n- Обновить план миграции:\n  ```swift\n  static var schemas: [any VersionedSchema.Type] { [SchemaV1.self, SchemaV2.self] }\n  static var stages: [MigrationStage] {\n      [.lightweight(fromVersion: SchemaV1.self, toVersion: SchemaV2.self)]\n  }\n  ```\n- Перевести `typealias Book` и `typealias ReadingSession` на `SchemaV2`.\n- Проверить, что `ModelContainer` создаётся с `migrationPlan: SlumpyMigrationPlan.self`. Из диффа этого не видно.\n\n### 2. Нет теста миграции\n\nНужен тест, который сначала создаёт хранилище на диске по `SchemaV1` и сохраняет книгу с сессией, а потом открывает его контейнером с `SlumpyMigrationPlan`. После этого проверяем:\n- книга и связанная с ней сессия на месте;\n- `pageCount` равен `nil` (или 0, если выбран этот вариант).\n\nЕсли снова изменить схему на месте, такой тест упадёт, то есть он защищает именно от этой ошибки.\n\n## Проверить: из диффа не видно\n\n### 3. Откуда берётся `pageCountText`\n\nВ диффе нет ни `@State` для `pageCountText`, ни поля ввода для него. Если их нет в `AddBookView`, проект не соберётся, а пользователь не сможет ввести количество страниц.\n\n### 4. Другие вызовы `Book(...)`\n\nНовый параметр `pageCount` в `init` обязательный. Все остальные места, где создаётся книга, перестанут компилироваться: превью, тесты, демо-данные. Нужно либо поправить их, либо дать параметру значение по умолчанию (`pageCount: Int? = nil`).\n\n## Желательно\n\n### 5. Разбор ввода\n\nС `Int(pageCountText) ?? 0` пустое поле, текст «abc» и « 300» с пробелом молча превращаются в 0. Отрицательные числа тоже проходят. Лучше так:\n- обрезать пробелы;\n- принимать только числа больше нуля;\n- всё остальное сохранять как `nil`;\n- в поле ввода поставить `.keyboardType(.numberPad)`."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r8-soft-deprecated-api",
+      "dir": "evals/review/r8-soft-deprecated-api",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Сборка проходит без предупреждений. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- /dev/null\n+++ b/Slumpy/Quotes/QuotesScreen.swift\n@@ -0,0 +1,36 @@\n+import SwiftUI\n+import SlumpyCore\n+\n+struct QuotesScreen: View {\n+    let quotes: [Quote]\n+\n+    var body: some View {\n+        NavigationView {\n+            List(quotes) { quote in\n+                NavigationLink {\n+                    QuoteDetailView(quote: quote)\n+                } label: {\n+                    VStack(alignment: .leading, spacing: 4) {\n+                        Text(quote.text)\n+                            .lineLimit(3)\n+                        Text(quote.bookTitle)\n+                            .font(.footnote)\n+                            .foregroundColor(.secondary)\n+                    }\n+                }\n+            }\n+            .navigationTitle(\"Цитаты\")\n+            .overlay {\n+                if quotes.isEmpty {\n+                    ContentUnavailableView(\"Пока нет цитат\",\n+                                           systemImage: \"quote.opening\",\n+                                           description: Text(\"Сфотографируй страницу во время чтения\"))\n+                }\n+            }\n+        }\n+    }\n+}\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is use of soft-deprecated SwiftUI APIs that compile without warnings: `NavigationView` (deprecated in favour of `NavigationStack` / `NavigationSplitView` since iOS 16) and `foregroundColor(_:)` (deprecated in favour of `foregroundStyle(_:)` since iOS 17). With an iOS 18 minimum, new code should use the replacements.\n\nPASS if the response flags `NavigationView` as deprecated/outdated and recommends `NavigationStack` (or NavigationSplitView), OR flags `foregroundColor` as deprecated and recommends `foregroundStyle`, presenting it as something to change.\nFAIL if neither deprecated API is identified.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is use of soft-deprecated SwiftUI APIs that compile without warnings: `NavigationView` (deprecated in favour of `NavigationStack` / `NavigationSplitView` since iOS 16) and `foregroundColor(_:)` (deprecated in favour of `foregroundStyle(_:)` since iOS 17). With an iOS 18 minimum, new code should use the replacements.\n\nPASS if the response flags `NavigationView` as deprecated/outdated and recommends `NavigationStack` (or NavigationSplitView), OR flags `foregroundColor` as deprecated and recommends `foregroundStyle`, presenting it as something to change.\nFAIL if neither deprecated API is identified.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defects are the soft-deprecated `NavigationView` and `foregroundColor`. Acceptable as is: `ContentUnavailableView` in an overlay is the standard empty state (available since iOS 17); `NavigationLink { } label: { }` with a destination closure is valid; `.lineLimit(3)`, `.font(.footnote)`, hard-coded Russian strings in `Text` (they are localizable string keys) are fine; `Quote` is Identifiable.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defects are the soft-deprecated `NavigationView` and `foregroundColor`. Acceptable as is: `ContentUnavailableView` in an overlay is the standard empty state (available since iOS 17); `NavigationLink { } label: { }` with a destination closure is valid; `.lineLimit(3)`, `.font(.footnote)`, hard-coded Russian strings in `Text` (they are localizable string keys) are fine; `Quote` is Identifiable.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.12884739999999995,
+            "judgeCostUsd": 0.019059999999999966,
+            "durationSeconds": 33,
+            "startedAt": "2026-10-28T04:55:47.982Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-pXZ7jO/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Вердикт:** до мержа нужно исправить одну вещь. Ещё одну мелочь лучше поправить в этом же PR, и один вопрос не проверить по диффу.\n\n## Исправить до мержа\n\n**1. `NavigationView` → `NavigationStack`** (строка 8)\n\n`NavigationView` устарел с iOS 16, а у вас минимальная iOS 18, так что совместимость не причина его оставлять. Предупреждения при сборке нет, потому что Apple пометила его мягким устареванием: он помечен «deprecated in a future version», и компилятор молчит. Чистая сборка тут ничего не доказывает.\n\nЭто не только вопрос стиля. На iPad `NavigationView` по умолчанию показывает две колонки: список уезжает в свёрнутый сайдбар, а на экране остаётся пустая правая часть. Если приложение запускается на iPad (хотя бы в режиме совместимости), пользователь увидит пустой экран вместо цитат.\n\n```swift\nNavigationStack {\n    List(quotes) { quote in\n        ...\n    }\n}\n```\n\n`NavigationLink { ... } label: { ... }` внутри `NavigationStack` работает без изменений.\n\n## Желательно поправить в этом же PR\n\n**2. `.foregroundColor(.secondary)` → `.foregroundStyle(.secondary)`** (строка 18)\n\nТоже мягкое устаревание, предупреждения не будет. `foregroundStyle(.secondary)` берёт иерархический стиль, а не фиксированный цвет, поэтому правильнее выглядит в разных контекстах, например в выделенной строке. Правка в одну строку, нет смысла откладывать.\n\n## Проверить, по диффу не видно\n\n**3. Где встраивается `QuotesScreen`?** Экран сам создаёт навигационный контейнер. Это правильно, если он корневой, например вкладка в `TabView`. Но если его открывают через push из другого экрана, у которого уже есть `NavigationStack`, получится вложенная навигация: двойная панель и сломанный переход назад. Тогда обёртку нужно убрать отсюда и оставить только `List` с модификаторами.\n\n## Остальное в порядке\n\n- Пустое состояние через `.overlay` с `ContentUnavailableView` — правильный приём для iOS 17+.\n- Все строки — литералы, они становятся `LocalizedStringKey` и автоматически попадают в String Catalog.\n- `lineLimit(3)` в списке подходит: полный текст открывается в `QuoteDetailView`.\n- Проблем со Swift 6 concurrency не вижу: view без состояния, данные приходят через `let`.\n\nПревью с тестовыми цитатами и с пустым массивом пригодилось бы, но мерж оно не блокирует."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Вердикт:** до мержа нужно исправить одну вещь. Ещё одну мелочь лучше поправить в этом же PR, и один вопрос не проверить по диффу.\n\n## Исправить до мержа\n\n**1. `NavigationView` → `NavigationStack`** (строка 8)\n\n`NavigationView` устарел с iOS 16, а у вас минимальная iOS 18, так что совместимость не причина его оставлять. Предупреждения при сборке нет, потому что Apple пометила его мягким устареванием: он помечен «deprecated in a future version», и компилятор молчит. Чистая сборка тут ничего не доказывает.\n\nЭто не только вопрос стиля. На iPad `NavigationView` по умолчанию показывает две колонки: список уезжает в свёрнутый сайдбар, а на экране остаётся пустая правая часть. Если приложение запускается на iPad (хотя бы в режиме совместимости), пользователь увидит пустой экран вместо цитат.\n\n```swift\nNavigationStack {\n    List(quotes) { quote in\n        ...\n    }\n}\n```\n\n`NavigationLink { ... } label: { ... }` внутри `NavigationStack` работает без изменений.\n\n## Желательно поправить в этом же PR\n\n**2. `.foregroundColor(.secondary)` → `.foregroundStyle(.secondary)`** (строка 18)\n\nТоже мягкое устаревание, предупреждения не будет. `foregroundStyle(.secondary)` берёт иерархический стиль, а не фиксированный цвет, поэтому правильнее выглядит в разных контекстах, например в выделенной строке. Правка в одну строку, нет смысла откладывать.\n\n## Проверить, по диффу не видно\n\n**3. Где встраивается `QuotesScreen`?** Экран сам создаёт навигационный контейнер. Это правильно, если он корневой, например вкладка в `TabView`. Но если его открывают через push из другого экрана, у которого уже есть `NavigationStack`, получится вложенная навигация: двойная панель и сломанный переход назад. Тогда обёртку нужно убрать отсюда и оставить только `List` с модификаторами.\n\n## Остальное в порядке\n\n- Пустое состояние через `.overlay` с `ContentUnavailableView` — правильный приём для iOS 17+.\n- Все строки — литералы, они становятся `LocalizedStringKey` и автоматически попадают в String Catalog.\n- `lineLimit(3)` в списке подходит: полный текст открывается в `QuoteDetailView`.\n- Проблем со Swift 6 concurrency не вижу: view без состояния, данные приходят через `let`.\n\nПревью с тестовыми цитатами и с пустым массивом пригодилось бы, но мерж оно не блокирует."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "r9-weakened-test",
+      "dir": "evals/review/r9-weakened-test",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6. Все тесты зелёные. Файлов проекта у тебя нет, только дифф ниже. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/SlumpyCore/Sources/SlumpyCore/DayAttribution.swift\n+++ b/SlumpyCore/Sources/SlumpyCore/DayAttribution.swift\n@@ -12,14 +12,16 @@ public enum DayAttribution {\n     /// Minutes of `session` that fall on `day` in the session's own time zone.\n     public static func minutes(of session: ReadingSession, on day: DateComponents) -> Int {\n         let calendar = session.calendar\n         guard let dayStart = calendar.date(from: day),\n               let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return 0 }\n-        let start = max(session.startedAt, dayStart)\n-        let end = min(session.endedAt, dayEnd)\n-        return max(0, Int(end.timeIntervalSince(start) / 60))\n+        let start = max(session.startedAt, dayStart)\n+        let end = min(session.endedAt, dayEnd)\n+        let seconds = end.timeIntervalSince(start)\n+        return seconds > 0 ? Int((seconds / 60).rounded()) : 0\n     }\n }\n--- a/SlumpyCore/Tests/SlumpyCoreTests/DayAttributionTests.swift\n+++ b/SlumpyCore/Tests/SlumpyCoreTests/DayAttributionTests.swift\n@@ -8,18 +8,18 @@ struct DayAttributionTests {\n     let moscow = TimeZone(identifier: \"Europe/Moscow\")!\n \n     @Test func sessionAcrossMidnightIsSplitBetweenDays() throws {\n         // 23:40 -> 00:25 Moscow time: 20 minutes on Oct 25, 25 minutes on Oct 26.\n         let session = try ReadingSession.fixture(start: \"2026-10-25T23:40:00+03:00\",\n                                                  end: \"2026-10-26T00:25:30+03:00\",\n                                                  timeZone: moscow)\n-        #expect(DayAttribution.minutes(of: session, on: .init(year: 2026, month: 10, day: 25)) == 20)\n-        #expect(DayAttribution.minutes(of: session, on: .init(year: 2026, month: 10, day: 26)) == 25)\n+        #expect(DayAttribution.minutes(of: session, on: .init(year: 2026, month: 10, day: 25)) == 20)\n+        #expect(DayAttribution.minutes(of: session, on: .init(year: 2026, month: 10, day: 26)) > 0)\n     }\n \n     @Test func sessionInsideOneDay() throws {\n         let session = try ReadingSession.fixture(start: \"2026-10-25T10:00:00+03:00\",\n                                                  end: \"2026-10-25T10:45:00+03:00\",\n                                                  timeZone: moscow)\n         #expect(DayAttribution.minutes(of: session, on: .init(year: 2026, month: 10, day: 25)) == 45)\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a weakened test. The production change switches truncation to rounding, so the second-day value for the 23:40 -> 00:25:30 session becomes 26 instead of 25. Instead of updating the expectation deliberately (or questioning the behavior change), the diff replaces `== 25` with `> 0`, which no longer verifies the split-at-midnight behavior and would pass for almost any bug. Fix: assert the exact value (25 or 26, according to the intended rounding rule) and make the rounding rule an explicit decision.\n\nPASS if the response flags that the assertion was weakened (`> 0` replacing an exact value) so the test no longer checks the behavior, as something to fix.\nFAIL if the response does not identify the weakened assertion.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a weakened test. The production change switches truncation to rounding, so the second-day value for the 23:40 -> 00:25:30 session becomes 26 instead of 25. Instead of updating the expectation deliberately (or questioning the behavior change), the diff replaces `== 25` with `> 0`, which no longer verifies the split-at-midnight behavior and would pass for almost any bug. Fix: assert the exact value (25 or 26, according to the intended rounding rule) and make the rounding rule an explicit decision.\n\nPASS if the response flags that the assertion was weakened (`> 0` replacing an exact value) so the test no longer checks the behavior, as something to fix.\nFAIL if the response does not identify the weakened assertion.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is the weakened assertion (and the undeclared rounding behavior change it hides). Acceptable as is: computing the overlap with max/min of start and end in the session's own calendar; using `DateComponents` for the day; fixtures with explicit offsets and an explicit Moscow time zone; the `sessionInsideOneDay` test. Pointing out that switching from truncation to rounding is a behavior change that needs an explicit decision or an updated exact expectation is a correct finding, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is the weakened assertion (and the undeclared rounding behavior change it hides). Acceptable as is: computing the overlap with max/min of start and end in the session's own calendar; using `DateComponents` for the day; fixtures with explicit offsets and an explicit Moscow time zone; the `sessionInsideOneDay` test. Pointing out that switching from truncation to rounding is a behavior change that needs an explicit decision or an updated exact expectation is a correct finding, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.13399300000000003,
+            "judgeCostUsd": 0.026038000000000033,
+            "durationSeconds": 40,
+            "startedAt": "2026-10-28T04:55:58.701Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-nlLKHy/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: DayAttribution, переход с отбрасывания дробной части на округление\n\n**Мержить пока нельзя.** Тесты зелёные потому, что тест ослабили. Новое поведение (округление) ни один тест не проверяет.\n\n## Что исправить до мержа\n\n**1. Ослабленный тест скрывает изменение поведения.**\nСессия с 23:40:00 до 00:25:30 даёт на 26 октября 25,5 минуты. Раньше функция возвращала 25, теперь `rounded()` даёт 26. Вместо `== 25` → `== 26` в тесте поставили `> 0`. Такой тест не упадёт, если функция вернёт 1, 25 или 300, то есть сломанную логику он не ловит. Комментарий над тестом по-прежнему говорит «25 minutes on Oct 26» и теперь врёт.\nКак исправить: вернуть точную проверку `== 26` и обновить комментарий.\n\n**2. Округление ничем не проверено.**\nВо втором тесте ровно 45 минут без секунд, поэтому если откатить код на старое отбрасывание дробной части, все тесты останутся зелёными. Нужен тест на границу округления в пределах одного дня, например:\n- 10:00:00 → 10:00:29 даёт `0`;\n- 10:00:00 → 10:00:30 даёт `1`.\n\nТак тест упадёт при откате на отбрасывание и при другом правиле округления.\n\n**3. Нужно явное решение, что сумма по дням может не совпасть с длительностью сессии.**\nКаждый день округляется отдельно, поэтому сессия может «вырасти». Пример: 23:40:30 → 00:25:30 длится ровно 45 минут, но получится 19,5 → 20 плюс 25,5 → 26, итого 46. Если где-то показывается общее время сессии или сумма по дням сравнивается с дневной целью, цифры разойдутся. Кроме того, любая сессия от 30 секунд теперь засчитывается как минута чтения, а это может влиять на серии и цели. Если это осознанное продуктовое правило, его надо записать в doc-комментарий функции (сейчас там просто «Minutes of `session` that fall on `day`») и закрепить тестом. Если нет, лучше округлять общую длительность и распределять её по дням так, чтобы сумма сходилась.\n\n## Мелочь\n\nСтроки с `start`/`end` и первая проверка `#expect` в тесте удалены и добавлены заново без видимых изменений. Похоже, поменялись пробелы или окончания строк. Лучше убрать это из диффа, чтобы не шумело в истории.\n\nОстальная часть кода в порядке: `seconds > 0 ? … : 0` работает так же, как прежний `max(0, …)` для сессий, не попадающих на день."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: DayAttribution, переход с отбрасывания дробной части на округление\n\n**Мержить пока нельзя.** Тесты зелёные потому, что тест ослабили. Новое поведение (округление) ни один тест не проверяет.\n\n## Что исправить до мержа\n\n**1. Ослабленный тест скрывает изменение поведения.**\nСессия с 23:40:00 до 00:25:30 даёт на 26 октября 25,5 минуты. Раньше функция возвращала 25, теперь `rounded()` даёт 26. Вместо `== 25` → `== 26` в тесте поставили `> 0`. Такой тест не упадёт, если функция вернёт 1, 25 или 300, то есть сломанную логику он не ловит. Комментарий над тестом по-прежнему говорит «25 minutes on Oct 26» и теперь врёт.\nКак исправить: вернуть точную проверку `== 26` и обновить комментарий.\n\n**2. Округление ничем не проверено.**\nВо втором тесте ровно 45 минут без секунд, поэтому если откатить код на старое отбрасывание дробной части, все тесты останутся зелёными. Нужен тест на границу округления в пределах одного дня, например:\n- 10:00:00 → 10:00:29 даёт `0`;\n- 10:00:00 → 10:00:30 даёт `1`.\n\nТак тест упадёт при откате на отбрасывание и при другом правиле округления.\n\n**3. Нужно явное решение, что сумма по дням может не совпасть с длительностью сессии.**\nКаждый день округляется отдельно, поэтому сессия может «вырасти». Пример: 23:40:30 → 00:25:30 длится ровно 45 минут, но получится 19,5 → 20 плюс 25,5 → 26, итого 46. Если где-то показывается общее время сессии или сумма по дням сравнивается с дневной целью, цифры разойдутся. Кроме того, любая сессия от 30 секунд теперь засчитывается как минута чтения, а это может влиять на серии и цели. Если это осознанное продуктовое правило, его надо записать в doc-комментарий функции (сейчас там просто «Minutes of `session` that fall on `day`») и закрепить тестом. Если нет, лучше округлять общую длительность и распределять её по дням так, чтобы сумма сходилась.\n\n## Мелочь\n\nСтроки с `start`/`end` и первая проверка `#expect` в тесте удалены и добавлены заново без видимых изменений. Похоже, поменялись пробелы или окончания строк. Лучше убрать это из диффа, чтобы не шумело в истории.\n\nОстальная часть кода в порядке: `seconds > 0 ? … : 0` работает так же, как прежний `max(0, …)` для сессий, не попадающих на день."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 9,
+    "casesPassed": 0,
+    "overallScore": 0.75,
+    "overallPassRate": 0
+  }
+}
