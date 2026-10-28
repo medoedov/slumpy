@@ -37,6 +37,16 @@ features only after a review audit; until then there is no house pattern to copy
 - Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
   lint, format, gate-bypass scan. Changed sensitive paths require an ADR reference or a one-line T1
   reason in plan.md; they do not set the tier. Not created yet.
+- Planned gates once code exists, each a new dev tool through an ADR (tool facts as of
+  2026-10-27): Periphery for dead code with the first targets (open source up to 3.8.0, then
+  commercial with the repository archived: check the license before the ADR; paying is an owner
+  decision); jscpd for duplication, report only; for the logic package, crap4swift (complexity
+  weighted by missing coverage) as a report first, and swift-mutation-testing with no new
+  survivors against a committed baseline (`--max-new-survivors 0`), before merge or nightly, never
+  a score target. Not used: Muter (no release since 2023-09, low activity); Uncle Bob's crapper,
+  dryer and mutator (no Swift). Loosening a gate (a higher limit, a lower minimum, more allowed
+  survivors, a rewritten baseline) updates its ADR with the reason; a tool's disable comment, such
+  as one for an equivalent mutant, states its reason like the bypass constructs in swift.md.
 - Package logic is tested on the smallest reliable boundary (framework: working assumption Swift
   Testing, decided in the skeleton ADR).
 - Device-only checks (Family Controls blocking, motion sensors, Live Activity on the lock screen

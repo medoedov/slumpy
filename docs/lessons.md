@@ -18,4 +18,16 @@ linter, test, skill; an entry here comes after those. Remove entries whose "stal
 
 ## Entries
 
-None yet.
+### An adapted external rule loses the condition that limits it
+
+- **Symptom:** while adapting ub-mode and pstack principles into the agent system (2026-10-27),
+  three review rounds in a row found a shortened rule that dropped its source's limiting
+  condition: the code-side test check, the migration option, legitimate states for fixes, and
+  the exit when no honest test is possible.
+- **Cause:** shortening a source rule keeps its main clause and drops its conditions and
+  exceptions; restating a rule in a second file does the same.
+- **Now guarded by:** this entry only. When adapting an external rule, list each condition and
+  exception of the source and either keep it or record why it is rejected; state each rule in one
+  file and point to it from others.
+- **Stale when:** the agent system gets an eval case that catches a dropped condition.
+- **Added:** 2026-10-27
