@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""The project's single check command.
+
+Runs the document checks and prints what ran and what did not. A check that cannot read its input
+fails; nothing reports success on input it did not read. Build, tests, and lint are not wired in
+yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-checks`, and
+`scripts/test-checks --mutants` after a change to scripts/.
+
+--hook  Stop hook, with no record of its own. When the change set (`check-risk --changed`) is
+        empty, the turn changed nothing and the hook exits; otherwise it runs the checks. A
+        failure blocks with a JSON decision; while the session is already continuing because of
+        this hook, it shows the failures as a system message instead.
+"""
+import json, pathlib, subprocess, sys, traceback
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons"]
+
+
+def script(name, *args):
+    return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args], cwd=ROOT,
+                          capture_output=True, text=True)
+
+
+def run_checks():
+    failed, report = [], []
+    for name in CHECKS:
+        p = script(name)
+        out = (p.stdout + p.stderr).strip()
+        last = out.splitlines()[-1] if out else ""
+        ok = p.returncode == 0
+        report.append(f"[{'ok' if ok else 'FAIL'}] {name}: {last.removeprefix(name + ': ')}")
+        if not ok:
+            failed.append(f"{name}:\n{out}")
+    report.append("[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)")
+    report.append("[not run] test-checks: on demand")
+    return failed, report
+
+
+def respond(reason, continuing):
+    print(json.dumps({"systemMessage": reason} if continuing
+                     else {"decision": "block", "reason": reason}))
+
+
+def hook(continuing):
+    changed = script("check-risk", "--changed")
+    if changed.returncode == 0 and not changed.stdout.strip("\0"):
+        return 0  # the change set is empty: this turn changed nothing
+    failed, report = run_checks()
+    if changed.returncode != 0:
+        failed.insert(0, "change set: " + (changed.stdout + changed.stderr).strip())
+    if failed:
+        respond("scripts/check failed; fix before finishing:\n" + "\n".join(report) + "\n\n"
+                + "\n\n".join(failed), continuing)
+    return 0
+
+
+def main():
+    if "--hook" in sys.argv:
+        continuing = False
+        try:
+            continuing = bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))
+        except (json.JSONDecodeError, OSError):
+            pass
+        try:
+            return hook(continuing)
+        except Exception:
+            respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing)
+            return 0
+    failed, report = run_checks()
+    print("\n".join(report))
+    if failed:
+        print("\n" + "\n\n".join(failed))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

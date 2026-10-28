@@ -13,8 +13,8 @@ When a fact or status changes, search the repository (README, `work/`, ADRs, CLA
 copies and update them or replace them with a link to the section that states the fact, keeping
 its status (hypothesis or approved).
 
-**Status of facts.** Product content comes from the draft [mvp.md](../../../mvp.md). Everything
-taken from it is a product hypothesis, marked as such, until the owner approves it. Technical
+**Status of facts.** Product facts are hypotheses, marked as such, until the owner approves them;
+CLAUDE.md names where the product draft lives. Technical
 decisions live in ADRs under [docs/decisions/](../../../docs/decisions/); where this skill and an
 ADR disagree, the ADR wins and this skill is fixed.
 
@@ -22,8 +22,8 @@ ADR disagree, the ADR wins and this skill is fixed.
 
 - **[project.md](references/project.md)** - product overview, audience, principles, feature
   hypotheses, open product decisions.
-- **[architecture.md](references/architecture.md)** - stack, targets and package, architecture
-  map, data rules, planned entities, external integrations.
+- **[architecture.md](references/architecture.md)** - stack, modules, architecture map, data
+  rules, planned entities, external integrations.
 - **[patterns.md](references/patterns.md)** - git workflow, verification, business invariants
   and product rules (hypotheses).
 - **[deployment.md](references/deployment.md)** - build and delivery path, accounts, environments.

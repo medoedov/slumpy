@@ -20,8 +20,8 @@ integrations come from the draft [mvp.md](../../../../mvp.md) and are product hy
 
 ## Stack
 
-- **UI:** SwiftUI, minimum iOS 18, latest stable Xcode, Swift 6 language mode with strict
-  concurrency checking. Swift-specific facts: [.claude/rules/swift.md](../../../rules/swift.md).
+- **UI:** SwiftUI. Minimum iOS, Xcode, and Swift language mode: ADR-0001. Swift-specific facts:
+  [.claude/rules/swift.md](../../../rules/swift.md).
 - **Third-party libraries:** none yet. A new one is added only through an ADR.
 - **Storage:** not chosen. SwiftData or SQLite through GRDB, decided before the reading-session
   model in ADR-0002.
@@ -61,8 +61,7 @@ Deliberately not decided yet; each is decided at the step named.
     `project.pbxproj` are a known trap for agents: merge conflicts, lost files, a broken project;
   - default actor isolation and Approachable Concurrency for each target and the logic package,
     including the DeviceActivity monitor (see the Swift rule);
-  - the test framework (working assumption: Swift Testing for the logic package);
-  - `.gitignore` entries for Xcode (`DerivedData`, `xcuserdata`, `.build`).
+  - the test framework (working assumption: Swift Testing for the logic package).
 - **Storage:** ADR-0002 before the reading-session model.
 - **Sync and conflict resolution:** together with accounts and the backend.
 - **Codex option B or C:** after hypothesis H8 in the audit plan.

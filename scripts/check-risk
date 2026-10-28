@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Fails when a change touches risky paths or text without evidence written in the same change.
+
+Rules, the change set, and the evidence format: scripts/risk-paths, header. If the base cannot be
+determined, a rule line is malformed, or any git call fails, the check fails: it never reports
+success on input it could not read.
+
+--changed     print the change set, NUL-separated (the only definition of it; scripts/check uses it)
+--rules       print the parsed rules as JSON (scripts/test-checks builds a case from each)
+"""
+import fnmatch, json, pathlib, re, subprocess, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+RULES = ROOT / "scripts/risk-paths"
+SKIP_PREFIXES = ("scripts/", ".claude/", "docs/", "work/", "evals/")
+
+
+def git(*args, check=True):
+    return subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=ROOT,
+                          capture_output=True, text=True, check=check)
+
+
+def out(*args):
+    return git(*args).stdout
+
+
+def load_rules():
+    rules = []
+    for n, line in enumerate(RULES.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        body, _, example = line.partition("##")
+        parts = body.split(None, 1)
+        if len(parts) != 2:
+            raise SystemExit(f"check-risk: malformed rule at risk-paths:{n}")
+        category, pattern = parts[0], parts[1].strip()
+        if category.endswith("-text"):
+            regex, example = re.compile(pattern), example.strip()
+            if not example or not regex.search(example):
+                raise SystemExit(f"check-risk: text rule at risk-paths:{n} has no example it matches")
+            rules.append(dict(category=category, pattern=pattern, example=example, line=n))
+        elif category in ("t2", "security"):
+            rules.append(dict(category=category, pattern=pattern, line=n))
+        else:
+            raise SystemExit(f"check-risk: unknown category '{category}' at risk-paths:{n}")
+    return rules
+
+
+def base():
+    """The merge base with origin/dev, or with dev when there is no origin/dev."""
+    for ref in ("origin/dev", "dev"):
+        p = git("merge-base", "HEAD", ref, check=False)
+        if p.returncode == 0:
+            return p.stdout.strip()
+    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "
+                     "run `git fetch origin dev` (and `git fetch --unshallow` in a shallow clone)")
+
+
+def names(*args):
+    return [n for n in out(*args, "-z").split("\0") if n]
+
+
+def change_set(b):
+    return names("diff", "--name-only", "--no-renames", b), names("ls-files", "--others", "--exclude-standard")
+
+
+def added_lines_by_file(b):
+    lines, current = {}, None
+    for line in out("diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", b).splitlines():
+        m = re.match(r'^\+\+\+ (?:b/(.*?)\t?|/dev/null)$', line)
+        if m:
+            current = m.group(1)
+            if current and current.startswith('"'):
+                current = None  # quoted names: read their diff one by one below
+            lines.setdefault(current, [])
+        elif line.startswith("+") and not line.startswith("+++") and current is not None:
+            lines[current].append(line[1:])
+    return lines
+
+
+def match(name, glob):
+    return fnmatch.fnmatch(name, glob) or (glob.startswith("**/") and fnmatch.fnmatch(name, glob[3:]))
+
+
+def main():
+    if "--rules" in sys.argv:
+        print(json.dumps(load_rules()))
+        return 0
+    if "--changed" in sys.argv:
+        tracked, untracked = change_set(base())
+        sys.stdout.write("\0".join(sorted(set(tracked) | set(untracked))))
+        return 0
+
+    rules = load_rules()
+    b = base()
+    tracked, untracked = change_set(b)
+    new_files = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b)) | set(untracked)
+    files = sorted(set(tracked) | set(untracked))
+
+    added = added_lines_by_file(b)
+    for f in files:
+        if f in untracked:
+            added[f] = (ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
+        elif f not in added and (ROOT / f).is_file():
+            diff = out("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", f)
+            added[f] = [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
+
+    plan_added = [l for f in files if re.fullmatch(r"work/[^/]+/plan\.md", f) for l in added.get(f, [])]
+    new_adr = any(re.fullmatch(r"docs/decisions/\d{4}-.+\.md", f) for f in new_files)
+    t1_line = any(re.match(r"\s*(-\s+)?T1 because\b", l) for l in plan_added)
+    security_line = any(re.match(r"\s*(-\s+)?Security pass:", l) for l in plan_added)
+
+    needs = {"t2": set(), "security": set()}
+    for f in files:
+        if f.startswith(SKIP_PREFIXES) or f.endswith(".md"):
+            continue
+        for r in rules:
+            kind = r["category"].removesuffix("-text")
+            if r["category"].endswith("-text"):
+                if any(re.search(r["pattern"], l) for l in added.get(f, [])):
+                    needs[kind].add(f)
+            elif match(f, r["pattern"]):
+                needs[kind].add(f)
+
+    problems = []
+    if needs["t2"] and not (new_adr or t1_line):
+        problems.append("T2 signal without a new ADR or an added 'T1 because' line in a "
+                        "work/*/plan.md (scripts/risk-paths): " + ", ".join(sorted(needs["t2"])))
+    if needs["security"] and not security_line:
+        problems.append("security-pass trigger without an added 'Security pass:' line in a "
+                        "work/*/plan.md (scripts/risk-paths): " + ", ".join(sorted(needs["security"])))
+    if problems:
+        print("\n".join(problems))
+        return 1
+    print(f"check-risk: {len(files)} changed files, evidence present where needed")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"check-risk: git failed: {' '.join(e.cmd)}: {e.stderr.strip()}")

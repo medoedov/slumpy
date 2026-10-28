@@ -1,0 +1,42 @@
+# Rules for scripts/check-risk. This header owns the evidence rules; other files point here.
+# Project layer: the patterns follow this project's planned layout (architecture.md, Targets and
+# Package) and approximate the platform pack's lists (platform.md: new platform capabilities and
+# security-pass triggers own those lists). Revise at the skeleton ADR and at ADR-0002.
+#
+# The change set: everything since the merge base with origin/dev (or dev), plus uncommitted and
+# untracked files, deleted files included. Files under scripts/, .claude/, docs/, work/, evals/ and Markdown files
+# are the agent system and its records, not app code, and are not matched.
+#
+# Evidence counts only when the same change set adds it:
+#   t2        a new ADR file in docs/decisions/, or an added line in a work/*/plan.md that starts
+#             (after an optional "- ") with "T1 because"
+#   security  an added line in a work/*/plan.md that starts (after an optional "- ") with
+#             "Security pass:"
+#
+# One pattern per line. A path rule is a glob; a *-text rule is a regular expression matched
+# against the lines the change set adds, followed by "## " and an example line it must match.
+# scripts/test-checks builds a case from every line, so a rule without a working case fails it.
+#
+# category       pattern                                   ## example (text rules)
+t2               **/*.entitlements
+t2               **/Package.swift
+t2               **/project.yml
+t2               **/Project.swift
+t2               **/*.xcodeproj/project.pbxproj
+t2               **/Migrations/**
+t2               **/*Schema*.swift
+t2-text          @Model\b                                  ## @Model final class Session {}
+t2-text          \bregisterMigration\b                     ## migrator.registerMigration("v2") { _ in }
+t2-text          \bVersionedSchema\b                       ## enum SchemaV2: VersionedSchema {}
+t2-text          \bSchemaMigrationPlan\b                   ## enum Plan: SchemaMigrationPlan {}
+t2-text          \bimport (GRDB|StoreKit|AuthenticationServices|Firebase\w*|Supabase|Alamofire|RevenueCat)\b ## import StoreKit
+t2-text          \bURLSession\b                            ## let (data, _) = try await URLSession.shared.data(from: url)
+security         **/*.entitlements
+security         **/PrivacyInfo.xcprivacy
+security-text    \bSecItem\w*                              ## let status = SecItemAdd(query as CFDictionary, nil)
+security-text    \bkSecClass\b                             ## let q = [kSecClass: kSecClassGenericPassword]
+security-text    \brequestAuthorization\b                  ## try await center.requestAuthorization(for: .individual)
+security-text    \bAuthorizationCenter\b                   ## let center = AuthorizationCenter.shared
+security-text    NSAppTransportSecurity                    ## <key>NSAppTransportSecurity</key>
+security-text    NS\w*UsageDescription                     ## INFOPLIST_KEY_NSCameraUsageDescription: Scan covers
+security-text    \bUIBackgroundModes\b                     ## <key>UIBackgroundModes</key>

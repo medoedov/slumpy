@@ -32,11 +32,11 @@ features only after a review audit; until then there is no house pattern to copy
 
 ## Verification
 
-- Building and testing happen only on a Mac with Xcode. Cloud sessions can review text, specs,
-  and diffs but cannot build or run code.
-- Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
-  lint, format, gate-bypass scan. Changed sensitive paths require an ADR reference or a one-line T1
-  reason in plan.md; they do not set the tier. Not created yet.
+- Where code can build and run: `platform.md`.
+- `scripts/check` is the single entry point. Now: `check-layers`, `check-pointers`, `check-risk`
+  (rules and evidence format: `scripts/risk-paths`, header; the paths are a signal and do not set
+  the tier), `check-lessons`. The self-test `scripts/test-checks` runs on demand. Planned on the
+  Mac: build, package and app tests, lint, format, gate-bypass scan.
 - Planned gates once code exists, each a new dev tool through an ADR (tool facts as of
   2026-10-27): Periphery for dead code with the first targets (open source up to 3.8.0, then
   commercial with the repository archived: check the license before the ADR; paying is an owner

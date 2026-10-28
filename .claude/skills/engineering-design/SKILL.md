@@ -16,24 +16,25 @@ explicit so the `reviewer` can check them against the code later.
 
 ## 1. Tier
 
-Classify with the tiers in CLAUDE.md. T0 needs no brief. A T1 feature gets a short brief; a T1 bug
-gets the failing test CLAUDE.md describes instead. T2 gets the full brief, an ADR, and a `reviewer`
-run in decision mode before any code. For Swift or Apple platform work, read
-`.claude/rules/swift.md` first: it loads on its own only when a `.swift` file is read, created, or
-edited.
+Classify with the tiers in `core-process.md`. T0 needs no brief. A T1 feature gets a short brief;
+a T1 bug gets the failing test `core-process.md` describes instead. T2 gets the full brief, an ADR,
+and a `reviewer` run in decision mode before any code. The platform pack (`platform.md`, always
+loaded) adds design questions to the menu below. For platform work, read the platform's code rules
+first (`platform.md` names them): they load on their own only when a matching file is read,
+created, or edited. Test and fix rules for a bug: `core-code.md`.
 
 ## 2. Domain blind-spot pass (first serious decision in a new area)
 
-Run it when the project has no page for the area in `docs/domains/` yet (examples of areas:
-Screen Time, sync, HTTP caching, payments, sign-in). Write down briefly:
+Run it when the project has no page for the area in `docs/domains/` yet (examples of areas: a
+system service, sync, HTTP caching, payments, sign-in). Write down briefly:
 
 - what experienced practitioners know that newcomers miss;
 - which standards, protocols, and platform rules apply;
 - where implementations usually break.
 
-Check each point against a primary source (Apple docs, the RFC or standard, the vendor's docs).
-Save the result as a one-page `docs/domains/<area>.md`. The research may go to a subagent to keep
-the main context clean. Then continue with the brief.
+Check each point against a primary source (the platform's docs, the RFC or standard, the vendor's
+docs). Save the result as a one-page `docs/domains/<area>.md`. The research may go to a subagent to
+keep the main context clean. Then continue with the brief.
 
 ## 3. Brief
 
@@ -48,8 +49,8 @@ Lives at the top of `work/{feature}/plan.md`. Start with what is most expensive 
 Then:
 
 4. **Assumptions** you are making, each one line.
-5. **Also affected:** who else reads or writes this state; what changes for extensions; whether
-   stored data needs a migration.
+5. **Also affected:** who else reads or writes this state; what changes for other processes or
+   extensions; whether stored data needs a migration.
 6. **Alternatives (T2 only):** at least two, each with reversibility and cost of replacing it in a
    year. Say which you chose and why.
 7. **New elements:** one line per new type, protocol, layer, dependency, or setting: why now, and
@@ -67,10 +68,10 @@ owner as a product question; technical choices you make yourself.
 | New abstraction, type, module, or boundary | What leaks out: storage errors, async, threads, time, network? What happens with a second implementation? Who owns the state? What is the contract: inputs, outputs, errors, ordering, thread safety? |
 | Data and growth | Which field combinations do the types allow that the domain forbids? What happens at 10x and 100x: memory, launch time, scrolling, database size, migration time? How does the migration run? How reversible is it, what does replacing it cost in a year? |
 | Interaction between parts, services, extensions | What is the exchange contract? What if the other side fails or is late? Is ordering guaranteed? What if an operation runs twice, or again after a crash at any point: does it end in the same state, and does the next run recognize what a crashed run left behind? |
-| Concurrent code | Where is the isolation, what is `Sendable`, who owns the state? Swift 6 checks only in-memory data races inside one process: not files, databases, or defaults shared with extensions through the App Group, and not state that changes across an `await`. Which processes write shared data? Writers that record independent facts get their own file or key, merged on read in the logic package; a record that must be one gets one writer or the store's transactions. What about cancellation? What runs on the main thread? |
-| System service or external API | What if permission is denied? What differs across iOS versions? What are the background limits? What without network? What do App Review and privacy rules require? |
-| Standard or protocol | Which standard applies and what does it require? Read the primary source: RFC, ISO 8601, IANA time zones, HTTP semantics, OAuth and Sign in with Apple, APNs, Unicode, WCAG and Apple HIG, App Store Review Guidelines. Do not answer from memory |
-| Interface | Dynamic Type, VoiceOver, dark theme, small screens, list performance |
+| Concurrent code | Where is the isolation, what may cross threads, who owns the state? What does the compiler not check (the platform's design questions say)? Which processes write shared data? Writers that record independent facts get their own file or key, merged on read in one shared module; a record that must be one gets one writer or the store's transactions. What about cancellation? What runs on the main thread? |
+| System service or external API | What if permission is denied? What differs across supported OS versions? What are the background limits? What without network? What do the store's review and privacy rules require? |
+| Standard or protocol | Which standard applies and what does it require? Read the primary source: RFC, ISO 8601, IANA time zones, HTTP semantics, OAuth, Unicode, WCAG, the platform's interface guidelines and store rules. Do not answer from memory |
+| Interface | Text size settings, screen reader, dark theme, small screens, list performance |
 | Any | Can it be simpler? |
 
 ## 5. After the brief

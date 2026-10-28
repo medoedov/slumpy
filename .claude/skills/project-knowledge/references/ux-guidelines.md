@@ -34,7 +34,7 @@ From the first screen (ADR-0001): Dynamic Type, VoiceOver labels, dark theme.
   colors, type, and components to SwiftUI; Claude Design does not produce SwiftUI.
 - Design-system constraints for iOS: system font, Dynamic Type scale, minimum tap target size,
   light and dark themes.
-- The owner accepts simulator screenshots on iOS 18 and on the current iOS (two visual styles,
+- The owner accepts simulator screenshots in the matrix `platform.md` sets (two visual styles,
   see the Swift rule), not the source HTML.
 
 ---
