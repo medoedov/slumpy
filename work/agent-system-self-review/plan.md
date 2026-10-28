@@ -64,3 +64,12 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   single-turn cases cannot exercise; the measurement shows only that they do no harm there.
 
 ## Log
+- Control measurement on `dev` (e046484), with-system arm only, 2 runs per case
+  (`evals/results/selfreview-control/`): T1 trap 2/2, proportionate 0/2; T2 trap 2/2,
+  proportionate 2/2; T3 trap 0/2, proportionate 1/2; design D1, D3, D4 all criteria, D2 one run
+  failed future sync and proportionate; S3 design skill 0/2. The design skill did not load in any
+  trap run. Cost 7.97 USD.
+- Changes committed (0635083): `scripts/check` passes; `scripts/test-checks` 130 cases; `--mutants`
+  45 of 45 killed (one mutant survived first: the new "rule file in no layer" check covered the
+  old "unnamed core file" check; a case with a `core-` file listed by the platform pack now tells
+  them apart).
