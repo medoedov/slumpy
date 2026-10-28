@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Fails when a core agent-system file holds a listed platform or project term.
 # The core files are the ones named in the first sentence of .claude/rules/core-process.md; every
-# .claude/rules/core-*.md file must be named there. Frontmatter is skipped (paths globs are set per
-# project); the body must be English. The term list catches known details only.
+# .claude/rules/core-*.md file must be named there. Only the frontmatter `paths` list is skipped
+# (globs are set per project); the rest must be English. The term list catches known details only.
 set -euo pipefail
 export LC_ALL=C.UTF-8
 cd "$(dirname "$0")/.."
@@ -33,7 +33,10 @@ TERMS+='|apns|required-reason|logic package|adr-[0-9]|scripts/check([^-]|$)|\.en
 TERMS+='|kindle|slumpy|mvp\.md|russian|duolingo'
 
 for f in "${CORE[@]}"; do
-  body=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm' "$f")
+  # Drop only the frontmatter `paths:` key and its list items; descriptions are core text.
+  body=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next}
+              fm && /^paths:/ {inpaths=1; next} fm && inpaths && /^  *- / {next}
+              {inpaths=0; print}' "$f")
   hits=$(printf '%s\n' "$body" | grep -n -i -E "$TERMS" || true)
   cyr=$(printf '%s\n' "$body" | grep -n -P '[\x{0400}-\x{04FF}]' || true)
   if [ -n "$hits$cyr" ]; then

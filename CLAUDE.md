@@ -8,14 +8,16 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 
 - Layers and their files: `.claude/rules/core-process.md`, first paragraph. Platform pack here:
   Apple iOS.
-- Run `scripts/check-layers` after editing a core file; it catches listed terms only.
+- Run `scripts/check-layers` after editing a core file and `scripts/check-pointers` after moving or
+  renaming a section; both catch listed cases only.
 
 ## Project facts
 
 - Minimum iOS 18; Swift 6 language mode with strict concurrency; the latest stable Xcode
   (ADR-0001).
-- The local logic package does not import SwiftUI, UIKit, or other UI frameworks (ADR-0001). Data
-  that several processes write is merged on read in the logic package.
+- The local logic package does not import SwiftUI, UIKit, or other UI frameworks (ADR-0001). It is
+  the shared module where independent facts are merged on read (`engineering-design` menu,
+  Concurrent code).
 - Default branch: `dev`.
 - External actions, decided by the owner: push or merge to `main`, App Store Connect, TestFlight,
   publications.

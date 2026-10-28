@@ -13,7 +13,7 @@
 | Тема | Где | Источник |
 |---|---|---|
 | Повтор операции и повтор после падения | `engineering-design`, меню, строка про взаимодействие частей | Make Operations Idempotent, текущая версия pstack |
-| Кто пишет в общие данные приложения и расширений | `engineering-design`, меню, строка про конкурентность; `swift.md`, Design questions | Separate Before Serializing Shared State |
+| Кто пишет в общие данные приложения и расширений | `engineering-design`, меню, строка про конкурентность; `platform.md`, Design questions | Separate Before Serializing Shared State |
 | Сочетания полей, которые запрещает предметная область | `engineering-design`, меню, строка про данные | Model the Domain, Type System Discipline |
 | Тест на баг падает из-за самого бага | `core-process.md`, T1 | TDD |
 | Критерий хорошего теста | `core-code.md`; ревьюер ссылается | Test Behavior, текущая версия pstack |
