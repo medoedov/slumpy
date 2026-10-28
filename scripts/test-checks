@@ -101,7 +101,15 @@ def run_case(template, tmp, n, c):
 
 def fails(o): return o[-1].returncode != 0
 def passes(o): return o[-1].returncode == 0
-def is_block(p, text=""): return p.returncode == 0 and '"decision": "block"' in p.stdout and text in p.stdout
+def is_block(p, text=""):
+    """The hook keeps the session working: Stop feedback through additionalContext."""
+    try:
+        out = json.loads(p.stdout)
+    except json.JSONDecodeError:
+        return False
+    spec = out.get("hookSpecificOutput", {})
+    return (p.returncode == 0 and "decision" not in out and spec.get("hookEventName") == "Stop"
+            and text in spec.get("additionalContext", ""))
 def is_message(p): return p.returncode == 0 and '"systemMessage"' in p.stdout and '"decision"' not in p.stdout
 def is_silent(p): return p.returncode == 0 and p.stdout.strip() == ""
 
@@ -232,6 +240,8 @@ STATIC = [
 MUTANTS = [
     ("check", "    if changed.returncode == 0 and not changed.stdout.strip(\"\\0\"):", "    if True:", "the hook never runs the checks"),
     ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
+    ("check", "    elif error:", "    elif True:", "check failures shown as a hook error"),
+    ("check", "    if continuing:\n        out = {\"systemMessage\": reason}", "    if False:\n        out = {\"systemMessage\": reason}", "no message while continuing"),
     ("check-risk", 'if needs["t2"] and not (new_adr or t1_line):', "if False:", "t2 rule off"),
     ("check-risk", "not (new_adr or t1_line)", "not (t1_line)", "new ADR ignored"),
     ("check-risk", "not (new_adr or t1_line)", "not (True)", "any evidence accepted"),

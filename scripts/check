@@ -8,8 +8,10 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
 
 --hook  Stop hook, with no record of its own. When the change set (`check-risk --changed`) is
         empty, the turn changed nothing and the hook exits; otherwise it runs the checks. A
-        failure blocks with a JSON decision; while the session is already continuing because of
-        this hook, it shows the failures as a system message instead.
+        failure keeps the session working through `additionalContext` (shown as hook feedback,
+        not as a hook error); while the session is already continuing because of this hook, it
+        shows the failures as a system message instead. A crash of the hook itself is a real
+        error and blocks with a JSON decision.
 """
 import json, pathlib, subprocess, sys, traceback
 
@@ -37,9 +39,14 @@ def run_checks():
     return failed, report
 
 
-def respond(reason, continuing):
-    print(json.dumps({"systemMessage": reason} if continuing
-                     else {"decision": "block", "reason": reason}))
+def respond(reason, continuing, error=False):
+    if continuing:
+        out = {"systemMessage": reason}
+    elif error:
+        out = {"decision": "block", "reason": reason}
+    else:
+        out = {"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": reason}}
+    print(json.dumps(out))
 
 
 def hook(continuing):
@@ -65,7 +72,7 @@ def main():
         try:
             return hook(continuing)
         except Exception:
-            respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing)
+            respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True)
             return 0
     failed, report = run_checks()
     print("\n".join(report))
