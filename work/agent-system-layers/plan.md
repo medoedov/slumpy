@@ -40,11 +40,12 @@ through CLAUDE.md. `core-code.md` keeps a `paths` glob, which each project sets.
 | CLAUDE.md: Scope, Review and lessons, Done, Compaction | core-process ("plain Russian" becomes the owner's language; check command named in CLAUDE.md) |
 | CLAUDE.md: Owner report | core-process; screenshot matrix in platform.md |
 | CLAUDE.md: Language and secrets | core-process; owner's language and secret location in CLAUDE.md |
-| swift.md: minimum iOS 18, logic package without UI imports | CLAUDE.md, Project facts |
+| swift.md: minimum iOS 18, logic package without UI imports, Swift 6 mode, latest Xcode | CLAUDE.md, Project facts |
+| engineering-design menu: merge on read in the logic package | CLAUDE.md, Project facts |
 | swift.md: other facts, bypass list, toolchain, docs, Liquid Glass, monitor memory | swift.md (docs recipe to platform.md) |
 | swift.md: Tests and fixes; "traps go to lessons" | core-code.md |
 | reviewer: Swift rubric items | swift.md, Review rubric |
-| engineering-design menu: Swift 6 checking, App Group, iOS versions, App Review, Apple standards, Dynamic Type, VoiceOver | swift.md, Design questions; the menu keeps generic wording |
+| engineering-design menu: Swift 6 checking, App Group, iOS versions, App Review, Apple standards, Dynamic Type, VoiceOver | platform.md, Design questions (always loaded); the menu keeps generic wording |
 | product-spec: Russian phrases and labels | owner's language from CLAUDE.md |
 | project-knowledge: mvp.md paragraph | CLAUDE.md names the source; the skill keeps the status rule |
 
@@ -54,5 +55,20 @@ through CLAUDE.md. `core-code.md` keeps a `paths` glob, which each project sets.
 - Reviewer, code mode, on the diff: nothing lost or changed in meaning, layers clean, pointers.
 - Eval: all groups on the new commit against the current dev (traps, review, design from
   `evals/results/ubmode-treatment*`, same rule text; product and triggers re-run on dev).
+  Two confounds, stated before the run: the packaging injects every rule file into the main
+  session, path-scoped ones included, so the eval cannot show loading changes; and the packaged
+  reviewer subagent gets no injected context and no `.claude/rules/` files, while it lost the
+  Swift rubric from its own prompt. Changes in groups where the reviewer runs (traps, design) are
+  not attributed to this restructure unless they also show in the main agent's answer.
 
 ## Log
+
+- Reviewer, code, round 1 (770f46e): `changes needed`, five blocking. Three generalized rules lost
+  their limiting condition (plain words for the backlog, the no-tests exemption scoped to sessions
+  that cannot run tests, merge-on-read in the logic package); the platform design questions moved
+  behind a path-scoped file; three pointers were stale; `scripts/check-layers` missed most moved
+  details and an unlisted core file; the eval confounds were unstated. All fixed: the design
+  questions moved to always-loaded `platform.md`, the check derives the core list from
+  core-process.md and checks both directions, the lesson in `docs/lessons.md` now covers moving
+  rules between layers. Pre-existing fix in scope: Swift 6 mode and the latest-Xcode choice moved
+  from swift.md to CLAUDE.md.

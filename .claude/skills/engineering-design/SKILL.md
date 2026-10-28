@@ -18,9 +18,10 @@ explicit so the `reviewer` can check them against the code later.
 
 Classify with the tiers in `core-process.md`. T0 needs no brief. A T1 feature gets a short brief;
 a T1 bug gets the failing test `core-process.md` describes instead. T2 gets the full brief, an ADR,
-and a `reviewer` run in decision mode before any code. For platform work, read the platform's code
-rules first (`platform.md` names them; they add design questions to the menu below): they load on
-their own only when a matching file is read, created, or edited.
+and a `reviewer` run in decision mode before any code. The platform pack (`platform.md`, always
+loaded) adds design questions to the menu below. For platform work, read the platform's code rules
+first (`platform.md` names them): they load on their own only when a matching file is read,
+created, or edited.
 
 ## 2. Domain blind-spot pass (first serious decision in a new area)
 

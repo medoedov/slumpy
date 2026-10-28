@@ -35,7 +35,7 @@ features only after a review audit; until then there is no house pattern to copy
 - Building and testing happen only on a Mac with Xcode. Cloud sessions can review text, specs,
   and diffs but cannot build or run code.
 - Planned (Mac setup): `scripts/check` as the single entry point - build, package and app tests,
-  lint, format, gate-bypass scan. Changed sensitive paths require an ADR reference or a one-line T1
+  lint, format, gate-bypass scan, `scripts/check-layers`. Changed sensitive paths require an ADR reference or a one-line T1
   reason in plan.md; they do not set the tier. Not created yet.
 - Planned gates once code exists, each a new dev tool through an ADR (tool facts as of
   2026-10-27): Periphery for dead code with the first targets (open source up to 3.8.0, then

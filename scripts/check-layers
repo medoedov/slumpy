@@ -1,39 +1,38 @@
 #!/usr/bin/env bash
-# Fails when a core agent-system file holds a platform or project detail.
-# Core files: listed in .claude/rules/core-process.md, first paragraph. Frontmatter is skipped
-# (paths globs and skill descriptions are set per project); the body must be English.
+# Fails when a core agent-system file holds a listed platform or project term.
+# The core files are the ones named in the first sentence of .claude/rules/core-process.md; every
+# .claude/rules/core-*.md file must be named there. Frontmatter is skipped (paths globs are set per
+# project); the body must be English. The term list catches known details only.
 set -euo pipefail
 export LC_ALL=C.UTF-8
 cd "$(dirname "$0")/.."
 
-CORE=(
-  .claude/rules/core-process.md
-  .claude/rules/core-code.md
-  .claude/agents/reviewer.md
-  .claude/skills/engineering-design/SKILL.md
-  .claude/skills/product-spec/SKILL.md
-  .claude/skills/project-knowledge/SKILL.md
-)
-
-# Platform and project terms that belong in the platform pack or the project layer.
-TERMS='swift|\bios\b|ipados|macos|apple|xcode|testflight|app store|app review|app group|keychain|entitlement|sendable|actor isolation|\barc\b|uikit|swiftui|swiftdata|deviceactivity|family ?controls|screen time|liquid glass|dynamic type|voiceover|privacy manifest|\bats\b|\bhig\b|apns|kindle|slumpy|mvp\.md|russian|duolingo'
-
+PROCESS=.claude/rules/core-process.md
 status=0
 
-# The CORE list must match the core files named in core-process.md, first paragraph.
-intro=$(awk 'NR>1 && /^$/ && seen {exit} NR>1 && NF {seen=1; print}' .claude/rules/core-process.md)
-for f in "${CORE[@]}"; do
-  case "$f" in
-    .claude/rules/core-process.md) continue ;;
-    .claude/skills/*/SKILL.md) name=$(basename "$(dirname "$f")") ;;
-    .claude/agents/*.md) name=$(basename "$f" .md) ;;
-    *) name=$(basename "$f") ;;
-  esac
-  grep -q -- "\`$name\`" <<<"$intro" || { echo "core-process.md does not name core file: $f"; status=1; }
+# Core files from the first sentence of core-process.md ("This file, ... are the core").
+sentence=$(awk 'NR>1 && NF {print}' "$PROCESS" | tr '\n' ' ' | sed 's/ are the core.*//')
+CORE=("$PROCESS")
+for name in $(grep -o '`[^`]*`' <<<"$sentence" | tr -d '`'); do
+  if   [ -f ".claude/rules/$name" ];            then CORE+=(".claude/rules/$name")
+  elif [ -f ".claude/agents/$name.md" ];        then CORE+=(".claude/agents/$name.md")
+  elif [ -f ".claude/skills/$name/SKILL.md" ];  then CORE+=(".claude/skills/$name/SKILL.md")
+  else echo "core-process.md names a core file that does not exist: $name"; status=1
+  fi
+done
+for f in .claude/rules/core-*.md; do
+  printf '%s\n' "${CORE[@]}" | grep -qx -- "$f" || { echo "core file not named in core-process.md: $f"; status=1; }
 done
 
+# Platform and project terms that belong in the platform pack or the project layer.
+TERMS='\bswift(\b|ui|data)|\bios\b|ipados|macos|iphone|ipad|apple|xcode|testflight|app store|app review'
+TERMS+='|app group|keychain|entitlement|sendable|mainactor|actor isolation|\barc\b|uikit|widgetkit'
+TERMS+='|storekit|cloudkit|healthkit|userdefaults|deviceactivity|family ?controls|screen time'
+TERMS+='|liquid glass|dynamic type|voiceover|privacy manifest|app transport security|\bats\b|\bhig\b'
+TERMS+='|apns|required-reason|logic package|adr-[0-9]|scripts/check([^-]|$)|\.env\b|`main`|`dev`'
+TERMS+='|kindle|slumpy|mvp\.md|russian|duolingo'
+
 for f in "${CORE[@]}"; do
-  [ -f "$f" ] || { echo "missing core file: $f"; status=1; continue; }
   body=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm' "$f")
   hits=$(printf '%s\n' "$body" | grep -n -i -E "$TERMS" || true)
   cyr=$(printf '%s\n' "$body" | grep -n -P '[\x{0400}-\x{04FF}]' || true)
@@ -45,5 +44,5 @@ for f in "${CORE[@]}"; do
   fi
 done
 
-[ "$status" -eq 0 ] && echo "check-layers: core files clean"
+[ "$status" -eq 0 ] && echo "check-layers: ${#CORE[@]} core files clean"
 exit "$status"

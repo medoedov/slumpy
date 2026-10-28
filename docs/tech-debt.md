@@ -22,6 +22,6 @@ an entry when it is fixed.
 
 - **Where:** `work/agent-system-audit/baseline.md`, section 10.2, "как требует CLAUDE.md для задач T1 и T2".
 - **Problem:** the sentence was true for the measured version; read today it sounds like the current
-  rule, which no longer requires the reviewer on every T1. Low cost: CLAUDE.md is always in context.
+  rule, which no longer requires the reviewer on every T1. Low cost: the current rule (`core-process.md`, Risk tiers) is always in context.
 - **Fix:** "как требовал тогда CLAUDE.md".
 - **Found:** 2026-10-27, final review of the post-verification changes.

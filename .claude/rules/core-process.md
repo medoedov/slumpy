@@ -30,7 +30,8 @@ Classify by the decision the change makes. When unsure, go higher.
 - **T1 normal:** work inside decisions already made, including an additive optional field with a
   lightweight migration. A feature gets a short brief in plan.md (`engineering-design` skill); a bug
   a test can observe gets a failing test first, failing because of the bug (a build or setup error
-  does not count; a session that cannot run it names it in the commit's `Unverified:` line).
+  does not count; a session whose environment cannot run tests at all, as the platform pack says,
+  names the test in the commit's `Unverified:` line).
   Verify, reread your own diff against the brief. Run `reviewer` on the code when the change
   touches shared state or concurrency, or when unsure.
 - **T2 new irreversible decision:** a new persisted entity or storage; a schema change that is
@@ -60,8 +61,8 @@ the user would notice them, instead of into this change.
 
 `reviewer` is the only review agent: give it the mode, tier, round, and the diff or document. Fix
 blocking findings yourself; a blocking finding you dispute gets a recheck, at any tier. Non-blocking
-and pre-existing findings go to `docs/tech-debt.md`, or to `backlog.md` in the owner's language when
-the user would notice them. A finding class that repeats is fixed at its source in the same task,
+and pre-existing findings go to `docs/tech-debt.md`, or to `backlog.md` in plain words in the owner's
+language when the user would notice them. A finding class that repeats is fixed at its source in the same task,
 preferring: compiler, lint rule, test, skill, `docs/lessons.md`, an always-loaded file of the layer
 the rule belongs to. At most two rounds per mode (spec, decision, code); log each review in plan.md
 (mode, round, verdict) and never start a fresh review to reset the count. On `fix and verify`, apply
