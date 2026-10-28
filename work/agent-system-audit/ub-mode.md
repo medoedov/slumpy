@@ -13,15 +13,15 @@
 | Тема | Где | Источник |
 |---|---|---|
 | Повтор операции и повтор после падения | `engineering-design`, меню, строка про взаимодействие частей | Make Operations Idempotent, текущая версия pstack |
-| Кто пишет в общие данные приложения и расширений | `engineering-design`, меню, строка про конкурентность | Separate Before Serializing Shared State |
+| Кто пишет в общие данные приложения и расширений | `engineering-design`, меню, строка про конкурентность; `swift.md`, Design questions | Separate Before Serializing Shared State |
 | Сочетания полей, которые запрещает предметная область | `engineering-design`, меню, строка про данные | Model the Domain, Type System Discipline |
-| Тест на баг падает из-за самого бага | CLAUDE.md, T1 | TDD |
-| Критерий хорошего теста | `swift.md`, «Tests and fixes»; ревьюер ссылается | Test Behavior, текущая версия pstack |
-| Исправление в месте, где возникло плохое состояние | `swift.md`, «Tests and fixes»; ревьюер ссылается | Fix Root Causes, текущая версия pstack |
-| Проверка предпосылки после двух неудачных исправлений | `swift.md`, «Tests and fixes» | Attack the Premise, текущая версия pstack |
+| Тест на баг падает из-за самого бага | `core-process.md`, T1 | TDD |
+| Критерий хорошего теста | `core-code.md`; ревьюер ссылается | Test Behavior, текущая версия pstack |
+| Исправление в месте, где возникло плохое состояние | `core-code.md`; ревьюер ссылается | Fix Root Causes, текущая версия pstack |
+| Проверка предпосылки после двух неудачных исправлений | `core-code.md` | Attack the Premise, текущая версия pstack |
 | Новые конструкции в списке обходов проверок | `swift.md`; ревьюер ссылается | Do not silence the compiler |
 | Одно бизнес-правило в двух местах | ревьюер, рубрика | Laziness Protocol |
-| Строка о проверке в каждом коммите | CLAUDE.md, Done | Commit and Push |
+| Строка о проверке в каждом коммите | `core-process.md`, Done | Commit and Push |
 | План автоматических проверок | `patterns.md`, Verification | Crapper, Dryer, Mutator |
 
 Формулировки взяты из текущей версии pstack. 14.10.2026 poteto переписал четыре правила, назвав старый текст слишком частным; ub-mode повторяет старый. Текст ub-mode не копировался: у репозитория нет лицензии.

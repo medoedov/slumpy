@@ -30,43 +30,43 @@ through a question. List every open point in the request.
 
 ## 3. Ask
 
-All questions in one message, numbered, highest impact first, in Russian and in the owner's
-terms, without technical vocabulary. End the message with: «Можно ответить „по рекомендациям“ или
-назвать только пункты, где вы не согласны». Each question has:
+All questions in one message, numbered, highest impact first, in the owner's language (CLAUDE.md)
+and terms, without technical vocabulary. End the message with a line saying the owner can answer
+"per the recommendations" or name only the points they disagree with. Each question has these
+parts, labeled in the owner's language:
 
-- **Суть:** the question itself, one sentence.
-- **Почему важно:** what depends on it.
-- **Варианты:** two or three concrete options.
-- **Рекомендация:** the option you recommend and why.
-- **Что изменится для пользователя:** how each option looks to the user.
+- **Question:** the question itself, one sentence.
+- **Why it matters:** what depends on it.
+- **Options:** two or three concrete options.
+- **Recommendation:** the option you recommend and why.
+- **What changes for the user:** how each option looks to the user.
 
 If the request has no product questions left after sorting, say so and go straight to the spec.
 
 ## 4. Write `work/{feature}/spec.md`
 
-In Russian, addressed to the owner:
+In the owner's language, addressed to the owner, with these sections (headings translated):
 
 ```markdown
-# <Фича>
+# <Feature>
 
-## Зачем
-Проблема пользователя и ожидаемый эффект.
+## Why
+The user's problem and the expected effect.
 
-## Что видит пользователь
-Сценарии по шагам, включая пустое состояние, прерывания и отказы, которые пользователь может
-встретить.
+## What the user sees
+Scenarios step by step, including the empty state, interruptions, and failures the user can hit.
 
-## Критерии приёмки
-Проверяемые утверждения: что должно происходить и как это проверить.
+## Acceptance criteria
+Testable statements: what must happen and how to check it.
 
-## Не входит
-Что явно не делаем в этой фиче.
+## Out of scope
+What this feature explicitly does not do.
 
-## Решения владельца
-Вопрос → ответ, дата.
+## Owner decisions
+Question → answer, date.
 
-## Допущения
-Принятые по умолчанию продуктовые решения; владелец может изменить любое.
+## Assumptions
+Product decisions taken by default; the owner can change any of them.
 ```
 
 ## 5. Check from the implementer's side
@@ -77,5 +77,5 @@ five-question limit, or an assumption.
 
 ## 6. Hand over
 
-Give the owner a short Russian summary: what will be built, decisions taken, assumptions. The
-technical brief follows with the `engineering-design` skill.
+Give the owner a short summary in their language: what will be built, decisions taken,
+assumptions. The technical brief follows with the `engineering-design` skill.

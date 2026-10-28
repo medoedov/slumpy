@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Fails when a core agent-system file holds a platform or project detail.
+# Core files: listed in .claude/rules/core-process.md, first paragraph. Frontmatter is skipped
+# (paths globs and skill descriptions are set per project); the body must be English.
+set -euo pipefail
+export LC_ALL=C.UTF-8
+cd "$(dirname "$0")/.."
+
+CORE=(
+  .claude/rules/core-process.md
+  .claude/rules/core-code.md
+  .claude/agents/reviewer.md
+  .claude/skills/engineering-design/SKILL.md
+  .claude/skills/product-spec/SKILL.md
+  .claude/skills/project-knowledge/SKILL.md
+)
+
+# Platform and project terms that belong in the platform pack or the project layer.
+TERMS='swift|\bios\b|ipados|macos|apple|xcode|testflight|app store|app review|app group|keychain|entitlement|sendable|actor isolation|\barc\b|uikit|swiftui|swiftdata|deviceactivity|family ?controls|screen time|liquid glass|dynamic type|voiceover|privacy manifest|\bats\b|\bhig\b|apns|kindle|slumpy|mvp\.md|russian|duolingo'
+
+status=0
+
+# The CORE list must match the core files named in core-process.md, first paragraph.
+intro=$(awk 'NR>1 && /^$/ && seen {exit} NR>1 && NF {seen=1; print}' .claude/rules/core-process.md)
+for f in "${CORE[@]}"; do
+  case "$f" in
+    .claude/rules/core-process.md) continue ;;
+    .claude/skills/*/SKILL.md) name=$(basename "$(dirname "$f")") ;;
+    .claude/agents/*.md) name=$(basename "$f" .md) ;;
+    *) name=$(basename "$f") ;;
+  esac
+  grep -q -- "\`$name\`" <<<"$intro" || { echo "core-process.md does not name core file: $f"; status=1; }
+done
+
+for f in "${CORE[@]}"; do
+  [ -f "$f" ] || { echo "missing core file: $f"; status=1; continue; }
+  body=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm' "$f")
+  hits=$(printf '%s\n' "$body" | grep -n -i -E "$TERMS" || true)
+  cyr=$(printf '%s\n' "$body" | grep -n -P '[\x{0400}-\x{04FF}]' || true)
+  if [ -n "$hits$cyr" ]; then
+    echo "== $f"
+    [ -n "$hits" ] && printf '%s\n' "$hits"
+    [ -n "$cyr" ] && printf 'non-English text:\n%s\n' "$cyr"
+    status=1
+  fi
+done
+
+[ "$status" -eq 0 ] && echo "check-layers: core files clean"
+exit "$status"

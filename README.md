@@ -1,7 +1,7 @@
 # Slumpy
 
 > **Этот README описывает проект на GitHub.** Инструкции для AI-агентов лежат в CLAUDE.md
-> и в скиллах `.claude/skills/`.
+> и в папке `.claude/`.
 
 ## О проекте
 
@@ -17,7 +17,11 @@
 ## Структура проекта
 
 ```
-.claude/                    # Агентская система: скиллы, агент-ревьюер, правила для Swift
+.claude/                    # Агентская система из трёх слоёв:
+                            #   ядро, одинаковое для любых проектов: rules/core-*.md, агент-ревьюер, скиллы
+                            #   пакет iOS: rules/platform.md и rules/swift.md
+                            #   проект Slumpy: CLAUDE.md и знания о проекте (skills/project-knowledge/references)
+scripts/check-layers        # Проверка, что в ядро не попали детали iOS или Slumpy
 .agents/, .codex/, .githooks/, AGENTS.md  # Старая копия для Codex, заморожена: не править
 docs/decisions/             # Архитектурные решения (ADR)
 docs/lessons.md             # Ловушки, на которые проект уже наступал
