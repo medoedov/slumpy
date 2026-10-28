@@ -12,9 +12,9 @@ it was added.
 | Task | Every | Last done | How |
 |---|---|---|---|
 | Platform facts | 180 days | 2026-10-27 | Check each dated fact in the platform pack against the platform's documentation and the latest stable toolchain, and update the dates in the facts. Also due at each new major toolchain release |
-| Prompt and skill audit | 60 days | 2026-10-27 | `/doctor prompt-audit` and `/skill-doctor` on the agent system; apply what is right, record the rest in `docs/tech-debt.md` |
+| Prompt and skill audit | 30 days | 2026-10-27 | `/doctor prompt-audit` and `/skill-doctor` on the agent system; apply what is right, record the rest in `docs/tech-debt.md` |
 | Cleanup pass | 60 days | 2026-10-28 | Work through `docs/tech-debt.md`; remove stale documents and lessons whose "stale when" has come; once code exists, also dead code and lint drift |
-| Measurement after a model change | on event | — | When the main model changes, run the eval suite on the current version and update "Known so far" below |
+| Measurement after a model change | on event | — | As `.claude/rules/core-agent-system.md` says; update "Known so far" below |
 
 ## Mechanism ledger
 

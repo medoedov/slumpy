@@ -55,10 +55,11 @@ Whatever the tier:
 - A persisted schema change ships with a test that opens a store created by the previous schema
   version.
 - Data that crosses a boundary (a file, an export, another app or process, the network) gets a
-  representation the other side reads without guessing, checked against the standard's primary
-  source: time with its offset or time zone, money as a decimal with its currency, text with its
-  encoding (and its normalization and collation where it is compared or sorted), identifiers in a
-  stated format, units and number formats.
+  representation the other side reads without guessing: an instant with its offset or time zone; a
+  calendar date or a wall-clock time marked as such, without a zone; money as a decimal with its
+  currency; text with its encoding, and its normalization and collation where it is compared or
+  sorted; identifiers in a stated format; units and number formats. Where a standard applies,
+  check against its primary source.
 
 ## Scope
 
@@ -74,14 +75,16 @@ author's side.
 - Give `reviewer` the mode, tier, round, and the diff or document.
 - Rounds: at most two per mode (spec, decision, code); a recheck is not a round. Log each review in
   plan.md (mode, round, verdict). Never start a fresh review to reset the count.
-- Blocking findings: fix them yourself. A blocking finding you dispute gets a recheck, at any tier.
+- Blocking findings: fix them yourself. A blocking finding you dispute, or one the reviewer marks
+  as not sure, gets a recheck, at any tier.
 - Non-blocking and pre-existing findings go to `docs/tech-debt.md`, or to `backlog.md` in plain
   words in the owner's language when the user would notice them. A non-blocking finding you
-  dispute is your call; record the reason in plan.md.
-- A finding class that repeats is fixed at its source in the same task, preferring: compiler, lint
-  rule, test, skill, `docs/lessons.md`, an always-loaded file of the layer the rule belongs to.
-- `fix and verify`: apply the listed fixes and verify them with tests or checks, without another
-  round. In decision mode, record the fixes in plan.md and give them to code round 1.
+  dispute, or one the reviewer marks as not sure, is your call; record the reason in plan.md.
+- A finding class that repeats is fixed at its source in the same task, preferring, in this order:
+  project structure or the compiler, a lint rule, test, check, or hook, a review step, a skill or
+  path rule, `docs/lessons.md`, an always-loaded file of the layer the rule belongs to.
+- `fix and verify`: apply the listed fixes without another round. In code mode, verify them with
+  tests or checks; in decision mode, record them in plan.md, and code round 1 checks them.
 - `rethink approach`: revise the brief and review the new approach with a fresh pair of rounds,
   once per change. If that also ends with `rethink approach`, do not ship the part that carries the
   open blocking finding and keep the previous behavior; record it in plan.md and list it in the

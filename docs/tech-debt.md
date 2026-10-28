@@ -2,8 +2,8 @@
 
 Technical problems found along the way that do not block the current change: pre-existing defects,
 non-blocking review findings, simplifications worth doing later. Problems the user would notice go
-to `backlog.md` instead. Cleanup passes (about every five features) work through this list; remove
-an entry when it is fixed.
+to `backlog.md` instead. Cleanup passes (the upkeep table in `docs/agent-system.md`) work through
+this list; remove an entry when it is fixed.
 
 ## Format
 

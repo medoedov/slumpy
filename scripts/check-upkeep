@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fails when an upkeep task in docs/agent-system.md (section Upkeep) is due: its last date is
 older than its interval in days. A task whose interval is "on event" carries no date. A missing
-section or table, a row that does not parse, and a date in the future fail too. Any error exits
-non-zero."""
+section or table, a table that is not one block of rows starting with "|", a row that does not
+parse, and a date later than today anywhere on Earth fail too. Any error exits non-zero."""
 import datetime, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -11,12 +11,21 @@ SEPARATOR = re.compile(r"\|(\s*:?-+:?\s*\|)+")
 text = (ROOT / "docs/agent-system.md").read_text(encoding="utf-8")
 if "\n## Upkeep\n" not in text:
     sys.exit("check-upkeep: docs/agent-system.md has no Upkeep section")
-section = text.split("\n## Upkeep\n", 1)[1].split("\n## ", 1)[0]
-table = [l.strip() for l in section.splitlines() if l.strip().startswith("|")]
+lines = text.split("\n## Upkeep\n", 1)[1].split("\n## ", 1)[0].splitlines()
+start = next((i for i, l in enumerate(lines) if l.strip().startswith("|")), len(lines))
+end = start
+while end < len(lines) and lines[end].strip():
+    end += 1
+table = [l.strip() for l in lines[start:end]]
+stray = [l for i, l in enumerate(lines) if "|" in l and not start <= i < end]
+if stray or any(not l.startswith("|") for l in table):
+    sys.exit("check-upkeep: the Upkeep table must be one block of rows that start with '|'")
 if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):
     sys.exit("check-upkeep: the Upkeep section has no table with a header row")
 rows = table[2:]
 today = datetime.date.today()
+# A date written today in any time zone is at most today in UTC+14.
+latest = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()
 problems = [] if rows else ["the Upkeep table has no tasks"]
 for row in rows:
     cells = [c.strip() for c in row.strip("|").split("|")]
@@ -34,7 +43,7 @@ for row in rows:
     if not interval or done is None:
         problems.append(f"upkeep '{task}': the interval must be 'N days' or 'on event' and the "
                         "last date YYYY-MM-DD")
-    elif done > today:
+    elif done > latest:
         problems.append(f"upkeep '{task}': last done {done} is in the future")
     elif (today - done).days > int(interval.group(1)):
         problems.append(f"upkeep '{task}' is due: last done {done}, every {every}; do it in its own "

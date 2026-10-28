@@ -23,6 +23,7 @@ GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
 ENV = dict(os.environ, SLUMPY_IN_TEST_CHECKS="1")
 TODAY = datetime.date.today().isoformat()
 def DAYS_AGO(n): return (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
+LATEST = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=14))).date()  # today in UTC+14
 LESSON = ("\n### {title}\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by:** {guard}\n"
           "- **Stale when:** z\n- **Added:** {added}\n")
 
@@ -95,7 +96,7 @@ def run_case(template, tmp, n, c):
         args = step.get("script", c["script"])
         outs.append(subprocess.run([sys.executable, "-I", str(d / "scripts" / args[0]), *args[1:]],
                                    cwd=d, capture_output=True, text=True,
-                                   input=step.get("stdin"), env=ENV))
+                                   input=step.get("stdin"), env=ENV, timeout=60))
     shutil.rmtree(d, ignore_errors=True)
     return c["expect"](outs)
 
@@ -240,7 +241,13 @@ STATIC = [
     ("clean copy passes check-upkeep", dict(script=["check-upkeep"], expect=passes)),
     ("upkeep task at its interval passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(30)} | x |")]), script=["check-upkeep"], expect=passes)),
     ("upkeep task a day past its interval", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(31)} | x |")]), script=["check-upkeep"], expect=fails)),
-    ("upkeep date in the future", dict(runs=one([upkeep_row(f"| Task | 30 days | {DAYS_AGO(-400)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep task done today passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {TODAY} | x |")]), script=["check-upkeep"], expect=passes)),
+    ("upkeep date of today in UTC+14 passes", dict(runs=one([upkeep_row(f"| Task | 30 days | {LATEST} | x |")]), script=["check-upkeep"], expect=passes)),
+    ("upkeep date after today in UTC+14", dict(runs=one([upkeep_row(f"| Task | 30 days | {LATEST + datetime.timedelta(days=1)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep dated interval with a dash for the date", dict(runs=one([upkeep_row("| Task | 30 days | — | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep interval in months", dict(runs=one([upkeep_row(f"| Task | 6 months | {DAYS_AGO(3)} | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep row without its leading pipe", dict(runs=one([upkeep_row("Old | 30 days | 2000-01-01 | x |")]), script=["check-upkeep"], expect=fails)),
+    ("upkeep row after a blank line", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| New | 30 days | {TODAY} | x |\n\n| Old | 30 days | 2000-01-01 | x |\n")]), script=["check-upkeep"], expect=fails)),
     ("upkeep interval that does not parse", dict(runs=one([upkeep_row(f"| Task | monthly | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
     ("upkeep row with three cells", dict(runs=one([upkeep_row(f"| Task | 30 days | {TODAY} |")]), script=["check-upkeep"], expect=fails)),
     ("upkeep table without its header row", dict(runs=one([upkeep_doc(f"| Old | 30 days | 2000-01-01 | x |\n| New | 30 days | {TODAY} | x |\n| Newer | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
@@ -298,13 +305,6 @@ MUTANTS = [
     ("check-pointers", "if (ROOT / p).is_file()]", "if p in files]", "untracked target reported missing"),
     ("check-layers", "    if f not in core and f not in platform:", "    if False:", "rule file in no layer accepted"),
     ("check-layers", '.claude/rules").rglob("*.md")', '.claude/rules").glob("*.md")', "rule files in subfolders not checked"),
-    ("check-upkeep", "    elif (today - done).days > int(interval.group(1)):", "    elif False:", "due task accepted"),
-    ("check-upkeep", "> int(interval.group(1))", ">= int(interval.group(1))", "task due a day early"),
-    ("check-upkeep", "    elif done > today:", "    elif False:", "future date accepted"),
-    ("check-upkeep", "rows = table[2:]", "rows = table[3:]", "first task skipped"),
-    ("check-upkeep", 'problems = [] if rows else ["the Upkeep table has no tasks"]', "problems = []", "empty table accepted"),
-    ("check-upkeep", "if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):", "if len(table) < 2:", "table without a header row accepted"),
-    ("check-upkeep", '    if every == "on event":\n        continue\n', "", "event task read as dated"),
     ("check-upkeep", '.split("\\n## ", 1)[0]', "", "rows after the section read as tasks"),
     ("check-pointers", " and (ROOT / f).is_file()]", "]", "deleted file crashes the scan"),
     ("check-pointers", 'FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")', 'FROZEN = ("AGENTS.md",)', "frozen files scanned"),
@@ -331,6 +331,12 @@ def run_cases():
     cases, failures = all_cases()
     if cases is None:
         return 0, failures
+    only = os.environ.get("SLUMPY_CASES_FOR")  # a mutant in this script: only cases that run it
+    if only:
+        cases = [c for c in cases if c[1].get("script", ["check"])[0] in (only, "check")
+                 or any(step.get("script", c[1]["script"])[0] in (only, "check")
+                        for step in c[1].get("runs", []))]
+    fail_fast = bool(os.environ.get("SLUMPY_FAIL_FAST"))
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         template = make_template(tmp)
@@ -338,29 +344,111 @@ def run_cases():
             n, (desc, c) = item
             try:
                 return None if run_case(template, tmp, n, c) else desc
-            except Exception as e:  # a broken case is a failure, never a pass
+            except Exception as e:  # a broken case or a timeout is a failure, never a pass
                 return f"{desc} (case error: {e})"
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-            failures = [r for r in pool.map(one_case, enumerate(cases)) if r]
+            futures = [pool.submit(one_case, item) for item in enumerate(cases)]
+            failures = []
+            for fut in concurrent.futures.as_completed(futures):
+                if fut.result():
+                    failures.append(fut.result())
+                    if fail_fast:
+                        for other in futures:
+                            other.cancel()
+                        break
     return len(cases), failures
+
+
+# Generated mutants: every condition forced true and false, each operand of and/or dropped, each
+# `not` removed, each single comparison flipped, each integer moved by one, each statement removed.
+# A survivor is logic no case observes, unless EQUIVALENT lists it with the reason it cannot change
+# behavior; an EQUIVALENT entry that matches no generated mutant is stale and fails the run.
+GENERATED_FROM = ["check", "check-risk", "check-lessons", "check-layers", "check-pointers",
+                  "check-upkeep"]
+FLIP = {ast.Gt: ">=", ast.GtE: ">", ast.Lt: "<=", ast.LtE: "<", ast.Eq: "!=", ast.NotEq: "==",
+        ast.In: "not in", ast.NotIn: "in", ast.Is: "is not", ast.IsNot: "is"}
+# (script, mutation, the original line stripped): why the mutant cannot change what the check reports.
+EQUIVALENT = {
+}
+
+
+def generated_mutants(root=ROOT):
+    out = []
+    for script in GENERATED_FROM:
+        src = (root / "scripts" / script).read_text(encoding="utf-8")
+        lines = src.splitlines(keepends=True)
+        starts = [0]
+        for l in lines:
+            starts.append(starts[-1] + len(l))
+        def pos(line, col):  # ast columns count UTF-8 bytes
+            return starts[line - 1] + len(lines[line - 1].encode()[:col].decode())
+        tree = ast.parse(src)
+        in_fstring = {id(n) for j in ast.walk(tree) if isinstance(j, ast.JoinedStr)
+                      for n in ast.walk(j)}
+        def seg(n):
+            return src[pos(n.lineno, n.col_offset):pos(n.end_lineno, n.end_col_offset)]
+        def add(n, new, what):
+            a, b = pos(n.lineno, n.col_offset), pos(n.end_lineno, n.end_col_offset)
+            out.append((script, a, b, new, what, lines[n.lineno - 1].strip()))
+        for n in ast.walk(tree):
+            if id(n) in in_fstring:
+                continue
+            tests = [n.test] if isinstance(n, (ast.If, ast.While, ast.IfExp)) else []
+            tests += n.ifs if isinstance(n, ast.comprehension) else []
+            for t in tests:
+                add(t, "True", "condition always true")
+                add(t, "False", "condition always false")
+            if isinstance(n, ast.BoolOp):
+                op = " and " if isinstance(n.op, ast.And) else " or "
+                for i in range(len(n.values)):
+                    rest = [seg(v) for j, v in enumerate(n.values) if j != i]
+                    add(n, "(" + op.join(rest) + ")", f"operand {i + 1} of {op.strip()} dropped")
+            if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
+                add(n, "(" + seg(n.operand) + ")", "not removed")
+            if isinstance(n, ast.Compare) and len(n.ops) == 1 and type(n.ops[0]) in FLIP:
+                new_op = FLIP[type(n.ops[0])]
+                add(n, f"({seg(n.left)} {new_op} {seg(n.comparators[0])})", f"comparison to {new_op}")
+            if isinstance(n, ast.Constant) and type(n.value) is int:
+                add(n, str(n.value + 1), f"{n.value} to {n.value + 1}")
+                if n.value > 0:
+                    add(n, str(n.value - 1), f"{n.value} to {n.value - 1}")
+            if isinstance(n, (ast.Assign, ast.AugAssign, ast.Return, ast.Continue, ast.Break,
+                              ast.Raise)) or (isinstance(n, ast.Expr)
+                                              and not isinstance(n.value, ast.Constant)):
+                add(n, "pass", "statement removed")
+    return out
 
 
 def run_copy(mutant=None):
     with tempfile.TemporaryDirectory() as tmp:
         d = pathlib.Path(tmp) / "copy"
         copy_files(ROOT, d)
-        if mutant:
+        env = dict(ENV)
+        if mutant and len(mutant) == 4:            # hand-written: (script, old, new, label)
             script, old, new, label = mutant
             f = d / "scripts" / script
             s = f.read_text(encoding="utf-8")
             if s.count(old) != 1:
                 return f"stale mutant (text found {s.count(old)} times): {label}"
             f.write_text(s.replace(old, new), encoding="utf-8")
-        p = subprocess.run([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
-                           capture_output=True, text=True, env=ENV)
+            name = f"{label} ({script})"
+        elif mutant:                               # generated: (script, start, end, new, what, line)
+            script, a, b, new, what, line = mutant
+            f = d / "scripts" / script
+            s = f.read_text(encoding="utf-8")
+            f.write_text(s[:a] + new + s[b:], encoding="utf-8")
+            name = f"{script}: {what}: {line}"
+        if mutant:
+            env.update(SLUMPY_CASES_FOR=script, SLUMPY_FAIL_FAST="1")
+        try:
+            p = subprocess.run([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
+                               capture_output=True, text=True, env=env, timeout=600)
+            failed = p.returncode != 0
+        except subprocess.TimeoutExpired:
+            failed = True
         if mutant is None:
-            return None if p.returncode == 0 else "baseline fails; mutants not measured:\n" + p.stdout
-        return None if p.returncode != 0 else f"surviving mutant: {mutant[3]} ({mutant[0]})"
+            return None if not failed else "baseline fails; mutants not measured:\n" + p.stdout
+        return None if failed else f"surviving mutant: {name}"
 
 
 def main():
@@ -369,13 +457,19 @@ def main():
         if baseline:
             print(baseline)
             return 1
+        generated = generated_mutants()
+        keys = {(m[0], m[4], m[5]) for m in generated}
+        stale = [f"stale EQUIVALENT entry: {k}" for k in EQUIVALENT if k not in keys]
+        todo = MUTANTS + [m for m in generated if (m[0], m[4], m[5]) not in EQUIVALENT]
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            problems = [r for r in pool.map(run_copy, MUTANTS) if r]
+            problems = stale + [r for r in pool.map(run_copy, todo) if r]
+        total = len(MUTANTS) + len(generated)
         if problems:
             print("\n".join(problems))
-            print(f"test-checks: {len(problems)} of {len(MUTANTS)} mutants survive or are stale")
+            print(f"test-checks: {len(problems)} of {total} mutants survive or are stale")
             return 1
-        print(f"test-checks: all {len(MUTANTS)} mutants killed")
+        print(f"test-checks: all {len(todo)} mutants killed ({len(MUTANTS)} written, "
+              f"{len(generated)} generated, {len(generated) + len(MUTANTS) - len(todo)} equivalent)")
         return 0
     total, failures = run_cases()
     if failures:

@@ -106,11 +106,11 @@ Principles as trade-offs, not rules:
     classes. List the fixes;
   - `rethink approach` in every other case, for example a round-1 finding still open, a round-1
     class recurring, or a blocking finding that is not small and local. Patching is not
-    converging; the author goes back to the brief.
+    converging.
 - Round 2 in spec mode ends with `clean` or `owner questions`: the remaining findings become owner
   questions or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
-  so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
+  so and name the source to fix, from the order in `core-process.md`, Review and lessons.
 - A finding is disputed when the author objects with evidence or you are not sure of it; mark the
   ones you are not sure of.
 
