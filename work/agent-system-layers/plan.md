@@ -111,3 +111,8 @@ The last column lists each condition of the old rule and where it is kept; the r
   not worse; the design skill fires more often; traps proportionate 2/4 against 4/4, both misses in
   runs where the design skill fired; cost lower in every group (−12% to −39%). Accepted by the
   adoption rule; T1, T2 proportionality is a watch item for the pilot.
+- Loading smoke test in real sessions (`claude -p` in the repository, 2026-10-28): a fresh session
+  has CLAUDE.md, platform.md, and core-process.md and not core-code.md or swift.md; after reading a
+  `.swift` file both path-scoped rules are present; the `reviewer` subagent has CLAUDE.md,
+  platform.md, core-process.md, and the preloaded `engineering-design` skill. This is the loading
+  the eval packaging cannot show.
