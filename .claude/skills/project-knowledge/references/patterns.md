@@ -32,7 +32,7 @@ features only after a review audit; until then there is no house pattern to copy
 
 ## Verification
 
-- Where code can build and run: `platform.md` (Mac with Xcode only).
+- Where code can build and run: `platform.md`.
 - `scripts/check` is the single entry point. Now: `check-layers`, `check-pointers`, `check-risk`
   (rules and evidence format: `scripts/risk-paths`, header; the paths are a signal and do not set
   the tier), `check-lessons`, `test-checks`. It fails once an Xcode project exists until build and

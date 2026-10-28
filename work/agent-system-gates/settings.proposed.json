@@ -35,13 +35,25 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --session-start",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook",
-            "timeout": 600
+            "timeout": 120
           }
         ]
       }

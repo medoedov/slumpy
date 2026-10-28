@@ -8,7 +8,8 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
 
 - Layers and their files: `.claude/rules/core-process.md`, first paragraph. Platform pack here:
   Apple iOS.
-- The checks catch listed cases only; their self-test is `scripts/test-checks`.
+- The checks catch listed cases only; their self-test is `scripts/test-checks`. After changing
+  `scripts/`, run `scripts/test-checks --mutants` (minutes; every mutant must be killed).
 
 ## Project facts
 

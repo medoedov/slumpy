@@ -1,82 +1,114 @@
 #!/usr/bin/env python3
 """Fails when a change touches risky paths or text without evidence written in the same change.
 
-Rules and the evidence format: scripts/risk-paths, header. The change set is everything since the
-merge base with origin/dev (or dev), plus uncommitted and untracked files, deleted files included.
-If the base cannot be determined, or any git call fails, the check fails: it never reports success
-on input it could not read.
+Rules, the change set, and the evidence format: scripts/risk-paths, header. If the base cannot be
+determined, a rule line is malformed, or any git call fails, the check fails: it never reports
+success on input it could not read.
+
+--changed     print the change set, NUL-separated (the only definition of it; scripts/check uses it)
+--rules       print the parsed rules as JSON (scripts/test-checks builds a case from each)
 """
-import fnmatch, pathlib, re, subprocess, sys
+import fnmatch, json, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RULES = ROOT / "scripts/risk-paths"
-SKIP_PREFIXES = ("scripts/", ".claude/", "docs/", "work/", "evals/")  # the agent system and records
+SKIP_PREFIXES = ("scripts/", ".claude/", "docs/", "work/", "evals/")
+SESSION_BASE = "slumpy-session-base"  # under .git, written by `scripts/check --session-start`
 
 
-def git(*args):
+def git(*args, check=True):
     return subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=ROOT,
-                          capture_output=True, text=True, check=True).stdout
+                          capture_output=True, text=True, check=check)
+
+
+def out(*args):
+    return git(*args).stdout
+
+
+def load_rules():
+    rules = []
+    for n, line in enumerate(RULES.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        body, _, example = line.partition("##")
+        parts = body.split(None, 1)
+        if len(parts) != 2:
+            raise SystemExit(f"check-risk: malformed rule at risk-paths:{n}")
+        category, pattern = parts[0], parts[1].strip()
+        if category.endswith("-text"):
+            regex, example = re.compile(pattern), example.strip()
+            if not example or not regex.search(example):
+                raise SystemExit(f"check-risk: text rule at risk-paths:{n} has no example it matches")
+            rules.append(dict(category=category, pattern=pattern, example=example, line=n))
+        elif category in ("t2", "security", "project"):
+            rules.append(dict(category=category, pattern=pattern, line=n))
+        else:
+            raise SystemExit(f"check-risk: unknown category '{category}' at risk-paths:{n}")
+    return rules
 
 
 def base():
+    """The older of the session start and the merge base with origin/dev or dev."""
+    candidates = []
     for ref in ("origin/dev", "dev"):
-        try:
-            return git("merge-base", "HEAD", ref).strip()
-        except subprocess.CalledProcessError:
-            continue
-    raise SystemExit("check-risk: no merge base with origin/dev or dev; "
-                     "run `git fetch origin dev` (and `git fetch --unshallow` in a shallow clone)")
+        p = git("merge-base", "HEAD", ref, check=False)
+        if p.returncode == 0:
+            candidates.append(p.stdout.strip())
+            break
+    session = ROOT / out("rev-parse", "--git-path", SESSION_BASE).strip()
+    if session.is_file():
+        p = git("merge-base", "HEAD", session.read_text().strip(), check=False)
+        if p.returncode == 0:
+            candidates.append(p.stdout.strip())
+    if not candidates:
+        raise SystemExit("check-risk: no base: no merge base with origin/dev or dev and no session "
+                         "start record; run `git fetch origin dev` (and `git fetch --unshallow`)")
+    oldest = candidates[0]
+    for c in candidates[1:]:
+        if git("merge-base", "--is-ancestor", c, oldest, check=False).returncode == 0:
+            oldest = c
+    return oldest
 
 
 def names(*args):
-    return [n for n in git(*args, "-z").split("\0") if n]
+    return [n for n in out(*args, "-z").split("\0") if n]
+
+
+def change_set(b):
+    return names("diff", "--name-only", "--no-renames", b), names("ls-files", "--others", "--exclude-standard")
 
 
 def added_lines_by_file(b):
-    """Lines each file adds against the base, one git call for tracked files."""
-    out, current = {}, None
-    for line in git("diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", b).splitlines():
+    lines, current = {}, None
+    for line in out("diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", b).splitlines():
         m = re.match(r'^\+\+\+ (?:b/(.*?)\t?|/dev/null)$', line)
         if m:
             current = m.group(1)
             if current and current.startswith('"'):
-                current = None  # quoted names are resolved below through -z listings
-            out.setdefault(current, [])
+                current = None  # quoted names: read their diff one by one below
+            lines.setdefault(current, [])
         elif line.startswith("+") and not line.startswith("+++") and current is not None:
-            out[current].append(line[1:])
-    return out
+            lines[current].append(line[1:])
+    return lines
 
 
 def match(name, glob):
     return fnmatch.fnmatch(name, glob) or (glob.startswith("**/") and fnmatch.fnmatch(name, glob[3:]))
 
 
-def load_rules():
-    rules = []
-    for line in RULES.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            category, pattern = line.split(None, 1)
-            rules.append((category, re.compile(pattern) if category.endswith("-text") else pattern))
-    return rules
-
-
-def change_set(b):
-    tracked = names("diff", "--name-only", "--no-renames", b)
-    untracked = names("ls-files", "--others", "--exclude-standard")
-    return tracked, untracked
-
-
 def main():
-    if "--changed" in sys.argv:  # the change set for scripts/check, NUL-separated
+    if "--rules" in sys.argv:
+        print(json.dumps(load_rules()))
+        return 0
+    if "--changed" in sys.argv:
         tracked, untracked = change_set(base())
         sys.stdout.write("\0".join(sorted(set(tracked) | set(untracked))))
         return 0
-    rules = [r for r in load_rules() if r[0] != "project"]
 
+    rules = [r for r in load_rules() if r["category"] != "project"]
     b = base()
     tracked, untracked = change_set(b)
-    added_new_adrs = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b))
+    new_files = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b)) | set(untracked)
     files = sorted(set(tracked) | set(untracked))
 
     added = added_lines_by_file(b)
@@ -84,13 +116,11 @@ def main():
         if f in untracked:
             added[f] = (ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
         elif f not in added and (ROOT / f).is_file():
-            # quoted or unusual names: read this file's diff alone
-            diff = git("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", f)
+            diff = out("diff", "-U0", "--no-color", "--no-ext-diff", b, "--", f)
             added[f] = [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
 
     plan_added = [l for f in files if re.fullmatch(r"work/[^/]+/plan\.md", f) for l in added.get(f, [])]
-    new_adr = any(re.fullmatch(r"docs/decisions/\d{4}-.+\.md", f)
-                  for f in (added_new_adrs | set(untracked)))
+    new_adr = any(re.fullmatch(r"docs/decisions/\d{4}-.+\.md", f) for f in new_files)
     t1_line = any(re.match(r"\s*(-\s+)?T1 because\b", l) for l in plan_added)
     security_line = any(re.match(r"\s*(-\s+)?Security pass:", l) for l in plan_added)
 
@@ -98,12 +128,12 @@ def main():
     for f in files:
         if f.startswith(SKIP_PREFIXES) or f.endswith(".md"):
             continue
-        for category, pattern in rules:
-            kind = category.removesuffix("-text")
-            if category.endswith("-text"):
-                if any(pattern.search(l) for l in added.get(f, [])):
+        for r in rules:
+            kind = r["category"].removesuffix("-text")
+            if r["category"].endswith("-text"):
+                if any(re.search(r["pattern"], l) for l in added.get(f, [])):
                     needs[kind].add(f)
-            elif match(f, pattern):
+            elif match(f, r["pattern"]):
                 needs[kind].add(f)
 
     problems = []
