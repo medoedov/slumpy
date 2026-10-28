@@ -11,8 +11,9 @@ place each, and the core can be reused in another project without edits:
 | Platform pack (Apple iOS) | `.claude/rules/platform.md`, `.claude/rules/swift.md` | Rules and facts for any iOS project |
 | Project (Slumpy) | `CLAUDE.md`, `project-knowledge/references/`, `docs/`, `work/` | This project's facts and choices |
 
-Core files name the platform pack only through `.claude/rules/platform.md` and the project only
-through CLAUDE.md. `core-code.md` keeps a `paths` glob, which each project sets.
+Core files name the platform pack only through `.claude/rules/platform.md`, and the project only
+through CLAUDE.md, Project Knowledge, and the shared paths (`docs/`, `work/`, `backlog.md`).
+`core-code.md` keeps a `paths` glob, which each project sets.
 
 ## Mechanism
 
@@ -40,8 +41,8 @@ The last column lists each condition of the old rule and where it is kept; the r
 | Old place | New place | Conditions kept |
 |---|---|---|
 | CLAUDE.md: product summary, mvp.md status, frozen dirs, default branch | CLAUDE.md | verbatim |
-| CLAUDE.md: Map (docs, work, backlog, project-knowledge) | core-process, Where things live | verbatim |
-| CLAUDE.md: Mac-only build, Apple docs recipe | platform.md | verbatim |
+| CLAUDE.md: Map (docs, work, backlog, project-knowledge) | core-process, Where things live | kept; the stack moved to CLAUDE.md, Project facts, citing ADR-0001 |
+| CLAUDE.md: Mac-only build, Apple docs recipe | platform.md; the general docs rule (platform docs, context7) in core-process | kept |
 | CLAUDE.md: Decision rights | core-process | owner decides only the listed areas; external actions named in CLAUDE.md (push or merge to `main`, App Store Connect, TestFlight, publications); deviation questions only when the user would notice |
 | CLAUDE.md: T1 | core-process | bug test only when a test can observe the bug; fails because of the bug; build or setup error does not count; exemption only where tests cannot run at all (platform.md: cloud sessions), the test named in `Unverified:`; reviewer when shared state, concurrency, or unsure |
 | CLAUDE.md: T2 | core-process; platform.md names capabilities | every category kept; "extension, entitlement, system service" as platform capabilities; first time T2, repeat of a recorded pattern T1 |
@@ -90,3 +91,14 @@ The last column lists each condition of the old rule and where it is kept; the r
   and point to rules (core-process.md), the mapping table lists conditions per rule,
   `scripts/check-pointers` catches stale section pointers, check-layers skips only `paths`. A fresh
   pair of rounds follows, once per change.
+- Reviewer, code, fresh round 1 (2098a1f): `changes needed`, three blocking. The checks could
+  pass on input they never scanned (`grep -P` and `|| true` on macOS grep; baseline.md skipped);
+  platform and project lines still restated core rules ("T2 the first time", "the reviewer treats
+  them as findings", "decided by the owner", design questions that repeated the core menu); the
+  general docs rule sat in the platform pack. Fixed: check-layers rewritten in Python with any
+  error exiting non-zero and a guard that fails on tier labels, reviewer rules, or decision-rights
+  text in the platform pack and CLAUDE.md; check-pointers scans baseline.md and parenthesized
+  pointers; the restating words removed (platform design questions now give names and answers);
+  the docs rule moved to core-process, Where things live. Probes: Cyrillic, project and platform
+  terms, a tier label, a reviewer rule, decision-rights text, an unnamed core file, a broken term
+  list, and renamed sections all fail the checks.

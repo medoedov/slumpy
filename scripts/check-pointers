@@ -8,11 +8,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")
 SKIP = {  # dated records: they describe the system as it was when written
     "work/agent-system-audit/verification.md",
-    "work/agent-system-audit/baseline.md",
 }
 QUOTED = r'(?:«[^»]+»|"[^"]+")'
 POINTER = re.compile(
-    r'`?([\w./-]+\.md)`?,?\s+(?:section |раздел |разделы )?'
+    r'`?([\w./-]+\.md)`?,?\s+\(?(?:section |раздел |разделы )?'
     r'(' + QUOTED + r'(?:\s*(?:и|and|,)\s*' + QUOTED + r')*'
     r'|(?:T\d|[A-Z][a-z]+)(?: [a-z]+){0,3}(?=\s*[;.,)|]|\s*$))'
 )

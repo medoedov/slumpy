@@ -10,6 +10,8 @@ to the rule; it never restates the rule.
 ## Where things live
 
 - How the project is built and why: the `project-knowledge` skill.
+- Docs: platform frameworks from the platform's documentation (the platform pack says how to read
+  it); other libraries through context7.
 - Technical decisions: `docs/decisions/` (ADRs). Traps hit: `docs/lessons.md`. Domain notes:
   `docs/domains/`. Technical debt: `docs/tech-debt.md`.
 - Feature work: `work/{feature}/spec.md` (what and why), `work/{feature}/plan.md` (brief,

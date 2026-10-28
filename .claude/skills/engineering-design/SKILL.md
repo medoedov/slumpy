@@ -21,7 +21,7 @@ a T1 bug gets the failing test `core-process.md` describes instead. T2 gets the 
 and a `reviewer` run in decision mode before any code. The platform pack (`platform.md`, always
 loaded) adds design questions to the menu below. For platform work, read the platform's code rules
 first (`platform.md` names them): they load on their own only when a matching file is read,
-created, or edited.
+created, or edited. Test and fix rules for a bug: `core-code.md`.
 
 ## 2. Domain blind-spot pass (first serious decision in a new area)
 

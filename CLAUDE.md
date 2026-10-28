@@ -19,7 +19,7 @@ Product content comes from the draft `mvp.md`: treat it as hypotheses, not decis
   the shared module where independent facts are merged on read (`engineering-design` menu,
   Concurrent code).
 - Default branch: `dev`.
-- External actions, decided by the owner: push or merge to `main`, App Store Connect, TestFlight,
+- External actions: push or merge to `main`, App Store Connect, TestFlight,
   publications.
 - Check command: `scripts/check`, planned; it runs on the Mac.
 - The owner's language: Russian.

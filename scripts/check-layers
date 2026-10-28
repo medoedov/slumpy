@@ -1,51 +1,97 @@
-#!/usr/bin/env bash
-# Fails when a core agent-system file holds a listed platform or project term.
-# The core files are the ones named in the first sentence of .claude/rules/core-process.md; every
-# .claude/rules/core-*.md file must be named there. Only the frontmatter `paths` list is skipped
-# (globs are set per project); the rest must be English. The term list catches known details only.
-set -euo pipefail
-export LC_ALL=C.UTF-8
-cd "$(dirname "$0")/.."
+#!/usr/bin/env python3
+"""Fails when the agent-system layers mix.
 
-PROCESS=.claude/rules/core-process.md
-status=0
+- Core files (named in the first sentence of .claude/rules/core-process.md; every
+  .claude/rules/core-*.md must be named there) hold no listed platform or project term and no
+  non-English text. Only the frontmatter `paths` list is skipped (globs are set per project).
+- Platform-pack files (.claude/rules/platform.md and the rule files it names) and CLAUDE.md bind
+  names and point to core rules; they hold no tier labels, reviewer rules, or decision-rights text.
 
-# Core files from the first sentence of core-process.md ("This file, ... are the core").
-sentence=$(awk 'NR>1 && NF {print}' "$PROCESS" | tr '\n' ' ' | sed 's/ are the core.*//')
-CORE=("$PROCESS")
-for name in $(grep -o '`[^`]*`' <<<"$sentence" | tr -d '`'); do
-  if   [ -f ".claude/rules/$name" ];            then CORE+=(".claude/rules/$name")
-  elif [ -f ".claude/agents/$name.md" ];        then CORE+=(".claude/agents/$name.md")
-  elif [ -f ".claude/skills/$name/SKILL.md" ];  then CORE+=(".claude/skills/$name/SKILL.md")
-  else echo "core-process.md names a core file that does not exist: $name"; status=1
-  fi
-done
-for f in .claude/rules/core-*.md; do
-  printf '%s\n' "${CORE[@]}" | grep -qx -- "$f" || { echo "core file not named in core-process.md: $f"; status=1; }
-done
+The term lists catch known cases only. Any error exits non-zero.
+"""
+import pathlib, re, sys
 
-# Platform and project terms that belong in the platform pack or the project layer.
-TERMS='\bswift(\b|ui|data)|\bios\b|ipados|macos|iphone|ipad|apple|xcode|testflight|app store|app review'
-TERMS+='|app group|keychain|entitlement|sendable|mainactor|actor isolation|\barc\b|uikit|widgetkit'
-TERMS+='|storekit|cloudkit|healthkit|userdefaults|deviceactivity|family ?controls|screen time'
-TERMS+='|liquid glass|dynamic type|voiceover|privacy manifest|app transport security|\bats\b|\bhig\b'
-TERMS+='|apns|required-reason|logic package|adr-[0-9]|scripts/check([^-]|$)|\.env\b|`main`|`dev`'
-TERMS+='|kindle|slumpy|mvp\.md|russian|duolingo'
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+PROCESS = ROOT / ".claude/rules/core-process.md"
+PLATFORM = ROOT / ".claude/rules/platform.md"
 
-for f in "${CORE[@]}"; do
-  # Drop only the frontmatter `paths:` key and its list items; descriptions are core text.
-  body=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next}
-              fm && /^paths:/ {inpaths=1; next} fm && inpaths && /^  *- / {next}
-              {inpaths=0; print}' "$f")
-  hits=$(printf '%s\n' "$body" | grep -n -i -E "$TERMS" || true)
-  cyr=$(printf '%s\n' "$body" | grep -n -P '[\x{0400}-\x{04FF}]' || true)
-  if [ -n "$hits$cyr" ]; then
-    echo "== $f"
-    [ -n "$hits" ] && printf '%s\n' "$hits"
-    [ -n "$cyr" ] && printf 'non-English text:\n%s\n' "$cyr"
-    status=1
-  fi
-done
+TERMS = re.compile("|".join([
+    r"\bswift(\b|ui|data)", r"\bios\b", "ipados", "macos", "iphone", "ipad", "apple", "xcode",
+    "testflight", "app store", "app review", "app group", "keychain", "entitlement", "sendable",
+    "mainactor", "actor isolation", r"\barc\b", "uikit", "widgetkit", "storekit", "cloudkit",
+    "healthkit", "userdefaults", "deviceactivity", "family ?controls", "screen time",
+    "liquid glass", "dynamic type", "voiceover", "privacy manifest", "app transport security",
+    r"\bats\b", r"\bhig\b", "apns", "required-reason", "logic package", "adr-[0-9]",
+    r"scripts/check([^-]|$)", r"\.env\b", "`main`", "`dev`", "kindle", "slumpy", r"mvp\.md",
+    "russian", "duolingo",
+]), re.IGNORECASE)
+CYRILLIC = re.compile("[Ѐ-ӿ]")
+RESTATE = re.compile(r"\bT[0-2]\b|\breviewer\b|decided by the owner|owner decides", re.IGNORECASE)
 
-[ "$status" -eq 0 ] && echo "check-layers: ${#CORE[@]} core files clean"
-exit "$status"
+
+def lines(path, skip_paths=False):
+    """File lines with the frontmatter fences (and, if asked, its `paths` list) blanked."""
+    out, in_fm, in_paths = [], False, False
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
+        if i == 0 and line == "---":
+            in_fm = True
+            line = ""
+        elif in_fm and line == "---":
+            in_fm = False
+            line = ""
+        elif in_fm and skip_paths and line.startswith("paths:"):
+            in_paths, line = True, ""
+        elif in_fm and in_paths and re.match(r"\s+- ", line):
+            line = ""
+        else:
+            in_paths = False
+        out.append(line)
+    return out
+
+
+def core_files():
+    text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())
+    sentence = text.split(" are the core", 1)[0]
+    found, problems = [PROCESS], []
+    for name in re.findall(r"`([^`]+)`", sentence):
+        for candidate in (ROOT / ".claude/rules" / name, ROOT / ".claude/agents" / f"{name}.md",
+                          ROOT / ".claude/skills" / name / "SKILL.md"):
+            if candidate.is_file():
+                found.append(candidate)
+                break
+        else:
+            problems.append(f"core-process.md names a core file that does not exist: {name}")
+    for f in sorted((ROOT / ".claude/rules").glob("core-*.md")):
+        if f not in found:
+            problems.append(f"core file not named in core-process.md: {f.relative_to(ROOT)}")
+    return found, problems
+
+
+def platform_files():
+    found = [PLATFORM]
+    for name in re.findall(r"`\.claude/rules/([^`]+\.md)`", PLATFORM.read_text(encoding="utf-8")):
+        f = ROOT / ".claude/rules" / name
+        if not f.is_file():
+            raise SystemExit(f"platform.md names a rule file that does not exist: {name}")
+        found.append(f)
+    return found
+
+
+def scan(files, pattern, label, skip_paths=False):
+    hits = []
+    for f in files:
+        for n, line in enumerate(lines(f, skip_paths), 1):
+            if pattern.search(line):
+                hits.append(f"{f.relative_to(ROOT)}:{n}: {label}: {line.strip()}")
+    return hits
+
+
+core, problems = core_files()
+problems += scan(core, TERMS, "platform or project term", skip_paths=True)
+problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)
+problems += scan(platform_files() + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
+
+if problems:
+    print("\n".join(problems))
+    sys.exit(1)
+print(f"check-layers: {len(core)} core files clean; platform pack and CLAUDE.md bind names only")

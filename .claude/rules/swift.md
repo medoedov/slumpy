@@ -16,8 +16,8 @@ paths:
   decided in an ADR; keep them consistent across modules. DeviceActivityMonitor callbacks come
   from the SDK without main-actor isolation.
 - `@unchecked Sendable`, `nonisolated(unsafe)`, `@preconcurrency` (imports and conformances), and
-  `MainActor.assumeIsolated` need a comment with the reason and the invariant that makes them safe;
-  the reviewer treats them as findings otherwise. `assumeIsolated` and `@preconcurrency`
+  `MainActor.assumeIsolated` need a comment with the reason and the invariant that makes them safe.
+  `assumeIsolated` and `@preconcurrency`
   conformances trap at runtime when called off their actor (SE-0423); the DeviceActivityMonitor
   callbacks above are not main-actor isolated.
 - Toolchain: on 2026-10-27 the latest stable is Xcode 27.1 with Swift 6.4 and the iOS 27 SDK. Any
