@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.312",
+  "startedAt": "2026-10-28T21:02:25.783Z",
+  "durationSeconds": 93,
+  "costUsd": 0.7495316000000001,
+  "partial": false,
+  "suite": {
+    "root": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/treatment/evals/.build/repo",
+    "ablation": "none",
+    "modelOverride": "claude-opus-5-5",
+    "judgeModel": "claude-sonnet-5-5",
+    "caseFilter": "r1-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "sys",
+        "version": "0.0.0",
+        "path": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/treatment/evals/.build/repo"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "r1-leaky-storage-error",
+      "dir": "evals/review/r1-leaky-storage-error",
+      "source": "prose",
+      "promptMarkdown": "Сделай ревью этого изменения перед мержем. Контекст: Slumpy — iOS-приложение на SwiftUI, минимальная iOS 18, Swift 6 со строгой проверкой многопоточности, хранение через GRDB. Файлов проекта у тебя нет, только дифф ниже. Место, где создаётся `AddBookView`, обновлено в этом же изменении и в дифф не попало. Перечисли то, что нужно исправить до мержа. Если всё в порядке, так и скажи.\n\n```diff\n--- a/Slumpy/Library/BookStore.swift\n+++ b/Slumpy/Library/BookStore.swift\n@@ -1,20 +1,32 @@\n import Foundation\n import GRDB\n \n struct Book: Codable, FetchableRecord, PersistableRecord, Identifiable, Sendable {\n     var id: UUID\n     var title: String\n     var author: String\n     var isbn: String?\n }\n \n final class BookStore: Sendable {\n     private let dbQueue: DatabaseQueue\n \n     init(dbQueue: DatabaseQueue) {\n         self.dbQueue = dbQueue\n     }\n \n     func allBooks() throws -> [Book] {\n         try dbQueue.read { db in try Book.order(Column(\"title\")).fetchAll(db) }\n     }\n+\n+    /// Inserts a book. The `book` table has a UNIQUE index on `isbn`.\n+    func add(_ book: Book) throws {\n+        try dbQueue.write { db in try book.insert(db) }\n+    }\n }\n--- a/Slumpy/Library/AddBookView.swift\n+++ b/Slumpy/Library/AddBookView.swift\n@@ -1,25 +1,49 @@\n import SwiftUI\n+import GRDB\n \n struct AddBookView: View {\n     let store: BookStore\n+    let onAdded: () -> Void\n     @State private var title = \"\"\n     @State private var author = \"\"\n     @State private var isbn = \"\"\n+    @State private var alertMessage: String?\n \n     var body: some View {\n         Form {\n             TextField(\"Название\", text: $title)\n             TextField(\"Автор\", text: $author)\n             TextField(\"ISBN\", text: $isbn)\n-            Button(\"Добавить\") {}\n+            Button(\"Добавить\", action: save)\n+                .disabled(title.isEmpty)\n         }\n+        .alert(alertMessage ?? \"\", isPresented: Binding(\n+            get: { alertMessage != nil },\n+            set: { if !$0 { alertMessage = nil } }\n+        )) {}\n+    }\n+\n+    private func save() {\n+        let book = Book(id: UUID(), title: title, author: author, isbn: isbn.isEmpty ? nil : isbn)\n+        do {\n+            try store.add(book)\n+            onAdded()\n+        } catch let error as DatabaseError where error.extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE {\n+            alertMessage = \"Эта книга уже есть в библиотеке\"\n+        } catch {\n+            alertMessage = \"Не удалось сохранить книгу\"\n+        }\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 600,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "found",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "Ground truth: the planted defect is a leaky abstraction. AddBookView imports GRDB and pattern-matches `DatabaseError` with `.SQLITE_CONSTRAINT_UNIQUE`, so the UI layer depends on the storage library and its SQLite error codes. The fix is for BookStore to translate storage errors into its own domain error (for example `BookStoreError.duplicateISBN`) so the view never sees GRDB types.\n\nPASS if the response flags, as something to fix, that the view depends on GRDB / DatabaseError / SQLite constraint codes (storage details leaking into the UI) or explicitly recommends mapping the storage error to a domain error inside BookStore.\nFAIL if the response does not raise this point, or mentions it only as an optional style nit while saying the change is fine to merge as is.",
+          "config": {
+            "criteria": "Ground truth: the planted defect is a leaky abstraction. AddBookView imports GRDB and pattern-matches `DatabaseError` with `.SQLITE_CONSTRAINT_UNIQUE`, so the UI layer depends on the storage library and its SQLite error codes. The fix is for BookStore to translate storage errors into its own domain error (for example `BookStoreError.duplicateISBN`) so the view never sees GRDB types.\n\nPASS if the response flags, as something to fix, that the view depends on GRDB / DatabaseError / SQLite constraint codes (storage details leaking into the UI) or explicitly recommends mapping the storage error to a domain error inside BookStore.\nFAIL if the response does not raise this point, or mentions it only as an optional style nit while saying the change is fine to merge as is.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ind-review-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review|engineering-design|test-master)\"",
+            "arm": "with-only"
+          }
+        },
+        {
+          "name": "no-false-alarms",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Ground truth about the diff under review: the only real defect is that AddBookView depends on GRDB's DatabaseError and SQLite result codes. Everything else is correct for this app: synchronous GRDB `dbQueue.write` from a button action is acceptable for a single small insert; `BookStore` being `Sendable` is correct because `DatabaseQueue` is Sendable; the alert binding works; the unique index on isbn exists; generic \"could not save\" for other errors is acceptable; `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` correctly targets the unique-index violation; the caller of AddBookView was updated. Missing input trimming / ISBN normalization is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+          "config": {
+            "criteria": "Ground truth about the diff under review: the only real defect is that AddBookView depends on GRDB's DatabaseError and SQLite result codes. Everything else is correct for this app: synchronous GRDB `dbQueue.write` from a button action is acceptable for a single small insert; `BookStore` being `Sendable` is correct because `DatabaseQueue` is Sendable; the alert binding works; the unique index on isbn exists; generic \"could not save\" for other errors is acceptable; `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` correctly targets the unique-index violation; the caller of AddBookView was updated. Missing input trimming / ISBN normalization is a legitimate observation, not a false alarm.\n\nCount the response's must-fix findings: items presented as defects to fix before merge, not items labelled optional, nit, suggestion, or non-blocking. Ignore the finding about the planted defect itself.\nA must-fix finding is a false alarm only if it is factually wrong about this code (misreads it, invents behavior or API facts) or calls a defect something the ground truth above lists as acceptable. Extra findings that are plausible and correct, such as input validation or edge cases not covered above, are NOT false alarms. Hedged checks (\"verify that X exists\") are not false alarms.\n\nPASS if the response contains at most one false alarm.\nFAIL if it contains two or more false alarms.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.21788500000000002,
+            "judgeCostUsd": 0.046494,
+            "durationSeconds": 78,
+            "startedAt": "2026-10-28T21:02:25.911Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-LHLlxD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  false
+                ],
+                "evidence": "# Ревью: добавление книги (`BookStore.add` + `AddBookView`)\n\nКод корректный. Обработка ошибки уникальности через GRDB сделана правильно: `catch let error as DatabaseError where error.extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE`. В режиме Swift 6 код тоже должен собраться: `View` изолирован на главном акторе, а `BookStore` помечен как `Sendable` и хранит `DatabaseQueue`. До мержа нужно исправить одно место и проверить ещё одно.\n\n## Исправить до мержа\n\n**1. Ввод не очищается от пробелов, из-за этого не работает проверка на дубликаты.**\n`isbn.isEmpty ? nil : isbn` сохраняет строку как есть:\n- `\"9785170000000 \"` (например, скопированный с сайта) и `\"9785170000000\"` уникальный индекс считает разными значениями. В библиотеку попадёт дубликат, то есть ради чего фича делалась, то и не работает.\n- Если в поле ISBN случайно введены только пробелы, в базу запишется `\"   \"`. Следующая книга с такой же случайной ошибкой получит неверное сообщение «Эта книга уже есть в библиотеке».\n- `.disabled(title.isEmpty)` пропускает название из одних пробелов.\n\nМинимальное исправление:\n```swift\nlet trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)\nlet trimmedISBN = isbn.trimmingCharacters(in: .whitespacesAndNewlines)\nlet book = Book(id: UUID(), title: trimmedTitle,\n                author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: trimmedISBN.isEmpty ? nil : trimmedISBN)\n```\nКнопку нужно блокировать по `trimmedTitle.isEmpty`. Убирать ли дефисы (`978-5-17-…` против `978517…`), решает владелец продукта. Без этого одна и та же книга, введённая в двух форматах, проскочит мимо индекса.\n\n**2. Проверить: есть ли миграция с `UNIQUE` на `isbn`.**\nКомментарий к `add` утверждает, что индекс есть, но миграции в диффе нет. Если индекса нет, ветка про дубликат никогда не сработает, и книги будут дублироваться. Если миграция добавляется в этом же изменении и где-то уже лежат данные, её создание упадёт на существующих дублях. Я этого проверить не могу, посмотри перед мержем.\n\n## Желательно, но мержу не мешает\n\n- **Детали базы данных попадают в UI.** View импортирует GRDB и знает про код ошибки SQLite. Лучше, чтобы `BookStore.add` переводил ошибку уникальности в доменную (например, `BookStoreError.duplicateISBN`), а view ловил уже её. Тогда смена схемы или хранилища не затронет экран, и это поведение можно покрыть тестом без UI.\n- **Нет теста.** Нужен тест на `add` с `DatabaseQueue()` в памяти: вставка, повторная вставка с тем же ISBN (ожидается ошибка дубликата) и две книги с `isbn == nil` (ошибки быть не должно).\n- **Ошибка из общего `catch` никуда не логируется.** Пользователь увидит «Не удалось сохранить книгу», а причину потом не найти. Добавь `Logger` с выводом `error`.\n- **Мигание в алерте.** При закрытии `set` обнуляет `alertMessage`, и заголовок становится `\"\"`, пока алерт ещё анимируется. Лучше использовать `.alert(_:isPresented:presenting:)` или хранить текст отдельно от флага показа.\n- **Синхронная запись на главном потоке.** Для одной строки это приемлемо. Но `DatabaseQueue` выполняет все операции по очереди, и если в этот момент идёт долгая запись, интерфейс подвиснет. Если перейдёшь на `try await dbQueue.write`, заодно заблокируй кнопку на время сохранения, иначе двойное нажатие вставит книгу дважды."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: добавление книги (`BookStore.add` + `AddBookView`)\n\nКод корректный. Обработка ошибки уникальности через GRDB сделана правильно: `catch let error as DatabaseError where error.extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE`. В режиме Swift 6 код тоже должен собраться: `View` изолирован на главном акторе, а `BookStore` помечен как `Sendable` и хранит `DatabaseQueue`. До мержа нужно исправить одно место и проверить ещё одно.\n\n## Исправить до мержа\n\n**1. Ввод не очищается от пробелов, из-за этого не работает проверка на дубликаты.**\n`isbn.isEmpty ? nil : isbn` сохраняет строку как есть:\n- `\"9785170000000 \"` (например, скопированный с сайта) и `\"9785170000000\"` уникальный индекс считает разными значениями. В библиотеку попадёт дубликат, то есть ради чего фича делалась, то и не работает.\n- Если в поле ISBN случайно введены только пробелы, в базу запишется `\"   \"`. Следующая книга с такой же случайной ошибкой получит неверное сообщение «Эта книга уже есть в библиотеке».\n- `.disabled(title.isEmpty)` пропускает название из одних пробелов.\n\nМинимальное исправление:\n```swift\nlet trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)\nlet trimmedISBN = isbn.trimmingCharacters(in: .whitespacesAndNewlines)\nlet book = Book(id: UUID(), title: trimmedTitle,\n                author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: trimmedISBN.isEmpty ? nil : trimmedISBN)\n```\nКнопку нужно блокировать по `trimmedTitle.isEmpty`. Убирать ли дефисы (`978-5-17-…` против `978517…`), решает владелец продукта. Без этого одна и та же книга, введённая в двух форматах, проскочит мимо индекса.\n\n**2. Проверить: есть ли миграция с `UNIQUE` на `isbn`.**\nКомментарий к `add` утверждает, что индекс есть, но миграции в диффе нет. Если индекса нет, ветка про дубликат никогда не сработает, и книги будут дублироваться. Если миграция добавляется в этом же изменении и где-то уже лежат данные, её создание упадёт на существующих дублях. Я этого проверить не могу, посмотри перед мержем.\n\n## Желательно, но мержу не мешает\n\n- **Детали базы данных попадают в UI.** View импортирует GRDB и знает про код ошибки SQLite. Лучше, чтобы `BookStore.add` переводил ошибку уникальности в доменную (например, `BookStoreError.duplicateISBN`), а view ловил уже её. Тогда смена схемы или хранилища не затронет экран, и это поведение можно покрыть тестом без UI.\n- **Нет теста.** Нужен тест на `add` с `DatabaseQueue()` в памяти: вставка, повторная вставка с тем же ISBN (ожидается ошибка дубликата) и две книги с `isbn == nil` (ошибки быть не должно).\n- **Ошибка из общего `catch` никуда не логируется.** Пользователь увидит «Не удалось сохранить книгу», а причину потом не найти. Добавь `Logger` с выводом `error`.\n- **Мигание в алерте.** При закрытии `set` обнуляет `alertMessage`, и заголовок становится `\"\"`, пока алерт ещё анимируется. Лучше использовать `.alert(_:isPresented:presenting:)` или хранить текст отдельно от флага показа.\n- **Синхронная запись на главном потоке.** Для одной строки это приемлемо. Но `DatabaseQueue` выполняет все операции по очереди, и если в этот момент идёт долгая запись, интерфейс подвиснет. Если перейдёшь на `try await dbQueue.write`, заодно заблокируй кнопку на время сохранения, иначе двойное нажатие вставит книгу дважды."
+              }
+            ]
+          },
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.2624016,
+            "judgeCostUsd": 0.043602000000000016,
+            "durationSeconds": 92,
+            "startedAt": "2026-10-28T21:02:25.913Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-JmQKIg/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: `AddBookView` и `BookStore.add`\n\nЯвных ошибок компиляции под Swift 6 со строгой проверкой многопоточности и ошибок в обработке ошибок GRDB я не нашёл. Сравнение `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` корректное, потому что GRDB включает расширенные коды ошибок по умолчанию. Пустой ISBN превращается в `nil`, и это правильно: UNIQUE-индекс SQLite допускает сколько угодно NULL. Тем не менее до мержа стоит исправить три вещи.\n\n## Исправить до мержа\n\n**1. ISBN сохраняется как есть, поэтому проверка на дубликаты работает плохо.**\nУникальный индекс сравнивает строки буквально.\n- `978-5-17-090334-4` и `9785170903344` сохранятся как две разные книги, и функция «книга уже есть» их не поймает.\n- Если в поле ISBN случайно попадёт только пробел, сохранится `\" \"` вместо `nil`. Следующая книга с таким же пробелом получит ложное «Эта книга уже есть в библиотеке».\n\nНужно хотя бы обрезать пробелы по краям, а лучше привести ISBN к единому виду: убрать пробелы и дефисы, `x` сделать заглавной. Делать это лучше в `BookStore` или `Book`, а не во view. Если в таблице уже есть ISBN с дефисами, после такого изменения новые записи перестанут с ними совпадать. Тогда понадобится миграция, которая приведёт старые значения к тому же виду. Из диффа не видно, есть ли такие данные.\n\n**2. Название из одних пробелов проходит проверку.**\n`.disabled(title.isEmpty)` не блокирует кнопку, если в названии `\"   \"`. Проверять нужно обрезанную строку: `title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty`. В `Book` тоже надо класть обрезанные значения, в том числе автора.\n\n**3. Распознавание дубликата должно происходить в `BookStore`, а не во view.**\nСейчас view импортирует GRDB и опирается на неявное правило: «любое нарушение UNIQUE означает, что ISBN уже занят». Это правило записано только в комментарии к `add`. Если в таблице появится ещё один уникальный индекс, пользователь увидит неправильное сообщение. Лучше, чтобы `add` сам переводил `SQLITE_CONSTRAINT_UNIQUE` в доменную ошибку, например `BookStoreError.duplicateISBN`. Тогда из `AddBookView` можно убрать `import GRDB`, а нормализацию ISBN из пункта 1 естественно положить туда же.\n\n## Можно сделать позже, но стоит учесть\n\n- **Текст ошибки показывается как заголовок алерта.** При закрытии `set` обнуляет `alertMessage`, заголовок становится `\"\"` во время анимации и может мигнуть пустым. Надёжнее так: `.alert(\"Ошибка\", isPresented: …, presenting: alertMessage) { _ in } message: { Text($0) }`.\n- **Запись идёт синхронно на главном потоке.** Вставка одной строки быстрая, но `DatabaseQueue` выполняет все обращения к базе по очереди. Если параллельно идёт долгая запись, интерфейс подвиснет. Это соответствует уже существующему синхронному `allBooks()`, так что дефектом изменения не считаю. Если позже переводить на `async`, то на время сохранения нужно блокировать кнопку, иначе двойное нажатие создаст две книги без ISBN.\n- **Ошибка в общем `catch` никуда не записывается.** Без логирования (`Logger`) причину «Не удалось сохранить книгу» потом не найти.\n- **Тексты алертов не попадут в каталог строк.** Это обычные `String`, а не литералы `LocalizedStringKey`. Это важно, только если планируется локализация.\n\nМесто вызова `AddBookView` я не видел, поэтому не могу проверить, что `onAdded` действительно закрывает экран. Если не закрывает, поля останутся заполненными и повторное нажатие добавит ту же книгу ещё раз. Код я не собирал: ревью сделано только по диффу."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: `AddBookView` и `BookStore.add`\n\nЯвных ошибок компиляции под Swift 6 со строгой проверкой многопоточности и ошибок в обработке ошибок GRDB я не нашёл. Сравнение `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` корректное, потому что GRDB включает расширенные коды ошибок по умолчанию. Пустой ISBN превращается в `nil`, и это правильно: UNIQUE-индекс SQLite допускает сколько угодно NULL. Тем не менее до мержа стоит исправить три вещи.\n\n## Исправить до мержа\n\n**1. ISBN сохраняется как есть, поэтому проверка на дубликаты работает плохо.**\nУникальный индекс сравнивает строки буквально.\n- `978-5-17-090334-4` и `9785170903344` сохранятся как две разные книги, и функция «книга уже есть» их не поймает.\n- Если в поле ISBN случайно попадёт только пробел, сохранится `\" \"` вместо `nil`. Следующая книга с таким же пробелом получит ложное «Эта книга уже есть в библиотеке».\n\nНужно хотя бы обрезать пробелы по краям, а лучше привести ISBN к единому виду: убрать пробелы и дефисы, `x` сделать заглавной. Делать это лучше в `BookStore` или `Book`, а не во view. Если в таблице уже есть ISBN с дефисами, после такого изменения новые записи перестанут с ними совпадать. Тогда понадобится миграция, которая приведёт старые значения к тому же виду. Из диффа не видно, есть ли такие данные.\n\n**2. Название из одних пробелов проходит проверку.**\n`.disabled(title.isEmpty)` не блокирует кнопку, если в названии `\"   \"`. Проверять нужно обрезанную строку: `title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty`. В `Book` тоже надо класть обрезанные значения, в том числе автора.\n\n**3. Распознавание дубликата должно происходить в `BookStore`, а не во view.**\nСейчас view импортирует GRDB и опирается на неявное правило: «любое нарушение UNIQUE означает, что ISBN уже занят». Это правило записано только в комментарии к `add`. Если в таблице появится ещё один уникальный индекс, пользователь увидит неправильное сообщение. Лучше, чтобы `add` сам переводил `SQLITE_CONSTRAINT_UNIQUE` в доменную ошибку, например `BookStoreError.duplicateISBN`. Тогда из `AddBookView` можно убрать `import GRDB`, а нормализацию ISBN из пункта 1 естественно положить туда же.\n\n## Можно сделать позже, но стоит учесть\n\n- **Текст ошибки показывается как заголовок алерта.** При закрытии `set` обнуляет `alertMessage`, заголовок становится `\"\"` во время анимации и может мигнуть пустым. Надёжнее так: `.alert(\"Ошибка\", isPresented: …, presenting: alertMessage) { _ in } message: { Text($0) }`.\n- **Запись идёт синхронно на главном потоке.** Вставка одной строки быстрая, но `DatabaseQueue` выполняет все обращения к базе по очереди. Если параллельно идёт долгая запись, интерфейс подвиснет. Это соответствует уже существующему синхронному `allBooks()`, так что дефектом изменения не считаю. Если позже переводить на `async`, то на время сохранения нужно блокировать кнопку, иначе двойное нажатие создаст две книги без ISBN.\n- **Ошибка в общем `catch` никуда не записывается.** Без логирования (`Logger`) причину «Не удалось сохранить книгу» потом не найти.\n- **Тексты алертов не попадут в каталог строк.** Это обычные `String`, а не литералы `LocalizedStringKey`. Это важно, только если планируется локализация.\n\nМесто вызова `AddBookView` я не видел, поэтому не могу проверить, что `onAdded` действительно закрывает экран. Если не закрывает, поля останутся заполненными и повторное нажатие добавит ту же книгу ещё раз. Код я не собирал: ревью сделано только по диффу."
+              }
+            ]
+          },
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.269245,
+            "judgeCostUsd": 0.070554,
+            "durationSeconds": 88,
+            "startedAt": "2026-10-28T21:02:25.914Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-u7a75V/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "found",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: добавление книги (`BookStore.add` + `AddBookView`)\n\n**Вердикт:** до мержа нужно исправить один пункт, это нормализация ввода. Остальное можно доделать позже, но лучше в этом же PR. Проект я не собирал, ревью сделано только по диффу.\n\n## Исправить до мержа\n\n**1. Ввод не очищается перед сохранением, поэтому проверка дублей ошибается в обе стороны.**\n- ISBN из одних пробелов проходит проверку `isbn.isEmpty`, и в базу пишется `\" \"`, а не `nil`. Вторая такая книга упрётся в UNIQUE-индекс, и пользователь увидит «Эта книга уже есть в библиотеке», хотя это неправда.\n- Обратная ситуация: `978-5-17-118366-2`, `9785171183662` и `9785171183662 ` (с пробелом в конце) считаются разными книгами. Индекс тогда пропускает настоящие дубли.\n- `.disabled(title.isEmpty)` разрешает название из одних пробелов.\n\nКак исправить: обрезать пробелы у `title` и `author`, у ISBN оставить только цифры и `X`, а пустой результат превращать в `nil`. Условие `.disabled` проверять по уже обрезанному названию. Лучше делать это не во view, а в `BookStore` или в `Book`, тогда правило будет работать для любого способа добавления книги:\n```swift\nlet isbn = self.isbn.uppercased().filter { (\"0\"...\"9\").contains($0) || $0 == \"X\" }\nlet book = Book(id: UUID(),\n                title: title.trimmingCharacters(in: .whitespacesAndNewlines),\n                author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: isbn.isEmpty ? nil : isbn)\n```\n\n## Желательно исправить в этом PR\n\n**2. View знает про SQLite.** `AddBookView` импортирует GRDB и сам сравнивает `extendedResultCode`. Лучше, чтобы ошибку переводил `BookStore`. Тогда view не зависит от хранилища, а случай с дублем можно проверить тестом без UI:\n```swift\nenum BookStoreError: Error { case duplicateISBN }\n\nfunc add(_ book: Book) async throws {\n    do { try await dbQueue.write { db in try book.insert(db) } }\n    catch DatabaseError.SQLITE_CONSTRAINT_UNIQUE { throw BookStoreError.duplicateISBN }\n}\n```\n\n**3. Синхронная запись на главном потоке.** `save()` выполняется на MainActor, а `dbQueue.write` блокирует поток до конца записи. Сама вставка быстрая. Но `DatabaseQueue` выполняет все обращения к базе по очереди, поэтому любая долгая операция в фоне (импорт, синхронизация) заморозит интерфейс. Если в приложении есть или планируются фоновые записи, это нужно исправить до мержа.\n\nВариант исправления: async-версия `write`, как в п. 2, плюс `Task { … }` в кнопке и флаг `isSaving`, который блокирует кнопку на время сохранения. Этот же флаг защитит от двойного нажатия: без него книга без ISBN может сохраниться дважды.\n\n**4. Неизвестные ошибки теряются.** Ветка `catch { alertMessage = \"Не удалось сохранить книгу\" }` ничего не записывает в лог. Стоит добавить запись через `Logger` с самой ошибкой.\n\n**5. Нет тестов.** Нужны хотя бы два: дубль по ISBN даёт `duplicateISBN`, и две книги без ISBN (`nil`) сохраняются обе.\n\n## Мелочи\n\n- Во время закрытия alert `alertMessage` уже равен `nil`, поэтому заголовок на долю секунды становится пустым. Лучше постоянный заголовок («Ошибка») и сообщение через `presenting:` или `message:`.\n- Тексты вроде `alertMessage = \"Эта книга уже есть…\"` имеют тип `String`, поэтому не попадут в String Catalog, в отличие от текстов в `Button` и `TextField`. Это важно, только если планируется локализация. Тогда нужен `String(localized:)`.\n\n## Что в порядке\n\n- Строгая многопоточность Swift 6: `Book` и `BookStore` помечены `Sendable`, `onAdded` создаётся и вызывается на MainActor. Проблем не вижу.\n- Пустой ISBN превращается в `nil`, и это правильно работает с UNIQUE: SQLite допускает несколько `NULL` в уникальном индексе.\n- Проверка `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` написана корректно. Свежий UUID не пересечётся с первичным ключом, так что UNIQUE-ошибка здесь может прийти только от индекса по ISBN, если в таблице нет других уникальных индексов.\n- Binding для alert собран правильно, при закрытии сообщение сбрасывается.\n\nОдно допущение: миграции в диффе нет, поэтому я верю комментарию, что UNIQUE-индекс на `book.isbn` уже существует. Если его нет, ветка с дублями никогда не сработает. Стоит проверить."
+              },
+              {
+                "name": "ind-review-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-false-alarms",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Ревью: добавление книги (`BookStore.add` + `AddBookView`)\n\n**Вердикт:** до мержа нужно исправить один пункт, это нормализация ввода. Остальное можно доделать позже, но лучше в этом же PR. Проект я не собирал, ревью сделано только по диффу.\n\n## Исправить до мержа\n\n**1. Ввод не очищается перед сохранением, поэтому проверка дублей ошибается в обе стороны.**\n- ISBN из одних пробелов проходит проверку `isbn.isEmpty`, и в базу пишется `\" \"`, а не `nil`. Вторая такая книга упрётся в UNIQUE-индекс, и пользователь увидит «Эта книга уже есть в библиотеке», хотя это неправда.\n- Обратная ситуация: `978-5-17-118366-2`, `9785171183662` и `9785171183662 ` (с пробелом в конце) считаются разными книгами. Индекс тогда пропускает настоящие дубли.\n- `.disabled(title.isEmpty)` разрешает название из одних пробелов.\n\nКак исправить: обрезать пробелы у `title` и `author`, у ISBN оставить только цифры и `X`, а пустой результат превращать в `nil`. Условие `.disabled` проверять по уже обрезанному названию. Лучше делать это не во view, а в `BookStore` или в `Book`, тогда правило будет работать для любого способа добавления книги:\n```swift\nlet isbn = self.isbn.uppercased().filter { (\"0\"...\"9\").contains($0) || $0 == \"X\" }\nlet book = Book(id: UUID(),\n                title: title.trimmingCharacters(in: .whitespacesAndNewlines),\n                author: author.trimmingCharacters(in: .whitespacesAndNewlines),\n                isbn: isbn.isEmpty ? nil : isbn)\n```\n\n## Желательно исправить в этом PR\n\n**2. View знает про SQLite.** `AddBookView` импортирует GRDB и сам сравнивает `extendedResultCode`. Лучше, чтобы ошибку переводил `BookStore`. Тогда view не зависит от хранилища, а случай с дублем можно проверить тестом без UI:\n```swift\nenum BookStoreError: Error { case duplicateISBN }\n\nfunc add(_ book: Book) async throws {\n    do { try await dbQueue.write { db in try book.insert(db) } }\n    catch DatabaseError.SQLITE_CONSTRAINT_UNIQUE { throw BookStoreError.duplicateISBN }\n}\n```\n\n**3. Синхронная запись на главном потоке.** `save()` выполняется на MainActor, а `dbQueue.write` блокирует поток до конца записи. Сама вставка быстрая. Но `DatabaseQueue` выполняет все обращения к базе по очереди, поэтому любая долгая операция в фоне (импорт, синхронизация) заморозит интерфейс. Если в приложении есть или планируются фоновые записи, это нужно исправить до мержа.\n\nВариант исправления: async-версия `write`, как в п. 2, плюс `Task { … }` в кнопке и флаг `isSaving`, который блокирует кнопку на время сохранения. Этот же флаг защитит от двойного нажатия: без него книга без ISBN может сохраниться дважды.\n\n**4. Неизвестные ошибки теряются.** Ветка `catch { alertMessage = \"Не удалось сохранить книгу\" }` ничего не записывает в лог. Стоит добавить запись через `Logger` с самой ошибкой.\n\n**5. Нет тестов.** Нужны хотя бы два: дубль по ISBN даёт `duplicateISBN`, и две книги без ISBN (`nil`) сохраняются обе.\n\n## Мелочи\n\n- Во время закрытия alert `alertMessage` уже равен `nil`, поэтому заголовок на долю секунды становится пустым. Лучше постоянный заголовок («Ошибка») и сообщение через `presenting:` или `message:`.\n- Тексты вроде `alertMessage = \"Эта книга уже есть…\"` имеют тип `String`, поэтому не попадут в String Catalog, в отличие от текстов в `Button` и `TextField`. Это важно, только если планируется локализация. Тогда нужен `String(localized:)`.\n\n## Что в порядке\n\n- Строгая многопоточность Swift 6: `Book` и `BookStore` помечены `Sendable`, `onAdded` создаётся и вызывается на MainActor. Проблем не вижу.\n- Пустой ISBN превращается в `nil`, и это правильно работает с UNIQUE: SQLite допускает несколько `NULL` в уникальном индексе.\n- Проверка `extendedResultCode == .SQLITE_CONSTRAINT_UNIQUE` написана корректно. Свежий UUID не пересечётся с первичным ключом, так что UNIQUE-ошибка здесь может прийти только от индекса по ISBN, если в таблице нет других уникальных индексов.\n- Binding для alert собран правильно, при закрытии сообщение сбрасывается.\n\nОдно допущение: миграции в диффе нет, поэтому я верю комментарию, что UNIQUE-индекс на `book.isbn` уже существует. Если его нет, ветка с дублями никогда не сработает. Стоит проверить."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.75,
+    "overallPassRate": 0
+  }
+}

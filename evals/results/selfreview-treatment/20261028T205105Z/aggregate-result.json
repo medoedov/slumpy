@@ -1,0 +1,424 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.312",
+  "startedAt": "2026-10-28T20:51:07.719Z",
+  "durationSeconds": 141,
+  "costUsd": 1.2047463999999999,
+  "partial": false,
+  "suite": {
+    "root": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/treatment/evals/.build/repo",
+    "ablation": "none",
+    "modelOverride": "claude-opus-5-5",
+    "judgeModel": "claude-sonnet-5-5",
+    "tagFilters": [
+      "triggers"
+    ],
+    "threshold": 1,
+    "concurrency": 2,
+    "plugins": [
+      {
+        "name": "sys",
+        "version": "0.0.0",
+        "path": "/tmp/claude-0/-home-user-slumpy/34327b91-5c0c-5558-979d-9474df141d8c/scratchpad/treatment/evals/.build/repo"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "s1-review-casual",
+      "dir": "evals/triggers/s1-review-casual",
+      "source": "prose",
+      "promptMarkdown": "Глянь, пожалуйста, нормально ли я тут поменял? Это iOS-приложение на SwiftUI.\n\n```diff\n--- a/Slumpy/Home/GreetingView.swift\n+++ b/Slumpy/Home/GreetingView.swift\n@@ -4,7 +4,9 @@ struct GreetingView: View {\n     let name: String\n \n     var body: some View {\n-        Text(\"Привет, \\(name)\")\n+        Text(\"Привет, \\(name)\")\n+            .font(.title2)\n+            .accessibilityAddTraits(.isHeader)\n     }\n }\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-reviewing|code-review|reviewer|review)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.1007988,
+            "judgeCostUsd": 0,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-28T20:51:08.043Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-4H7gWO/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 3,
+            "costUsd": 0.09685559999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 18,
+            "startedAt": "2026-10-28T20:51:08.044Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-NQTCHT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s2-feature-thinking",
+      "dir": "evals/triggers/s2-feature-thinking",
+      "source": "prose",
+      "promptMarkdown": "Хочу добавить в Slumpy цели чтения: дочитать книгу к дате и прочитать N книг за сезон. Давай продумаем, как это должно работать.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.1653604,
+            "judgeCostUsd": 0,
+            "durationSeconds": 24,
+            "startedAt": "2026-10-28T20:51:26.521Z",
+            "error": "exit 1: Reached maximum number of turns (6)",
+            "tracePath": "/tmp/claude-eval-O5wBqW/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.115203,
+            "judgeCostUsd": 0,
+            "durationSeconds": 16,
+            "startedAt": "2026-10-28T20:51:26.770Z",
+            "error": "exit 1: Reached maximum number of turns (6)",
+            "tracePath": "/tmp/claude-eval-gC2NuN/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "s3-risky-model-change",
+      "dir": "evals/triggers/s3-risky-model-change",
+      "source": "prose",
+      "promptMarkdown": "Добавь в модель книги поле «число страниц». Хранение в SwiftData, сборка уже у тестировщиков. Файлов у тебя нет, просто покажи, что поменять.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(code-writing|engineering-design)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.1353104,
+            "judgeCostUsd": 0,
+            "durationSeconds": 37,
+            "startedAt": "2026-10-28T20:51:42.391Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-pNeIie/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.1211376,
+            "judgeCostUsd": 0,
+            "durationSeconds": 32,
+            "startedAt": "2026-10-28T20:51:50.995Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-cvZYto/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s4-tests-request",
+      "dir": "evals/triggers/s4-tests-request",
+      "source": "prose",
+      "promptMarkdown": "Покрой тестами вот эту функцию. Тесты на Swift Testing, файлов у тебя нет, просто покажи код тестов.\n\n```swift\npublic enum DailyProgress {\n    public static func minutesToday(_ sessions: [ReadingSession], now: Date, calendar: Calendar) -> Int {\n        let total = sessions\n            .filter { calendar.isDate($0.startedAt, inSameDayAs: now) }\n            .reduce(0) { $0 + $1.duration }\n        return Int(total / 60)\n    }\n}\n```",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(test-master|engineering-design|code-writing)\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.147703,
+            "judgeCostUsd": 0,
+            "durationSeconds": 40,
+            "startedAt": "2026-10-28T20:52:19.007Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-0eLBMH/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 2,
+            "costUsd": 0.20039960000000004,
+            "judgeCostUsd": 0,
+            "durationSeconds": 66,
+            "startedAt": "2026-10-28T20:52:22.648Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-U25i69/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "s5-trivial-no-ceremony",
+      "dir": "evals/triggers/s5-trivial-no-ceremony",
+      "source": "prose",
+      "promptMarkdown": "Поменяй текст кнопки «Начать» на «Погнали». Кнопка выглядит так: `Button(\"Начать\", action: start)`. Файлов у тебя нет, просто покажи новую строку.",
+      "runsPerCase": 2,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "answered",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "Button\\(\"Погнали\"",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "no-ceremony",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?(user-spec-planning|product-spec|engineering-design|methodology)\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.062995,
+            "judgeCostUsd": 0,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-28T20:52:58.952Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-F44B10/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answered",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched Button\\(\"Погнали\"",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-ceremony",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.058982999999999994,
+            "judgeCostUsd": 0,
+            "durationSeconds": 3,
+            "startedAt": "2026-10-28T20:53:04.950Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-R3usQ0/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answered",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched Button\\(\"Погнали\"",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-ceremony",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 5,
+    "casesPassed": 2,
+    "overallScore": 0.4,
+    "overallPassRate": 0.4
+  }
+}
