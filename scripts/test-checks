@@ -380,7 +380,6 @@ STATIC = [
     ("an interval that only mentions an event", dict(runs=one([upkeep_row("| Task | 30 days after the event | 2000-01-01 | x |")]), script=["check-upkeep"], expect=fails)),
     ("an interval with words after the days", dict(runs=one([upkeep_row(f"| Task | 30 days or at a release | {TODAY} | x |")]), script=["check-upkeep"], expect=fails)),
     ("an indented upkeep table passes", dict(runs=one([upkeep_doc(f"  | Task | Every | Last done | How |\n  |---|---|---|---|\n  | A | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=clean("check-upkeep"))),
-    ("an upkeep date without dashes", dict(runs=one([upkeep_row("| Task | 30 days | 20261027 | x |")]), script=["check-upkeep"], expect=fails)),
     ("an unset clock reads the real time for upkeep", dict(env={"SLUMPY_NOW": ""}, runs=one([upkeep_task("| Task | 99999 days | 2000-01-01 | x |")]), script=["check-upkeep"], expect=clean("check-upkeep"))),
     ("a whitespace-only line ends the upkeep table", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n   \nA note after the table.\n")]), script=["check-upkeep"], expect=clean("check-upkeep"))),
     ("an upkeep separator row with text after it", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---| x\n| A | 30 days | {TODAY} | x |\n")]), script=["check-upkeep"], expect=fails)),
@@ -503,10 +502,9 @@ def run_cases():
 # statement removed, startswith/endswith turned into `in` and `==`, fullmatch/match/search swapped,
 # each strip/lower-style string method dropped, each string argument and each keyword argument of
 # a call dropped (except `encoding`: the self-test runs under a UTF-8 locale and cannot observe it).
-# Not generated: changes inside a regular expression (alternatives, quantifiers, classes) and inside
-# f-strings (keep logic out of them). A survivor is logic no case observes. EQUIVALENT lists only mutants that
-# cannot change what a check reports on any input, each with its reason; code no case could reach
-# is made reachable by a test seam (SLUMPY_TEST_HOOK_CRASH, SLUMPY_NOW) instead of being listed.
+# A survivor is logic no case observes. EQUIVALENT lists only mutants that cannot change what a
+# check reports on any input, each with its reason; code no case could reach is made reachable by a
+# test seam (SLUMPY_TEST_HOOK_CRASH, SLUMPY_NOW) instead of being listed.
 # An entry is keyed by script, enclosing function, mutation, and line, and must match exactly one
 # generated mutant; one that matches none or several fails the run.
 GENERATED_FROM = ["check", "check-risk", "check-lessons", "check-layers", "check-pointers",

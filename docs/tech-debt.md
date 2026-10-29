@@ -79,3 +79,25 @@ this list; remove an entry when it is fixed.
   in the Scope rule, or a check once code exists (a date formatter without a zone in export code).
   Measure on T3 and D4 before keeping either.
 - **Found:** 2026-10-28, measurement of the self-review fixes.
+
+### Self-test gaps that reviewer mutants found
+
+- **Where:** `scripts/test-checks` and the checks it tests.
+- **Problem:** in the last review of the self-review fixes 11 of 75 reviewer mutants survived, all
+  of kinds the generator does not make; the code they change predates the fixes. Inputs that slip
+  through: two pointers on one line, the second wrong (`finditer` cut to the first match); a
+  multi-line file with a text trigger (`any` turned into `all`); a skipped prefix (`.claude/`,
+  `work/`, `evals/`) holding a non-Markdown violation such as `work/spike/Package.swift`; a lesson
+  without `Symptom` or `Stale when`; `evals/results/` in `check-pointers`' frozen list (the
+  self-test does not copy `evals/`); `origin/dev` and `dev` both present and different; a
+  bare-name pointer whose section exists only in a later file of that name; an upkeep header row
+  without a trailing `|` (`startswith` turned into `endswith`). Logic inside f-strings is not
+  mutated (`check-pointers`, `check-layers`, `check-lessons`, `check-risk`). The case "an upkeep
+  date without dashes" was removed: from about 2026-11-27 it could not tell a compact date from
+  an overdue one.
+- **Fix:** a case per input; the date case asserts the message ("the last date YYYY-MM-DD");
+  consider generator operators for builtin swaps (`any`/`all`), `finditer`, collection elements,
+  order, and `startswith` against `endswith`; keep logic out of f-strings. Then state in the
+  generator's comment, ledger row 26, and the lesson that the generator covers only the operators
+  it lists.
+- **Found:** 2026-10-29, review of the self-review fixes, fresh round 2.

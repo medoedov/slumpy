@@ -228,3 +228,16 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   added line that contains `+++`. Cases for both; both killed.
 - Full run on 87644d5: all 822 mutants killed (36 written, 795 generated, 9 equivalent), 17
   minutes on 4 cores (the earlier 40 to 75 minutes ran beside the measurement); 234 cases.
+- Reviewer, code, fresh round 2 (84c1098, item 9): `rethink approach`, the second one. Resolved
+  and verified clean: the fixed clock (a full run crossing UTC midnight passed), the crash seam,
+  every listed operator and its cases, the new `EQUIVALENT` entry, the changes to the checks, and
+  the removal of item 1. Open and blocking: (1) the generator's comment, ledger row 26, and the
+  lesson named two kinds as "not generated" as if the list were complete, while 11 of 75 reviewer
+  mutants of other kinds survived; (2) the case "an upkeep date without dashes" could not tell a
+  compact date from an overdue one from about 2026-11-27. Per core-process, Review and lessons, the
+  parts that carry the open findings are not shipped: the "not generated" statements are removed
+  (the comment lists only what is generated), the lesson is back to "this entry only" with the
+  generator as partial help, and the date case is removed. Non-blocking, left as is: an
+  f-string in `check-pointers` holds `strip()` (trailing whitespace only). The fixes and the
+  pre-existing gaps the reviewer found are in `docs/tech-debt.md`, "Self-test gaps that reviewer
+  mutants found". Nothing here is visible to the app's user.
