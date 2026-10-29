@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Fails when an upkeep task in docs/agent-system.md (section Upkeep) is due: its last date is
+older than its interval in days. A task whose interval is "on event" carries no date. A missing
+section or table, a table that is not one block of rows starting with "|", a row that does not
+parse, and a date later than today anywhere on Earth fail too. Any error exits non-zero.
+
+Dates do not depend on the machine's time zone: a date is in the future when it is later than
+today in UTC+14, and an age counts from today in UTC-12. SLUMPY_NOW (an ISO 8601 instant with its
+offset) sets the clock, for the self-test."""
+import datetime, os, pathlib, re, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SEPARATOR = re.compile(r"\|(\s*:?-+:?\s*\|)+")
+
+text = (ROOT / "docs/agent-system.md").read_text(encoding="utf-8")
+if "\n## Upkeep\n" not in text:
+    sys.exit("check-upkeep: docs/agent-system.md has no Upkeep section")
+lines = text.split("\n## Upkeep\n")[1].split("\n## ")[0].splitlines()
+start = next((i for i, l in enumerate(lines) if l.strip().startswith("|")), len(lines))
+end = start
+while end < len(lines) and lines[end].strip():
+    end += 1
+table = [l.strip() for l in lines[start:end]]
+stray = [l for l in lines[:start] + lines[end:] if "|" in l]
+if stray or any(not l.startswith("|") for l in table):
+    sys.exit("check-upkeep: the Upkeep table must be one block of rows that start with '|'")
+if len(table) < 2 or not SEPARATOR.fullmatch(table[1]):
+    sys.exit("check-upkeep: the Upkeep section has no table with a header row")
+rows = table[2:]
+now = (datetime.datetime.fromisoformat(os.environ["SLUMPY_NOW"]) if os.environ.get("SLUMPY_NOW")
+       else datetime.datetime.now(datetime.timezone.utc))
+latest = now.astimezone(datetime.timezone(datetime.timedelta(hours=14))).date()
+earliest = now.astimezone(datetime.timezone(datetime.timedelta(hours=-12))).date()
+problems = [] if rows else ["the Upkeep table has no tasks"]
+for row in rows:
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    if len(cells) != 4:
+        problems.append(f"upkeep row does not have 4 cells: {row}")
+        continue
+    task, every, last, _ = cells
+    if every == "on event":
+        continue
+    interval = re.fullmatch(r"(\d+) days", every)
+    date = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", last)
+    try:
+        done = datetime.date(*map(int, date.groups())) if date else None
+    except ValueError:  # a date that does not exist
+        done = None
+    if not interval or done is None:
+        problems.append(f"upkeep '{task}': the interval must be 'N days' or 'on event' and the "
+                        "last date YYYY-MM-DD")
+    elif done > latest:
+        problems.append(f"upkeep '{task}': last done {done} is in the future")
+    elif (earliest - done).days > int(interval.group(1)):
+        problems.append(f"upkeep '{task}' is due: last done {done}, every {every}; do it in its own "
+                        "commit and update its date")
+
+if problems:
+    print("\n".join(problems))
+    sys.exit(1)
+print(f"check-upkeep: {len(rows)} tasks, none due")

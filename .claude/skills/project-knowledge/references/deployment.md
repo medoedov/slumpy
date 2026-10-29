@@ -61,4 +61,5 @@ Xcode Cloud environment secrets.
 ## Monitoring
 
 Nothing configured. No analytics until the first tester build; the analytics service and its
-privacy impact are decided before that build.
+privacy impact are decided before that build, together with crash reports and diagnostic logs, so
+that a tester's bug can be diagnosed from data.

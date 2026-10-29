@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Fails when the agent-system layers mix.
 
-- Core files (named in the first sentence of .claude/rules/core-process.md; every
+- Core files (named in core-process.md before the words "are the core"; every
   .claude/rules/core-*.md must be named there) hold no listed platform or project term and no
-  non-English text. Only the frontmatter `paths` list is skipped (globs are set per project).
+  non-English text. Only the frontmatter `paths` list is skipped, in every file (globs are set per
+  project).
 - Platform-pack files (.claude/rules/platform.md and the rule files it names) and CLAUDE.md bind
   names and point to core rules; they hold no tier labels, reviewer rules, or decision-rights text.
+- Every .claude/rules/**/*.md is a core file or a platform-pack file.
 
 The term lists catch known cases only. Any error exits non-zero.
 """
@@ -29,17 +31,15 @@ CYRILLIC = re.compile("[Ѐ-ӿ]")
 RESTATE = re.compile(r"\bT[0-2]\b|\breviewer\b|decided by the owner|owner decides", re.IGNORECASE)
 
 
-def lines(path, skip_paths=False):
-    """File lines with the frontmatter fences (and, if asked, its `paths` list) blanked."""
+def lines(path):
+    """File lines with the frontmatter `paths` list blanked."""
     out, in_fm, in_paths = [], False, False
     for i, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
         if i == 0 and line == "---":
             in_fm = True
-            line = ""
         elif in_fm and line == "---":
             in_fm = False
-            line = ""
-        elif in_fm and skip_paths and line.startswith("paths:"):
+        elif in_fm and line.startswith("paths:"):
             in_paths, line = True, ""
         elif in_fm and in_paths and re.match(r"\s+- ", line):
             line = ""
@@ -50,8 +50,7 @@ def lines(path, skip_paths=False):
 
 
 def core_files():
-    text = " ".join(l for l in lines(PROCESS)[1:] if l.strip())
-    sentence = text.split(" are the core", 1)[0]
+    sentence = " ".join(lines(PROCESS)).split(" are the core")[0]
     found, problems = [PROCESS], []
     for name in re.findall(r"`([^`]+)`", sentence):
         for candidate in (ROOT / ".claude/rules" / name, ROOT / ".claude/agents" / f"{name}.md",
@@ -77,19 +76,24 @@ def platform_files():
     return found
 
 
-def scan(files, pattern, label, skip_paths=False):
+def scan(files, pattern, label):
     hits = []
     for f in files:
-        for n, line in enumerate(lines(f, skip_paths), 1):
+        for n, line in enumerate(lines(f), 1):
             if pattern.search(line):
                 hits.append(f"{f.relative_to(ROOT)}:{n}: {label}: {line.strip()}")
     return hits
 
 
 core, problems = core_files()
-problems += scan(core, TERMS, "platform or project term", skip_paths=True)
-problems += scan(core, CYRILLIC, "non-English text", skip_paths=True)
-problems += scan(platform_files() + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
+platform = platform_files()
+for f in sorted((ROOT / ".claude/rules").rglob("*.md")):
+    if f not in core and f not in platform:
+        problems.append(f"rule file in no layer: {f.relative_to(ROOT)} (name it in the first sentence "
+                        "of core-process.md or as `.claude/rules/<file>` in platform.md)")
+problems += scan(core, TERMS, "platform or project term")
+problems += scan(core, CYRILLIC, "non-English text")
+problems += scan(platform + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
 
 if problems:
     print("\n".join(problems))

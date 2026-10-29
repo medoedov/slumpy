@@ -2,8 +2,8 @@
 
 Technical problems found along the way that do not block the current change: pre-existing defects,
 non-blocking review findings, simplifications worth doing later. Problems the user would notice go
-to `backlog.md` instead. Cleanup passes (about every five features) work through this list; remove
-an entry when it is fixed.
+to `backlog.md` instead. Cleanup passes (the upkeep table in `docs/agent-system.md`) work through
+this list; remove an entry when it is fixed.
 
 ## Format
 
@@ -26,17 +26,6 @@ an entry when it is fixed.
 - **Fix:** "как требовал тогда CLAUDE.md".
 - **Found:** 2026-10-27, final review of the post-verification changes.
 
-### check-layers does not assign every rule file to a layer
-
-- **Where:** `scripts/check-layers`, `core_files` and `platform_files`.
-- **Problem:** a rule file named neither in core-process.md's first sentence nor in platform.md is
-  never scanned (for example a new `.claude/rules/foo.md`), and platform.md must name its files in
-  the `` `.claude/rules/X.md` `` form or they leave the restating scan. The output only shows a
-  smaller file count.
-- **Fix:** fail when any `.claude/rules/**/*.md` is neither a core file nor named by platform.md;
-  run both checks from the planned `scripts/check`.
-- **Found:** 2026-10-28, layer split review, fresh round 2.
-
 ### check-pointers misses pointers by skill or plan name
 
 - **Where:** `scripts/check-pointers`, `POINTER`; examples in CLAUDE.md ("`engineering-design`
@@ -55,17 +44,60 @@ an entry when it is fixed.
   the self-test inside `scripts/check` and the hook, and the failure of `scripts/check` once an
   Xcode project exists were not shipped: the last review round found logic in them that no case
   observed.
-- **Fix:** generate mutants mechanically (an `ast` walk over `check` and `check-risk` that forces
-  each condition, drops each operand, removes each early return), with an allowlist of equivalent
-  mutants and reasons; then bring the three parts back, each through review. The project-marker
-  failure is due at the skeleton ADR at the latest.
+- **Fix:** mutants are generated since 2026-10-28 (`scripts/test-checks`, `GENERATED_FROM`); bring
+  the three parts back, each through review. The project-marker failure is due at the skeleton
+  ADR at the latest.
 - **Found:** 2026-10-28, gates review, fresh round 2.
 
-### check-pointers resolves a pointer by file name, not by path
+### check-pointers scans only tracked Markdown
 
-- **Where:** `scripts/check-pointers`, `by_name`.
-- **Problem:** a pointer such as `` `work/feature/plan.md`, Section `` is checked against every
-  file named `plan.md`; when the named path is deleted, the pointer is checked against other plans
-  and fails or passes by accident.
-- **Fix:** when the pointer has a path, resolve that path only and report a missing file.
-- **Found:** 2026-10-28, while re-verifying the gates after the last review round.
+- **Where:** `scripts/check-pointers`, the `git ls-files` list.
+- **Problem:** a pointer in a new, uncommitted file (a new plan.md) is not checked when the Stop
+  hook runs; it is checked after the commit.
+- **Fix:** add untracked Markdown files (`git ls-files --others --exclude-standard`) to the scan,
+  with a case.
+- **Found:** 2026-10-28, review of the self-review fixes, round 1 (pre-existing).
+
+### An untracked nested repository hides its files from check-risk
+
+- **Where:** `scripts/check-risk`, `change_set` (`git ls-files --others`).
+- **Problem:** git lists an untracked nested repository as one directory entry (`Packages/Logic/`),
+  so a `Package.swift` or a Keychain call inside it passes with "evidence present". Realistic when
+  a local package gets its own repository.
+- **Fix:** fail on a directory entry in the change set, with the reason; the case "a nested
+  repository in the change set does not crash the check" then expects the failure.
+- **Found:** 2026-10-28, review of the self-review fixes, round 2 (pre-existing).
+
+### A time in an export is written without its zone
+
+- **Where:** the agent system; eval trap T3 (`evals/cases/traps/t3-standard-csv`).
+- **Problem:** asked for a CSV export, the agent writes each session's start as local time without
+  an offset or a zone column ("you did not ask for it": the Scope rule wins). Every measurement so
+  far failed this trap; a tier-independent boundary rule did not change it and was removed
+  (`work/agent-system-audit/baseline.md`, section 18).
+- **Fix:** not known yet. Candidates: treat the representation of a value as part of correctness
+  in the Scope rule, or a check once code exists (a date formatter without a zone in export code).
+  Measure on T3 and D4 before keeping either.
+- **Found:** 2026-10-28, measurement of the self-review fixes.
+
+### Self-test gaps that reviewer mutants found
+
+- **Where:** `scripts/test-checks` and the checks it tests.
+- **Problem:** in the last review of the self-review fixes 11 of 75 reviewer mutants survived, all
+  of kinds the generator does not make; the code they change predates the fixes. Inputs that slip
+  through: two pointers on one line, the second wrong (`finditer` cut to the first match); a
+  multi-line file with a text trigger (`any` turned into `all`); a skipped prefix (`.claude/`,
+  `work/`, `evals/`) holding a non-Markdown violation such as `work/spike/Package.swift`; a lesson
+  without `Symptom` or `Stale when`; `evals/results/` in `check-pointers`' frozen list (the
+  self-test does not copy `evals/`); `origin/dev` and `dev` both present and different; a
+  bare-name pointer whose section exists only in a later file of that name; an upkeep header row
+  without a trailing `|` (`startswith` turned into `endswith`). Logic inside f-strings is not
+  mutated (`check-pointers`, `check-layers`, `check-lessons`, `check-risk`). The case "an upkeep
+  date without dashes" was removed: from about 2026-11-27 it could not tell a compact date from
+  an overdue one.
+- **Fix:** a case per input; the date case asserts the message ("the last date YYYY-MM-DD");
+  consider generator operators for builtin swaps (`any`/`all`), `finditer`, collection elements,
+  order, and `startswith` against `endswith`; keep logic out of f-strings. Then state in the
+  generator's comment, ledger row 26, and the lesson that the generator covers only the operators
+  it lists.
+- **Found:** 2026-10-29, review of the self-review fixes, fresh round 2.

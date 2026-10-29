@@ -82,6 +82,9 @@ from the code. Verdict: confirmed or refuted, with the evidence.
   violation; code that only looks alike is not, see the principles below.
 - Security, when the caller asks for a security pass or the change meets the security-pass trigger
   in `core-process.md` ("Whatever the tier").
+- The tier: the tier the plan states, and its `T1 because` line if there is one, match what the
+  change does by the tiers in `core-process.md`. A change the tiers place higher than the plan
+  says is a violation.
 
 Principles as trade-offs, not rules:
 
@@ -92,25 +95,23 @@ Principles as trade-offs, not rules:
 
 ## Convergence
 
-- At most two rounds per mode (spec, decision, code). Round 2 reviews only the new diff and the
-  findings still open from round 1; do not reopen settled points. A security pass is part of code
-  round 1; a recheck is not a round.
+- The round limit and what the author does with each verdict: `core-process.md`, Review and
+  lessons. Round 2 reviews only the new diff and the findings still open from round 1; do not
+  reopen settled points. A security pass is part of code round 1.
 - Round 1 ends with `clean` or `changes needed`.
 - Round 2 in decision and code mode ends with one of:
   - `clean`;
   - `fix and verify`: the only blocking findings are small, local, and outside the round-1
-    classes. List the fixes; the author applies them and verifies them without another round:
-    with tests or checks in code mode; in decision mode, code round 1 checks them;
+    classes. List the fixes;
   - `rethink approach` in every other case, for example a round-1 finding still open, a round-1
     class recurring, or a blocking finding that is not small and local. Patching is not
-    converging; the author goes back to the brief.
+    converging.
 - Round 2 in spec mode ends with `clean` or `owner questions`: the remaining findings become owner
   questions or assumptions, as the `product-spec` skill says.
 - If findings share a class (same mistake in several places, or a repeat of a past finding), say
-  so and name the source to fix: compiler setting, lint rule, test, skill, lesson.
+  so and name the source to fix, from the order in `core-process.md`, Review and lessons.
 - A finding is disputed when the author objects with evidence or you are not sure of it; mark the
-  ones you are not sure of. A disputed blocking finding gets a recheck at any tier; for a disputed
-  non-blocking finding the author decides and records the reason in plan.md.
+  ones you are not sure of.
 
 ## Output
 

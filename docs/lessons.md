@@ -52,11 +52,16 @@ is removed; `scripts/check-lessons` enforces this.
 
 - **Symptom:** in four review rounds of the gates (2026-10-28) each reviewer's own mutants survived
   the self-test while the author's list was fully killed: 12 of 18, 22 of 24, then 3 fail-open
-  survivors. Three parts were left out because the review did not converge.
+  survivors. Three parts were left out because the review did not converge. It recurred in the
+  self-review fixes (2026-10-28 and 29): reviewer mutants survived while the written list was fully
+  killed; the first generated run found 133 of 602, and reviewer mutants of kinds the generator
+  does not make still survived (11 of 75).
 - **Cause:** the author of the cases also picked the mutants, so both share the same blind spots;
   state and caches added skip paths that no case exercised.
-- **Now guarded by:** this entry only. Partial help: `scripts/test-checks` builds cases from the
-  rule and check lists and runs a baseline before the mutants, but the mutant list is still
-  written by hand.
-- **Stale when:** mutants are generated mechanically (docs/tech-debt.md, gate parts left out).
+- **Now guarded by:** this entry only. Partial help: `scripts/test-checks --mutants` also
+  generates mutants from the code of every check with the operators its comment lists, and
+  `EQUIVALENT` holds only mutants equivalent on every input; mutants of any other kind depend on
+  cases and reviewers.
+- **Stale when:** the generated mutants have run on 10 changes to `scripts/` without a reviewer's
+  own mutant surviving.
 - **Added:** 2026-10-28
