@@ -241,3 +241,5 @@ a store that builds on Linux, decided in ADR-0002), and change the platform pack
   f-string in `check-pointers` holds `strip()` (trailing whitespace only). The fixes and the
   pre-existing gaps the reviewer found are in `docs/tech-debt.md`, "Self-test gaps that reviewer
   mutants found". Nothing here is visible to the app's user.
+- Full run on 0536dcc: all 822 mutants killed (36 written, 795 generated, 9 equivalent); 233 cases.
+  `download.swift.org` still denied on 2026-10-29: the Linux part stays blocked.
