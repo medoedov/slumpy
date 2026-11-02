@@ -5,7 +5,7 @@
   .claude/rules/core-*.md must be named there) hold no listed platform or project term and no
   non-English text. Only the frontmatter `paths` list is skipped, in every file (globs are set per
   project).
-- Platform-pack files (.claude/rules/platform.md and the rule files it names) and CLAUDE.md bind
+- Platform-pack files (.claude/rules/platform.md and the rule files it names) and AGENTS.md bind
   names and point to core rules; they hold no tier labels, reviewer rules, or decision-rights text.
 - Every .claude/rules/**/*.md is a core file or a platform-pack file.
 
@@ -28,7 +28,7 @@ TERMS = re.compile("|".join([
     "russian", "duolingo",
 ]), re.IGNORECASE)
 CYRILLIC = re.compile("[Ѐ-ӿ]")
-RESTATE = re.compile(r"\bT[0-2]\b|\breviewer\b|decided by the owner|owner decides", re.IGNORECASE)
+RESTATE = re.compile(r"\bT[0-2]\b|(?<![/\w-])reviewer(?![.\w-])|decided by the owner|owner decides", re.IGNORECASE)
 
 
 def lines(path):
@@ -93,9 +93,9 @@ for f in sorted((ROOT / ".claude/rules").rglob("*.md")):
                         "of core-process.md or as `.claude/rules/<file>` in platform.md)")
 problems += scan(core, TERMS, "platform or project term")
 problems += scan(core, CYRILLIC, "non-English text")
-problems += scan(platform + [ROOT / "CLAUDE.md"], RESTATE, "restates a core rule")
+problems += scan(platform + [ROOT / "AGENTS.md"], RESTATE, "restates a core rule")
 
 if problems:
     print("\n".join(problems))
     sys.exit(1)
-print(f"check-layers: {len(core)} core files clean; platform pack and CLAUDE.md bind names only")
+print(f"check-layers: {len(core)} core files clean; platform pack and AGENTS.md bind names only")

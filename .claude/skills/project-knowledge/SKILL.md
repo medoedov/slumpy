@@ -9,12 +9,12 @@ description: |
 # Project Knowledge
 
 Each fact has one owner file below; update that file instead of repeating the fact elsewhere.
-When a fact or status changes, search the repository (README, `work/`, ADRs, CLAUDE.md, `.claude/`) for other
+When a fact or status changes, search the repository (README, `work/`, ADRs, AGENTS.md, `.claude/`) for other
 copies and update them or replace them with a link to the section that states the fact, keeping
 its status (hypothesis or approved).
 
 **Status of facts.** Product facts are hypotheses, marked as such, until the owner approves them;
-CLAUDE.md names where the product draft lives. Technical
+AGENTS.md names where the product draft lives. Technical
 decisions live in ADRs under [docs/decisions/](../../../docs/decisions/); where this skill and an
 ADR disagree, the ADR wins and this skill is fixed.
 

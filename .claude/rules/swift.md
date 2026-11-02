@@ -7,7 +7,7 @@ paths:
 
 ## Facts
 
-- Any API newer than the project's minimum iOS (CLAUDE.md) needs `if #available` / `@available`
+- Any API newer than the project's minimum iOS (AGENTS.md) needs `if #available` / `@available`
   with a working path for the minimum. The compiler catches availability, not soft deprecations:
   when unsure whether an API is current, check its documentation page.
 - Default actor isolation is set per module (SE-0466, Swift 6.2); a module without the setting is

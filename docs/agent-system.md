@@ -1,18 +1,57 @@
 # Agent system: upkeep and mechanism ledger
 
-How to change the agent system: `.claude/rules/core-agent-system.md`. Measurement results:
-`work/agent-system-audit/baseline.md`.
+How to change the agent system: `.claude/rules/core-agent-system.md`. Historical measurement results:
+`work/agent-system-audit/baseline.md`. Current migration evidence:
+`work/agent-system-unified/plan.md`.
+
+## Runtime loading
+
+Confirmed by the owner on 2026-11-02: one maintained `AGENTS.md` for Claude Code and Codex,
+shared rules and skills, and only small runtime adapters. This replaces Codex option A and the
+generated mirrors; the former converter must not regenerate this repository.
+
+| Component | Shared source | Claude Code | Codex |
+|---|---|---|---|
+| Entry point | `AGENTS.md` | Direct loading when supported; `CLAUDE.md` imports it for compatibility | Native repository instructions |
+| Process and platform rules | `.claude/rules/` | Native rule loading | Explicit routes in `AGENTS.md` |
+| Three project skills | `.claude/skills/` | Native skill discovery | `.agents/skills/` contains links to these sources |
+| Review role | `.claude/agents/reviewer.md` | Native agent definition | Give this file to a fresh subagent with the mode, tier, call number, artifacts, and evidence |
+| Completion checks | `scripts/check` | Stop hook in `.claude/settings.json`, plus explicit verification | Explicit verification before reporting completion |
+
+The Codex adapters own discovery only. Their name and description follow the source skill;
+instructions and references are read from that source, not copied. Old project skill copies and
+the old `.codex/agents/` definitions have been removed. Generic globally installed skills are not
+another project workflow: use the routing in `AGENTS.md`. User-wide settings are not changed by
+this migration, and a new session is needed to drop catalogs already injected into a conversation.
+
+For a Codex review, use the runtime's available fresh subagent mechanism and ask it to read the
+shared review role; do not assume a registered Claude agent exists. If independent agents are
+unavailable, report the review as unverified rather than presenting self-review as independent.
+The same applies to checks a host cannot execute. Claude permission settings and its Stop hook do
+not configure Codex; approval restrictions still come from the host and shared instructions.
+
+The local CLI check on 2026-11-02 found Claude Code 2.1.220 and Codex CLI 0.145.0. Claude's
+[direct AGENTS.md support](https://code.claude.com/docs/en/memory#agents-md) requires 2.1.277 or
+later and enabled instruction loading. Keep the one-line `CLAUDE.md` import while older sessions
+are used. After upgrading, verify loading before removing that adapter. Codex discovers the
+project adapters through [`.agents/skills`](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills).
+
+At the next fresh session in each runtime, confirm the shared entry point, the three project
+skills and their source routes, and a review call using the shared role. This is a loading smoke
+check, not a quality or cost measurement. Compare outcome quality, cost per successful task, tool
+calls, time, and owner involvement separately on each runtime before claiming an improvement.
 
 ## Upkeep
 
-`scripts/check-upkeep` fails when a task's last date is older than its interval. A task with an
-interval of "on event" is not dated; the task says when it is due. A new task starts with the date
-it was added.
+`scripts/check-upkeep` reports an advisory reminder when a task's last date is older than its
+interval. It does not make unrelated work fail or authorize a maintenance task. Malformed dates
+or tables still fail because the schedule cannot be read. An "on event" task is not dated; the
+task says when it is due. Update dates after doing the work, not to dismiss a reminder.
 
 | Task | Every | Last done | How |
 |---|---|---|---|
 | Platform facts | 180 days | 2026-10-27 | Check each dated fact in the platform pack against the platform's documentation and the latest stable toolchain, and update the dates in the facts. Also due at each new major toolchain release |
-| Prompt and skill audit | 30 days | 2026-10-27 | `/doctor prompt-audit` and `/skill-doctor` on the agent system; apply what is right, record the rest in `docs/tech-debt.md` |
+| Prompt and skill audit | 30 days | 2026-11-02 | Audit the active instructions for conflicting sources, unnecessary work, and demonstrated gaps; propose changes outside the maintenance scope instead of applying them automatically |
 | Cleanup pass | 60 days | 2026-10-28 | Work through `docs/tech-debt.md`; remove stale documents and lessons whose "stale when" has come; once code exists, also dead code and lint drift |
 | Measurement after a model change | on event | — | As `.claude/rules/core-agent-system.md` says; update "Known so far" below |
 
@@ -27,14 +66,14 @@ Kind: **gate** (a script, hook, or compiler blocks), **trigger** (a script decid
 
 | # | Mechanism | Where | Error it targets | Kind | Known so far | Pilot measure | Remove or change if |
 |---|---|---|---|---|---|---|---|
-| 1 | Decision rights, product questions with recommendations | core-process; `product-spec` | Owner turned into a tech lead | prose | P1–P3: recommendations and product-only questions 6/6 and 30/30 (sections 8, 16) | Technical questions to the owner per feature; owner minutes per feature | A technical question reaches the owner in more than 1 of 10 features |
+| 1 | Decision rights, product questions with recommendations | core-process; `product-spec` | Owner turned into a tech lead | prose | 2026-11-02: questions are batched at five per message; material decisions stay open until answered. The new multi-turn stopping rule is not yet measured. P1–P3: recommendations and product-only questions 6/6 and 30/30 (sections 8, 16) | Technical questions to the owner per feature; owner minutes per feature | A technical question reaches the owner in more than 1 of 10 features |
 | 2 | Risk tiers | core-process | Shallow analysis of irreversible decisions | prose | S3: the agent named T2 and skipped the T2 order (section 8) | Share of T2 changes with brief, ADR, and decision review before code | Below 80%: the tier comes from `check-risk` paths only |
 | 3 | Brief and question menu | `engineering-design` | Code before the data model, boundaries, scenarios | prose | Graders at ceiling; fires more after the layer split. Traps T1 and T2: extra layers only when it fired (2/4 against 0/8 without it), trap avoided 12/12 either way (sections 16, 17). The owner chose on 2026-10-28 to keep the T1 brief and decide in the pilot. Same day: the simplest-design row moved first, "a question checks the design", a T1 example (`work/agent-system-self-review/plan.md`); measured in section 18: proportionate 11 of 12 over two measurements against 3 of 6, cost +7% on average, +25% in the run where the skill loaded twice | Hidden-test pass rate and extra types on T1 and T2 tasks, with and without the skill | No hidden-test gain and either cost above +25% or more extra types than without it |
-| 4 | Domain blind-spot pass | `engineering-design` | Missing practitioner knowledge in a new area | prose | Never run | Facts from the pass used in later decisions | Two passes yield no fact used in a decision |
-| 5 | Reviewer, decision mode | `reviewer` | Wrong irreversible choice | prose trigger | Design cost +120% when it ran (section 10) | Confirmed blocking findings per review; cost per confirmed finding | Fewer than 1 confirmed blocking finding per 3 reviews |
-| 6 | Reviewer, code mode | `reviewer`; core-process T1 trigger | Defects the author misses; a tier stated lower than the change | prose trigger | Not launched in R1–R9; mandatory on T1 failed on cost (section 10) | Findings confirmed by a test or later bug; escaped defects with and without | Fewer than 1 confirmed blocking finding per 3 reviews, or more than 3 USD per confirmed blocking finding |
-| 7 | Reviewer, spec mode | `product-spec` step 5 | Specs an implementer must ask about | prose | Unmeasured: single-turn eval never reaches it | Spec changes caused by the review; later product questions during implementation | No spec change in 3 specs |
-| 8 | Review convergence | `reviewer` (verdicts); core-process (author's side) | Endless review loops | prose | Two changes converged in 4 rounds each | Rounds per change; parts left out | Average above 3 rounds per mode |
+| 4 | Research a material knowledge gap | `engineering-design` | An unknown fact changes a design or correctness decision | prose | 2026-11-02: research is triggered by a named gap, not a missing domain page; stop once the decision has evidence. Reusable findings may become a domain page. Behavioral effect not yet measured | Design changes supported by researched facts; research cost per useful answer | Research produces no decision-relevant evidence in two tasks: narrow the trigger |
+| 5 | Reviewer, decision mode | `reviewer` | Wrong irreversible choice | prose trigger | 2026-11-02: engineering-design is loaded in decision mode, not preloaded for every review. Design cost +120% when it ran (section 10) | Confirmed blocking findings per review; cost per confirmed finding | Fewer than 1 confirmed blocking finding per 3 reviews |
+| 6 | Reviewer, code mode | `reviewer`; core-process T1 trigger | Defects the author misses; a tier stated lower than the change | prose trigger | 2026-11-02: engineering-design loads only when needed to check a design contract. Not launched in R1–R9; mandatory on T1 failed on cost (section 10) | Findings confirmed by a test or later bug; escaped defects with and without | Fewer than 1 confirmed blocking finding per 3 reviews, or more than 3 USD per confirmed blocking finding |
+| 7 | Reviewer, spec mode | `product-spec` step 5 | Specs an implementer must ask about | prose | 2026-11-02: spec review does not preload engineering-design; material owner choices return to another question batch. Unmeasured: single-turn eval never reaches it | Spec changes caused by the review; later product questions during implementation | No spec change in 3 specs |
+| 8 | Bounded review and rechecks | `reviewer` (verdicts); core-process (author's side) | Repeated reviews without new evidence | prose | 2026-11-02: at most two calls per original mode, rechecks included; revising the approach does not reset the budget. Historical two changes used four rounds each. New limit not yet measured end to end | Calls per mode, escaped defects, parts left unfinished | The limit repeatedly prevents resolution of a demonstrated blocking risk: revisit with those cases |
 | 9 | Security pass | core-process; `platform.md`; `check-risk` | Privacy and App Review failures, leaked secrets | gate (evidence line) | Self-test only | Security findings; App Review rejections | Kept by policy: the cost of one miss is high |
 | 10 | Schema test against the previous store | core-process | Data loss on update | prose | No schema yet | Migrations shipped with the test | Kept by policy: data loss cannot be undone |
 | 11 | ADRs | `docs/decisions/` | Decisions forgotten between sessions | prose | One ADR; unmeasured | Later sessions contradicting an ADR | Two contradictions in the pilot: add a check that the brief cites the ADRs for the paths it touches |
@@ -43,13 +82,14 @@ Kind: **gate** (a script, hook, or compiler blocks), **trigger** (a script decid
 | 14 | Test and fix rules | `core-code.md` | Tests that prove nothing; fixes that hide causes | prose | R9 at ceiling | Mutation survivors in the logic package; escaped defects | No difference against the bare model on hidden tests |
 | 15 | Premise check after two failed fixes | `core-code.md` | Fix loops on a wrong assumption | prose | Unmeasured | Third fixes on the same premise in debugging tasks | Never triggered in the pilot |
 | 16 | `Verified:` line in commits | core-process | "Done" without proof | prose | 14 of 15 recent commits | Lines with real command output | Below 90%: a commit-message hook |
-| 17 | Platform facts and design questions | `platform.md`; `swift.md`; Upkeep above | Outdated or wrong platform knowledge | prose; compiler later; recheck date gated by `check-upkeep` | R8 at ceiling | Deprecation and availability errors from the compiler; wrong facts found | Facts never used in a brief or review are removed at the next major Xcode |
-| 18 | Layer and pointer checks | `check-layers`; `check-pointers`; `test-checks` | Details in the wrong layer; a rule file in no layer; stale pointers, including a pointer whose path no longer exists | gate | Self-test only; the cases come from what reviewers found by hand during the layer split | False positives and misses per change to the agent system | More than 1 false positive per 5 changes: narrow the term list; a miss found in review: add a case |
+| 17 | Platform facts and design questions | `platform.md`; `swift.md`; Upkeep above | Outdated or wrong platform knowledge | prose; compiler later; recheck date reminded by `check-upkeep` | R8 at ceiling | Deprecation and availability errors from the compiler; wrong facts found | Facts never used in a brief or review are removed at the next major Xcode |
+| 18 | Layer and pointer checks | `check-layers`; `check-pointers`; `test-checks` | Details in the wrong layer; a rule file in no layer; stale pointers, including a pointer whose path no longer exists | gate | 2026-11-02: AGENTS.md and active Codex adapters join the checked sources; dated prior-system records are historical. Deterministic cases cover entry-point rules and active pointers | False positives and misses per change to the agent system | More than 1 false positive per 5 changes: narrow the term list; a miss found in review: add a case |
 | 19 | Risk evidence check | `check-risk`; `scripts/risk-paths` | Risky change without a decision record | gate | Self-test only; paths provisional until the skeleton | Blocks that found a real gap against noise | More than 1 false block per feature: narrow the paths |
-| 20 | Stop hook running `scripts/check` | `.claude/settings.json`; `work/agent-system-gates/plan.md` | Checks skipped because nobody remembered | gate | Self-test only | Blocked stops that fixed a real issue against noise | More noise than real issues over 10 features |
+| 20 | Stop hook running `scripts/check` | `.claude/settings.json`; `work/agent-system-gates/plan.md` | Checks skipped because nobody remembered | gate | 2026-11-02: overdue maintenance is reported without a continuation request; actual validation failures keep their existing feedback path. Codex runs the same check explicitly; its host does not inherit this hook | Blocked stops that fixed a real issue against noise | More noise than real issues over 10 features |
 | 21 | Owner report format | core-process | Owner cannot judge the result | prose | — | Owner follow-up questions per report | Owner asks for the same missing item twice |
 | 22 | Project Knowledge | `project-knowledge` | Product facts re-asked or invented | prose | Helped in P1 (section 12) | Facts re-asked from the owner | A fact re-asked in more than 1 of 10 features: restructure the references |
 | 23 | Boundary representation rule (removed 2026-10-28) | was core-process, Whatever the tier; `engineering-design` menu; `reviewer` rubric | Ambiguous values where data leaves the process | removed | No measurable difference on its cases (`work/agent-system-audit/baseline.md`, section 18): T3 0 of 4 runs with two wordings, D4 at the ceiling in both versions. The agent leaves out a time zone column as a feature nobody asked for | — | — |
-| 24 | Upkeep check | `check-upkeep`; Upkeep above | Regular tasks never done: stale platform facts, unaudited prompts, debt piling up | gate; keeps any branch session working once a task is due, like an expired lesson | Self-test only | Due tasks that found something to fix against those that found nothing; interruptions the owner notices | A task finds nothing twice in a row: lengthen its interval. The owner finds the interruptions disruptive, or two branches do the same task: block only changes to the agent system and show a message elsewhere |
-| 25 | Rules for changing the agent system | `core-agent-system.md` (path rule) | Mechanisms added without measurement; the always-loaded files growing | prose | Added 2026-10-28 | Agent-system changes with a ledger row and a measurement | One change ships without its ledger row: add a check that a change to the agent system also changes this file |
-| 26 | Generated mutants | `scripts/test-checks`, `GENERATED_FROM`, `EQUIVALENT`; test seams `SLUMPY_TEST_HOOK_CRASH`, `SLUMPY_NOW` | Self-test cases that miss logic in the checks | prose (CLAUDE.md says when to run it); blocks when run | First run: 133 of 602 survived. After review round 2 (`rethink approach`): `EQUIVALENT` keeps only mutants equivalent on every input, unreachable code got test seams, logic with no observable effect was deleted. Fresh round 1: 19 of 20 reviewer mutants survived (string predicates, regex functions, string methods, call arguments); those operators were added. Fresh round 2: 11 of 75 reviewer mutants survived, all of kinds the generator does not make (`docs/tech-debt.md`, self-test gaps) | Reviewers' own mutants that survive | A reviewer's mutant survives: add its operator to the generator |
+| 24 | Upkeep reminders | `check-upkeep`; Upkeep above | Maintenance forgotten without making unrelated tasks wait | advisory for overdue tasks; gate for malformed schedule | 2026-11-02: a due date no longer fails check-upkeep or scripts/check; hook reminders do not demand maintenance. Covered by deterministic cases; effect on owner interruptions not yet measured | Useful maintenance tasks against interruptions; ignored reminders | A task finds nothing twice: lengthen its interval; missed necessary maintenance: revise that task trigger |
+| 25 | Rules for changing the agent system | `core-agent-system.md` (path rule) | Mechanisms added without measurement; the always-loaded files growing | prose | 2026-11-02: runtime-specific evidence and explicit unmeasured status required; paid measurements need an agreed budget. Historical results remain labeled with their model and runtime | Agent-system changes with a ledger row and a measurement | One change ships without its ledger row: add a check that a change to the agent system also changes this file |
+| 26 | Generated mutants | `scripts/test-checks`, `GENERATED_FROM`, `EQUIVALENT`; test seams `SLUMPY_TEST_HOOK_CRASH`, `SLUMPY_NOW` | Self-test cases that miss logic in the checks | prose (AGENTS.md says when to run it); blocks when run | First run: 133 of 602 survived. After review round 2 (`rethink approach`): `EQUIVALENT` keeps only mutants equivalent on every input, unreachable code got test seams, logic with no observable effect was deleted. Fresh round 1: 19 of 20 reviewer mutants survived (string predicates, regex functions, string methods, call arguments); those operators were added. Fresh round 2: 11 of 75 reviewer mutants survived, all of kinds the generator does not make (`docs/tech-debt.md`, self-test gaps) On 2026-11-02, after the shared-entry/advisory-upkeep changes: 246 cases pass; all 846 executable mutants killed (36 written, 819 generated, 9 existing equivalents). This validates the listed cases and operators, not arbitrary future mutants or model behavior. | Reviewers' own mutants that survive | A reviewer's mutant survives: add its operator to the generator |
+| 27 | Shared entry point and runtime adapters | AGENTS.md; Runtime loading above | Divergent Claude and Codex workflows and stale generated instructions | prose routing; native discovery | Owner-approved 2026-11-02; old project copies removed; live model behavior not yet compared | Fresh-session loading and outcome/cost on each runtime separately | A source is skipped or rules diverge: fix the adapter, not a second copy of the methodology |

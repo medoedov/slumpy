@@ -1,7 +1,7 @@
 # Platform pack: Apple iOS
 
 Rules for any iOS project. This project's own choices (minimum iOS, Swift language mode, module
-layout) are in CLAUDE.md and the ADRs.
+layout) are in AGENTS.md and the ADRs.
 
 - Code rules: `.claude/rules/swift.md` (loads with `.swift` files), with the platform's review
   rubric.

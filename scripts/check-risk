@@ -17,7 +17,7 @@ SKIP_PREFIXES = ("scripts/", ".claude/", "docs/", "work/", "evals/")
 
 def git(*args, check=True):
     return subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=ROOT,
-                          capture_output=True, text=True, check=check)
+                          capture_output=True, encoding="utf-8", check=check)
 
 
 def out(*args):

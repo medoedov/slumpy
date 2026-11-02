@@ -24,9 +24,9 @@ features only after a review audit; until then there is no house pattern to copy
   boundary (other command forms are not matched). Real protection comes when `main` starts
   producing builds: a GitHub branch rule (for a private repository it needs a paid GitHub plan) or
   a PreToolUse hook, decided then.
-- `AGENTS.md`, `.agents/`, `.codex/`, and `.githooks/` are frozen (Codex option A): not edited, not
-  regenerated, hooks not enabled, not a source of project facts. The hooks call scripts outside
-  the repository and would fail.
+- `AGENTS.md` is the maintained shared entry point; runtime loading and the compatibility import
+  live in [docs/agent-system.md](../../../../docs/agent-system.md#runtime-loading).
+- `.githooks/` remains frozen and disabled: its old hooks call scripts outside the repository.
 
 ---
 
@@ -35,7 +35,8 @@ features only after a review audit; until then there is no house pattern to copy
 - Where code can build and run: `platform.md`.
 - `scripts/check` is the single entry point. Now: `check-layers`, `check-pointers`, `check-risk`
   (rules and evidence format: `scripts/risk-paths`, header; the paths are a signal and do not set
-  the tier), `check-lessons`, `check-upkeep` (the upkeep table in `docs/agent-system.md`). The
+  the tier), `check-lessons`, `check-upkeep` (the upkeep table in `docs/agent-system.md`; overdue
+  tasks are advisory, malformed maintenance data still fails). The
   self-test `scripts/test-checks` runs on demand. Planned on the Mac: build, package and app tests,
   lint, format, gate-bypass scan.
 - Planned gates once code exists, each a new dev tool through an ADR (tool facts as of

@@ -1,8 +1,8 @@
 ---
 name: product-spec
 description: |
-  Product specification for a new feature or a change in what the user sees: picks at most five
-  product questions for the owner, each with a recommendation, writes work/{feature}/spec.md, and
+  Product specification for a new feature or a change in what the user sees: asks essential
+  product questions with recommendations, writes work/{feature}/spec.md, and
   checks it from the implementer's side. Use when the owner wants a new feature, asks to think a
   feature through or agree on what to build, or describes a product idea with open points, before
   any technical design.
@@ -26,11 +26,12 @@ through a question. List every open point in the request.
 - **Minor product gaps** where a sensible default exists and changing it later is cheap: take the
   default and list it under assumptions in the spec.
 - **Product questions:** what remains. Rank by impact on the user times uncertainty. Ask at most
-  five; drop the rest to assumptions.
+  five per message; continue only while material product decisions remain unresolved. A question
+  does not become a safe assumption because it falls outside the current batch.
 
 ## 3. Ask
 
-All questions in one message, numbered, highest impact first, in the owner's language (CLAUDE.md)
+Questions in batches of at most five, numbered, highest impact first, in the owner's language (AGENTS.md)
 and terms, without technical vocabulary. End the message with a line saying the owner can answer
 "per the recommendations" or name only the points they disagree with. Each question has these
 parts, labeled in the owner's language:
@@ -71,9 +72,10 @@ Product decisions taken by default; the owner can change any of them.
 
 ## 5. Check from the implementer's side
 
-Run `reviewer` in spec mode on the spec. Fix what it finds: one round, a second only on the
-changed parts. A finding that needs a product choice becomes a question to the owner within the
-five-question limit, or an assumption.
+Run `reviewer` in spec mode on the spec within the review budget in `core-process.md`. Fix
+demonstrated gaps; a finding that needs a material product choice returns to the owner in the
+next batch. Only cheap, reversible minor gaps may become assumptions. Do not hand an unresolved
+material product choice to implementation as if it were agreed.
 
 ## 6. Hand over
 

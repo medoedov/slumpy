@@ -9,7 +9,13 @@
       "Bash(scripts/check)",
       "Bash(scripts/check *)",
       "Bash(scripts/check-*)",
-      "Bash(scripts/test-checks)"
+      "Bash(scripts/test-checks)",
+      "Bash(python scripts/check)",
+      "Bash(python scripts/test-checks)",
+      "Bash(python scripts/test-checks --mutants)",
+      "Bash(python3 scripts/check)",
+      "Bash(python3 scripts/test-checks)",
+      "Bash(python3 scripts/test-checks --mutants)"
     ],
     "ask": [
       "Bash(xcodebuild *archive*)",
@@ -28,9 +34,6 @@
       "Bash(git push * origin)",
       "Bash(git push * HEAD)",
       "Bash(git push * HEAD *)",
-      "Edit(/AGENTS.md)",
-      "Edit(/.agents/**)",
-      "Edit(/.codex/**)",
       "Edit(/.githooks/**)"
     ]
   },
@@ -40,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook",
+            "command": "if [ \"$OS\" = Windows_NT ]; then python -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook; else python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook; fi",
             "timeout": 120
           }
         ]

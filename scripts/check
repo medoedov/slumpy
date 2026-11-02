@@ -12,7 +12,8 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
         not as a hook error); while the session is already continuing because of this hook, it
         shows the failures as a system message instead. A crash of the hook itself is a real
         error and blocks with a JSON decision. SLUMPY_TEST_HOOK_CRASH set makes the hook raise,
-        for the self-test of that path.
+        for the self-test of that path. Overdue upkeep is a system-message reminder only;
+        it never asks the agent to continue the current task.
 """
 import json, os, pathlib, subprocess, sys, traceback
 
@@ -33,6 +34,8 @@ def run_checks():
         last = out.splitlines()[-1] if out else ""
         ok = p.returncode == 0
         status, summary = ("ok" if ok else "FAIL"), last.removeprefix(name + ": ")
+        if ok and summary.startswith("reminder:"):
+            status = "note"
         report.append(f"[{status}] {name}: {summary}")
         if not ok:
             failed.append(f"{name}:\n{out}")
@@ -63,6 +66,10 @@ def hook(continuing):
     if failed:
         respond("scripts/check failed; fix before finishing:\n" + "\n".join(report) + "\n\n"
                 + "\n\n".join(failed), continuing)
+    else:
+        reminders = [line for line in report if line.startswith("[note]")]
+        if reminders:
+            print(json.dumps({"systemMessage": "\n".join(reminders)}))
     return 0
 
 

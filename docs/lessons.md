@@ -42,7 +42,7 @@ is removed; `scripts/check-lessons` enforces this.
   pointers went stale after sections moved.
 - **Cause:** a copy of a rule is edited, or not edited, separately from its source.
 - **Now guarded by:** `scripts/check-layers` (tier labels, reviewer rules, or decision-rights text
-  in the platform pack and CLAUDE.md) and `scripts/check-pointers` (section pointers that do not
+  in the platform pack and AGENTS.md) and `scripts/check-pointers` (section pointers that do not
   resolve), both covered by `scripts/test-checks`.
 - **Stale when:** the checks have run on 10 changes to the agent system without a miss found in
   review.

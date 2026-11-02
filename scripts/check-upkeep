@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Fails when an upkeep task in docs/agent-system.md (section Upkeep) is due: its last date is
-older than its interval in days. A task whose interval is "on event" carries no date. A missing
+"""Reports a reminder when an upkeep task in docs/agent-system.md (section Upkeep) is due:
+its last date is older than its interval in days. Overdue work does not fail the check.
+A task whose interval is "on event" carries no date. A missing
 section or table, a table that is not one block of rows starting with "|", a row that does not
 parse, and a date later than today anywhere on Earth fail too. Any error exits non-zero.
 
@@ -32,6 +33,7 @@ now = (datetime.datetime.fromisoformat(os.environ["SLUMPY_NOW"]) if os.environ.g
 latest = now.astimezone(datetime.timezone(datetime.timedelta(hours=14))).date()
 earliest = now.astimezone(datetime.timezone(datetime.timedelta(hours=-12))).date()
 problems = [] if rows else ["the Upkeep table has no tasks"]
+due = []
 for row in rows:
     cells = [c.strip() for c in row.strip("|").split("|")]
     if len(cells) != 4:
@@ -52,10 +54,12 @@ for row in rows:
     elif done > latest:
         problems.append(f"upkeep '{task}': last done {done} is in the future")
     elif (earliest - done).days > int(interval.group(1)):
-        problems.append(f"upkeep '{task}' is due: last done {done}, every {every}; do it in its own "
-                        "commit and update its date")
+        due.append(f"upkeep '{task}' is due: last done {done}, every {every}")
 
 if problems:
     print("\n".join(problems))
     sys.exit(1)
-print(f"check-upkeep: {len(rows)} tasks, none due")
+if due:
+    print("check-upkeep: reminder: " + "; ".join(due) + "; schedule maintenance separately")
+else:
+    print(f"check-upkeep: {len(rows)} tasks, none due")

@@ -64,7 +64,8 @@ Deliberately not decided yet; each is decided at the step named.
   - the test framework (working assumption: Swift Testing for the logic package).
 - **Storage:** ADR-0002 before the reading-session model.
 - **Sync and conflict resolution:** together with accounts and the backend.
-- **Codex option B or C:** after hypothesis H8 in the audit plan.
+- **Agent runtime integration:** shared entry point and loading adapters are decided in
+  [docs/agent-system.md](../../../../docs/agent-system.md#runtime-loading), confirmed 2026-11-02.
 
 ---
 

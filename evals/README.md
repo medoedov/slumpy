@@ -36,9 +36,9 @@ fired; the tool excludes them from the score.
 - Tool: `claude plugin eval` (Claude Code 2.1.310). Every case runs in two arms: **with** the
   packaged system and **without** it (bare Claude Code, same model). The without arm is the
   "model without system" baseline; it is re-measured on every run.
-- Runs happen in an empty temp workspace; project `.claude/` and `CLAUDE.md` do not load there.
+- Runs happen in an empty temp workspace; project `.claude/` and `AGENTS.md` do not load there.
   `build-plugin.sh` therefore packages the system as a plugin: skills and agents as components,
-  always-on instructions (`CLAUDE.md`, `.claude/rules/*.md`) injected as session context by a
+  always-on instructions (`AGENTS.md`, `.claude/rules/*.md`) injected as session context by a
   SessionStart hook.
 - Pinned: agent model `claude-opus-5-5`, `CLAUDE_CODE_EFFORT_LEVEL=high`, judge
   `claude-sonnet-5-5`, 2 runs per case per arm (from case frontmatter), concurrency 4.
@@ -55,7 +55,7 @@ evals/scripts/run.sh v0 baseline --tag review   --max-cost-usd 13
 evals/scripts/run.sh v0 baseline --tag design   --max-cost-usd 8
 # ...same for product, traps, triggers
 
-# system "after": this repository's CLAUDE.md, .claude/rules, .claude/skills, .claude/agents
+# system "after": this repository's AGENTS.md, .claude/rules, .claude/skills, .claude/agents
 evals/scripts/run.sh repo after --tag review --max-cost-usd 13
 
 python3 -I evals/scripts/summarize.py evals/results/baseline/*/

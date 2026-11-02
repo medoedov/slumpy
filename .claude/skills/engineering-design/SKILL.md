@@ -3,7 +3,7 @@ name: engineering-design
 description: |
   Technical brief before code: data model, boundaries and contracts, scenarios, assumptions, what
   else is affected, alternatives for irreversible choices, and the engineering question menu; plus
-  a domain blind-spot pass for areas new to the project. Use before writing code for a feature or
+  research for material knowledge gaps. Use before writing code for a feature or
   a design discussion, and before any new irreversible decision: storage or schema, module
   boundaries, concurrency, system services or extensions, network, sign-in, money, user data
   leaving the device, or a new dependency.
@@ -23,18 +23,15 @@ loaded) adds design questions to the menu below. For platform work, read the pla
 first (`platform.md` names them): they load on their own only when a matching file is read,
 created, or edited. Test and fix rules for a bug: `core-code.md`.
 
-## 2. Domain blind-spot pass (first serious decision in a new area)
+## 2. Resolve a material knowledge gap
 
-Run it when the project has no page for the area in `docs/domains/` yet (examples of areas: a
-system service, sync, HTTP caching, payments, sign-in). Write down briefly:
+Research when an unresolved fact could change the design, correctness, privacy, or feasibility.
+State that question, reuse relevant project knowledge, and check the needed facts against primary
+sources (the platform's docs, a standard, or vendor docs). Stop when the decision has enough
+evidence. A missing page in `docs/domains/` alone does not require research.
 
-- what experienced practitioners know that newcomers miss;
-- which standards, protocols, and platform rules apply;
-- where implementations usually break.
-
-Check each point against a primary source (the platform's docs, the RFC or standard, the vendor's
-docs). Save the result as a one-page `docs/domains/<area>.md`. The research may go to a subagent to
-keep the main context clean. Then continue with the brief.
+Record the answer with its source in the brief. Save a domain page only when the knowledge is
+likely to be reused across features. Delegate research when its volume warrants isolated context.
 
 ## 3. Brief
 

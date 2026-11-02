@@ -28,7 +28,7 @@ this list; remove an entry when it is fixed.
 
 ### check-pointers misses pointers by skill or plan name
 
-- **Where:** `scripts/check-pointers`, `POINTER`; examples in CLAUDE.md ("`engineering-design`
+- **Where:** `scripts/check-pointers`, `POINTER`; examples in AGENTS.md ("`engineering-design`
   menu, Concurrent code") and the mapping table in `work/agent-system-layers/plan.md`
   ("core-process, Where things live").
 - **Problem:** only the `` `file.md`, Section `` form is parsed, so renaming the menu row or a

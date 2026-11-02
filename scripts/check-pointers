@@ -3,14 +3,14 @@
 that the file does not have. A section matches a heading, a bold label, or a line that starts with
 its name. A pointer with a path resolves by that path, from the repository root or from the
 pointing file's folder, and fails when neither exists; a bare file name is checked against every
-tracked file of that name. Dated records that cite past states are skipped (SKIP below)."""
+tracked file of that name. Dated records that cite past states are not scanned as current
+instructions (HISTORICAL below), but remain available as pointer targets."""
 import os, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-FROZEN = ("AGENTS.md", ".agents/", ".codex/", ".githooks/", "evals/results/")
-SKIP = {  # dated records: they describe the system as it was when written
-    "work/agent-system-audit/verification.md",
-}
+FROZEN = (".githooks/", "evals/results/")
+HISTORICAL = ("work/agent-system-audit/", "work/agent-system-layers/",
+              "work/agent-system-gates/", "work/agent-system-self-review/")
 QUOTED = r'(?:«[^»]+»|"[^"]+")'
 POINTER = re.compile(
     r'`?([\w./-]+\.md)`?,?\s+\(?(?:section |раздел |разделы )?'
@@ -21,7 +21,7 @@ POINTER = re.compile(
 # Tracked Markdown files that exist on disk; a git failure ends the run with an error.
 try:
     listed = subprocess.run(["git", "-c", "core.quotePath=false", "ls-files", "-z", "*.md"],
-                            cwd=ROOT, capture_output=True, text=True, check=True).stdout
+                            cwd=ROOT, capture_output=True, encoding="utf-8", check=True).stdout
 except subprocess.CalledProcessError as e:
     sys.exit(f"check-pointers: git failed: {e.stderr.strip()}")
 files = [f for f in listed.split("\0") if not f.startswith(FROZEN) and (ROOT / f).is_file()]
@@ -39,7 +39,7 @@ def sections(path):
 
 problems = []
 for f in files:
-    if f in SKIP:
+    if f.startswith(HISTORICAL):
         continue
     for n, line in enumerate((ROOT / f).read_text(encoding="utf-8").splitlines(), 1):
         for m in POINTER.finditer(line):

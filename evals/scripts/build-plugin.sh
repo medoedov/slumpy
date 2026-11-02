@@ -3,9 +3,9 @@
 #
 # Usage:
 #   build-plugin.sh v0   <out-dir>   # molyanov-ai-dev framework at the pinned commit (system "before")
-#   build-plugin.sh repo <out-dir>   # this repository's own system: CLAUDE.md, .claude/rules, skills, agents
+#   build-plugin.sh repo <out-dir>   # this repository's own system: AGENTS.md, .claude/rules, skills, agents
 #
-# Always-on instructions (CLAUDE.md, path rules) cannot load inside an eval run, so they are
+# Always-on instructions (the entry point and path rules) cannot load inside an eval run, so they are
 # injected by a SessionStart hook that prints them as session context. Skills and agents are
 # copied as plugin components. The cases under evals/cases are copied to <out-dir>/evals.
 set -euo pipefail
@@ -34,7 +34,7 @@ case "$VARIANT" in
     rm -rf "$SRC"
     ;;
   repo)
-    cp "$REPO_ROOT/CLAUDE.md" "$OUT/context/00-CLAUDE.md"
+    cp "$REPO_ROOT/AGENTS.md" "$OUT/context/00-AGENTS.md"
     if [ -d "$REPO_ROOT/.claude/rules" ]; then
       for f in "$REPO_ROOT"/.claude/rules/*.md; do
         [ -e "$f" ] && cp "$f" "$OUT/context/10-rule-$(basename "$f")"

@@ -1,6 +1,9 @@
 ---
 paths:
+  - "AGENTS.md"
   - "CLAUDE.md"
+  - ".agents/skills/**"
+  - ".codex/**"
   - ".claude/rules/**"
   - ".claude/agents/**"
   - ".claude/skills/*/SKILL.md"
@@ -17,7 +20,7 @@ settings, and checks; the project facts a skill holds are not mechanisms.
 
 - Choose the mechanism in the order `core-process.md` gives (Review and lessons). Delete a rule
   the agent would follow without it.
-- Each mechanism has a row in the mechanism ledger (CLAUDE.md names the file): the error it
+- Each mechanism has a row in the mechanism ledger (AGENTS.md names the file): the error it
   targets, its kind, what is known, the measure, and the result that removes or changes it. A
   change that adds, changes, or removes a mechanism updates its row in the same change.
 - A change to what the agent does is measured against the previous version on the same cases,
@@ -28,7 +31,11 @@ settings, and checks; the project facts a skill holds are not mechanisms.
   conditions decide) or its ledger row keeps it by policy. A change the cases cannot exercise says
   so in its plan and stays until the measure its ledger row names decides. Thresholds are set
   before measuring, never after the results.
+- Measure each runtime separately; results from one do not establish the other's behavior. For
+  coordinated migrations, record coupled changes and do not attribute the result to one rule.
+  When a comparable run is unavailable, record the gap and the checks actually run; do not claim
+  a quality or cost improvement. Paid runs need an agreed budget.
 - When the main model changes, the measurements describe the old model: run them again before
   relying on the ledger.
-- Regular upkeep (the ledger file lists each task, its interval, and when it was last done): do a
-  due task in its own commit and update its date there.
+- Regular upkeep (the ledger file lists tasks and dates) is a reminder for maintenance work, not
+  a prerequisite for an unrelated task. Update a task's date only after actually doing it.
