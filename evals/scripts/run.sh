@@ -19,12 +19,16 @@ ABLATION="${ABLATION:-with-without}"
 CONCURRENCY="${CONCURRENCY:-4}"
 
 EVALS="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD="$EVALS/.build/$VARIANT"
+[[ "$VARIANT" == repo || "$VARIANT" == v0 ]] || { echo 'unknown variant' >&2; exit 1; }
+[[ "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || { echo 'label must be a single safe name' >&2; exit 1; }
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT="$EVALS/results/$LABEL/$STAMP"
+BUILD="$EVALS/.build/$VARIANT-$STAMP-$$"
+OUT="$EVALS/results/$LABEL/$STAMP-$$"
 mkdir -p "$OUT"
 
 "$EVALS/scripts/build-plugin.sh" "$VARIANT" "$BUILD"
+cp "$BUILD/SOURCE" "$OUT/SOURCE"
+cp "$BUILD/MANIFEST.json" "$OUT/MANIFEST.json"
 
 export CLAUDE_CODE_EFFORT_LEVEL=high
 set +e
@@ -42,5 +46,5 @@ STATUS=${PIPESTATUS[0]}
 set -e
 
 python3 -I "$EVALS/scripts/collect.py" "$OUT"
-cp "$BUILD/SOURCE" "$OUT/SOURCE"
 echo "exit status $STATUS; results in $OUT"
+exit "$STATUS"

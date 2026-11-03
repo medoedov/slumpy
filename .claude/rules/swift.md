@@ -20,13 +20,19 @@ paths:
   `assumeIsolated` and `@preconcurrency`
   conformances trap at runtime when called off their actor (SE-0423); the DeviceActivityMonitor
   callbacks above are not main-actor isolated.
-- Toolchain: on 2026-10-27 the latest stable is Xcode 27.1 with Swift 6.4 and the iOS 27 SDK. Any
-  API released after mid-2026, and any API you are unsure about, is read in the docs before use.
+- Toolchain: checked 2026-11-03 against Apple's
+  [Xcode requirements](https://developer.apple.com/xcode/system-requirements): the table lists
+  Xcode 27.2 with Swift 6.4 and the iOS 27.2 SDK. This is not an installed-toolchain observation;
+  confirm release status and the actual Mac toolchain before building. Read documentation for
+  an API whose availability or behavior could change the implementation.
 - With the iOS 27 SDK `UIDesignRequiresCompatibility` is ignored, so iOS 26+ renders Liquid Glass
   and earlier iOS renders the old style. With a minimum below iOS 26, UI changes are checked on
-  both.
-- The DeviceActivity monitor extension has about 6 MB of memory (developer reports): no heavy
-  frameworks or caches there.
+  both. Checked 2026-11-03 against the
+  [Apple Frameworks Engineer clarification](https://developer.apple.com/forums/thread/838637):
+  this depends on the build SDK, not just the deployment target.
+- Developer reports of roughly 6 MB for DeviceActivity monitors are not a guaranteed Apple
+  memory budget. Keep extensions minimal; measure memory and termination on the target device
+  before relying on a framework, cache, or numerical limit.
 
 ## Review rubric
 

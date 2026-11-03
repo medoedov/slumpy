@@ -2,7 +2,8 @@
 
 How to change the agent system: `.claude/rules/core-agent-system.md`. Historical measurement results:
 `work/agent-system-audit/baseline.md`. Current migration evidence:
-`work/agent-system-unified/plan.md`.
+`work/agent-system-unified/plan.md`. Current modernization and verification limits:
+`work/engineering-system-modernization/plan.md` and its audit.
 
 ## Runtime loading
 
@@ -16,7 +17,7 @@ generated mirrors; the former converter must not regenerate this repository.
 | Process and platform rules | `.claude/rules/` | Native rule loading | Explicit routes in `AGENTS.md` |
 | Three project skills | `.claude/skills/` | Native skill discovery | `.agents/skills/` contains links to these sources |
 | Review role | `.claude/agents/reviewer.md` | Native agent definition | Give this file to a fresh subagent with the mode, tier, call number, artifacts, and evidence |
-| Completion checks | `scripts/check` | Stop hook in `.claude/settings.json`, plus explicit verification | Explicit verification before reporting completion |
+| Completion checks | `scripts/check` | Stop hook in `.claude/settings.json`, plus explicit verification | `.codex/hooks.json` adapter, pending native trust/live smoke; explicit verification remains required |
 
 The Codex adapters own discovery only. Their name and description follow the source skill;
 instructions and references are read from that source, not copied. Old project skill copies and
@@ -29,6 +30,21 @@ shared review role; do not assume a registered Claude agent exists. If independe
 unavailable, report the review as unverified rather than presenting self-review as independent.
 The same applies to checks a host cannot execute. Claude permission settings and its Stop hook do
 not configure Codex; approval restrictions still come from the host and shared instructions.
+
+2026-11-03: CLI probes still report Codex 0.145.0 and Claude 2.1.220. Codex reports `hooks` stable
+and enabled. The project Stop definition uses `--codex-hook`; the existing Claude protocol remains
+`--hook`. Review/trust the exact definition using native `/hooks` in a supported local Codex client,
+then run the fresh-session smoke protocol in `evals/engineering/protocol.md`. Do not bypass trust.
+Current Desktop orchestration mode and actual Stop dispatch are unverified; command hooks are not
+supported by cloud orchestration, even with local execution, per the
+[current hook documentation](https://learn.chatgpt.com/docs/hooks). Direct adapter tests establish
+only protocol behavior. A bounded hook may let the conversation end with failed checks; that is
+not acceptance. The ordinary check exit status remains authoritative for its documented scope.
+
+The shared reviewer is behaviorally read-only, not a security sandbox: Bash and current Codex
+subagents can write. Supply a read-only tool profile when available. Otherwise explicitly prohibit
+mutations, use disposable fixtures for experiments, compare the tree before/after, and report this
+limit; never claim enforced read-only access from a role prompt alone.
 
 The local CLI check on 2026-11-02 found Claude Code 2.1.220 and Codex CLI 0.145.0. Claude's
 [direct AGENTS.md support](https://code.claude.com/docs/en/memory#agents-md) requires 2.1.277 or
@@ -56,6 +72,43 @@ task says when it is due. Update dates after doing the work, not to dismiss a re
 | Measurement after a model change | on event | — | As `.claude/rules/core-agent-system.md` says; update "Known so far" below |
 
 ## Mechanism ledger
+
+### 2026-11-03 corrections to existing entries
+
+These update the rows below; earlier measurements remain historical. No same-model behavior/cost
+comparison was run for this coordinated migration. Policy changes stay pending the named measures,
+not as measured improvements.
+
+- **1, 21, 27:** core-process explicitly owns technical completeness and preserves goal, rationale,
+  task base and verification state at handoff. Measure omitted technical obligations, false
+  completion and repeated research in the engineering cases; revert/narrow if no benefit at equal
+  correctness or cost exceeds the existing +25% policy. Shared adapters/descriptions unchanged.
+- **6, 8:** reviewer checks affected callers/invariants after fixes and allows a demonstrated old
+  defect to block acceptance of the changed scenario. Two-call limit retained. Kept by correctness
+  policy until follow-up-change cases test escaped regressions; unrelated old defects do not block.
+- **17:** tool availability is observed, not inferred from “cloud”; extension memory reports are
+  explicitly not a guaranteed limit. Updated toolchain source observation, not full platform audit.
+- **19:** explicit task-start base supplements the default comparison. It is a record-presence gate,
+  not proof of substantive decision/security review. Measure committed-dev/feature and dirty cases.
+- **20:** Codex adapter uses the same checks with separate JSON feedback; native trust and fresh
+  Stop dispatch still unverified. Measure pass/fail/fix/crash/timeout/empty/repeated Stop; no acceptance
+  from exhausted continuation. Keep explicit verification for unsupported surfaces.
+- **26:** new deterministic regression and protocol cases supplement historical operators. Final
+  self-test/mutation counts and execution limitations are in the current plan; no score inflation
+  from unexecuted or skipped cases.
+
+### Added mechanisms
+
+| # | Mechanism | Where | Error it targets | Kind | Known so far | Pilot measure | Remove or change if |
+|---|---|---|---|---|---|---|---|
+| 28 | Bounded eval output and content provenance | `evals/scripts/build_plugin.py`; `test_build_plugin.py`; `run.sh`; `collect.py`; `test_collect.py` | Arbitrary deletion, dirty input mislabeled as HEAD, failed eval reported successful | gate | Existing output never deleted; collector retains trace directories; actual payload hashed; real junction guard and Bash stub exit propagation verified; symlink/real Claude/v0 unverified | Rejected dangerous paths, preserved unrelated trace-neighbor files, changed-content digest, runner failure propagation | A direct unsafe path passes or input changes without digest changing; revise guard |
+| 29 | Executable initial/follow-up engineering fixture | `evals/engineering/` | Text-only graders and weak tests mistaken for engineering evidence | test when run | Reference/fault discrimination only; no autonomous model comparison or Swift evidence | Accepted behavior, escaped defects, owner interventions, next-change regressions and total cost | Cases cannot distinguish realistic defects or leak acceptance changes into runs; revise before comparison |
+| 30 | Bounded test process cleanup | `scripts/test-checks` | Timed-out mutant leaves descendants consuming resources | executable cleanup and regression | Old parent-only timeout reproduced a surviving child; final platform results in current plan | Descendant stops after timeout; no leaked workers after mutant run | Any owned descendant survives; do not interpret timeout as a killed mutant |
+
+Local installation correction on 2026-11-03: `.git/config` still selected `.githooks`, contrary to
+the documented disabled state. Its pre-commit invokes the prohibited external converter. Only the
+repository-local `core.hooksPath` was set to `/dev/null` and read back; frozen hook files unchanged.
+Check this setting after copying/reinitializing the workspace; do not reactivate those hooks.
 
 Each mechanism, the error it exists for, what is known, and the result that removes or changes it.
 The pilot on the Mac decides by this table. Thresholds are initial and may be set before the pilot

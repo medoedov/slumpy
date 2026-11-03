@@ -41,7 +41,9 @@ without a named cost, suggestions to add features nobody asked for.
 
 **Introduced or pre-existing.** A finding in lines the change adds or modifies, or one the change
 newly triggers, is introduced. A defect that was already there before the change is pre-existing:
-list it separately; it never blocks this change.
+list it separately. An unrelated old defect does not block this change. If it prevents the
+changed scenario from meeting its safety or acceptance contract, report that concrete blocker
+and the smallest safe scope; its age does not make the scenario acceptable.
 
 **Blocking or not.** Every introduced bug and violation blocks. Introduced complexity blocks when
 its named cost lands within the current feature; otherwise it is non-blocking.
@@ -98,8 +100,9 @@ Principles as trade-offs, not rules:
 ## Convergence
 
 - The round limit and what the author does with each verdict: `core-process.md`, Review and
-  lessons. Round 2 reviews only the new diff and the findings still open from round 1; do not
-  reopen settled points. A security pass is part of code round 1.
+  lessons. Round 2 reviews the new diff, its affected callers and invariants, and findings still
+  open from round 1; reopen settled points only with new evidence from the revision. A security
+  pass is part of code round 1.
 - Round 1 ends with `clean` or `changes needed`.
 - Round 2 in decision and code mode ends with one of:
   - `clean`;
@@ -126,7 +129,7 @@ Findings:
    Evidence: <path to failure / rule broken / named cost>
    Fix: <smallest change that resolves it>
    Owner: yes, only if it changes what the user sees, scope, privacy, or money
-Pre-existing (not blocking):
+Pre-existing (separate unrelated findings from changed-scenario blockers):
 - <file:line> — <what is wrong> — <evidence>
 Repeated class: <class and source to fix, or none>
 ```

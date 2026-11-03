@@ -5,6 +5,10 @@ agent system on text-only tasks (no build, no Mac): review of Swift diffs with p
 design briefs, product questions to the owner, engineering traps, and skill triggering.
 Results and conclusions live in `work/agent-system-audit/baseline.md`.
 
+Executable initial/follow-up storage experiments and the live-client comparison recipe are in
+[`engineering/protocol.md`](engineering/protocol.md). Their fixture results are not model-quality,
+Swift or app evidence; historical text graders retain their original contracts.
+
 Do not edit cases after the baseline was taken: before/after comparisons are only valid on the
 same cases, graders, model, effort, and judge.
 
@@ -48,6 +52,32 @@ fired; the tool excludes them from the score.
 ## Reproduce
 
 Requires Claude Code ≥ 2.1.269 with `claude plugin eval`, git ≥ 2.31, network access to GitHub.
+
+Packaging also needs Python 3.12+ for junction detection (`PYTHON` overrides `python3` in the
+shell wrapper). Older Python versions are rejected before creating an output.
+The builder only accepts a **new direct child of `evals/.build/`**. It refuses existing
+outputs, paths outside that area, symlinks and junctions; it never deletes an old build.
+`run.sh` uses a unique timestamp/PID build name and returns a failing eval's exit status.
+On Windows, packaging can run directly with `python evals/scripts/build_plugin.py repo
+evals/.build/my-run`; the model eval still requires a working Bash/Claude environment.
+
+`MANIFEST.json` records SHA-256 for each packaged payload file and a digest over that mapping.
+`SOURCE` includes this digest alongside HEAD and a dirty flag: HEAD alone does not identify a
+dirty experiment. Both files are copied to results. The hashes cover the captured payload,
+including copied untracked files; they do not claim an atomic snapshot of concurrently edited
+sources, client settings, external tools, or live-client behavior. Do not edit inputs during
+packaging. Inspect packaged sources for private material before a model run.
+
+Run deterministic packaging checks without model use or network:
+`python evals/scripts/test_build_plugin.py`. These use small temporary Git fixtures, not copies
+of the project. Link rejection tests report a skip when the host cannot create links.
+The historical `v0` path still needs a network clone and is not exercised by those tests.
+
+`collect.py` writes compact records without deleting traces or their parent directories.
+Trace paths in result metadata do not establish ownership, even when a directory name starts
+with `claude-eval-`. Kept traces remain on disk; cleanup is a separate explicit operation.
+`python evals/scripts/test_collect.py` checks collection and preservation of a fixture's trace
+and unrelated owner-data sentinel.
 
 ```bash
 # system "before": molyanov-ai-dev at ca44595

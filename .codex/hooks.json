@@ -1,0 +1,18 @@
+{
+  "description": "Run Slumpy document checks at Stop; acceptance still requires explicit verification.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$(git rev-parse --show-toplevel)/scripts/check\" --codex-hook",
+            "commandWindows": "python -I \"$(git rev-parse --show-toplevel)/scripts/check\" --codex-hook",
+            "timeout": 300,
+            "statusMessage": "Checking Slumpy documents"
+          }
+        ]
+      }
+    ]
+  }
+}

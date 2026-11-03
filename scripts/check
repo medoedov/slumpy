@@ -14,6 +14,12 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
         error and blocks with a JSON decision. SLUMPY_TEST_HOOK_CRASH set makes the hook raise,
         for the self-test of that path. Overdue upkeep is a system-message reminder only;
         it never asks the agent to continue the current task.
+
+--codex-hook uses the same checks with Codex Stop JSON: an empty object on success, a block
+        decision on the first failure, and a system message on a repeated Stop. Neither hook's
+        bounded continuation is acceptance; a failed explicit check still exits nonzero.
+        Each subprocess is limited to 45 seconds so the six-call hook fits its 300-second budget.
+        Hooks are feedback mechanisms; timed-out or crashed checks do not establish readiness.
 """
 import json, os, pathlib, subprocess, sys, traceback
 
@@ -22,8 +28,13 @@ CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "chec
 
 
 def script(name, *args):
-    return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / name), *args],
-                          capture_output=True, text=True)
+    command = [sys.executable, "-I", str(ROOT / "scripts" / name), *args]
+    try:
+        return subprocess.run(command, capture_output=True, text=True, timeout=45)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(command, 124, "", "unavailable: check timed out")
+    except OSError as error:
+        return subprocess.CompletedProcess(command, 127, "", "unavailable: " + str(error))
 
 
 def run_checks():
@@ -44,36 +55,40 @@ def run_checks():
     return failed, report
 
 
-def respond(reason, continuing, error=False):
+def respond(reason, continuing, error=False, codex=False):
     if continuing:
         out = {"systemMessage": reason}
-    elif error:
+    elif error or codex:
         out = {"decision": "block", "reason": reason}
     else:
         out = {"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": reason}}
     print(json.dumps(out))
 
 
-def hook(continuing):
+def hook(continuing, codex=False):
     if os.environ.get("SLUMPY_TEST_HOOK_CRASH"):
         raise Exception("crash requested by the self-test")
     changed = script("check-risk", "--changed")
     if changed.returncode == 0 and not changed.stdout:
+        if codex:
+            print("{}")
         return 0  # the change set is empty: this turn changed nothing
     failed, report = run_checks()
     if changed.returncode != 0:
         failed.insert(0, "change set: " + changed.stderr.strip())  # a failure prints to stderr only
     if failed:
         respond("scripts/check failed; fix before finishing:\n" + "\n".join(report) + "\n\n"
-                + "\n\n".join(failed), continuing)
+                + "\n\n".join(failed) + "\nUnresolved checks mean incomplete acceptance; report a blocker if they cannot run.", continuing, codex=codex)
     else:
         reminders = [line for line in report if line.startswith("[note]")]
         if reminders:
             print(json.dumps({"systemMessage": "\n".join(reminders)}))
+        elif codex:
+            print("{}")
     return 0
 
 
-def run_hook():
+def run_hook(codex=False):
     continuing = False
     try:
         raw = sys.stdin.read()
@@ -81,13 +96,15 @@ def run_hook():
             continuing = bool(json.loads(raw).get("stop_hook_active"))
         except json.JSONDecodeError:
             pass  # no input or not JSON: not continuing
-        return hook(continuing)
+        return hook(continuing, codex=codex)
     except Exception:
-        respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True)
+        respond("scripts/check --hook crashed:\n" + traceback.format_exc(), continuing, error=True, codex=codex)
         return 0
 
 
 def main():
+    if "--codex-hook" in sys.argv:
+        return run_hook(codex=True)
     if "--hook" in sys.argv:
         return run_hook()
     failed, report = run_checks()

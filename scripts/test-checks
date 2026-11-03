@@ -17,13 +17,14 @@ gives the reason it cannot change what the check reports. A written mutant whose
 occurs exactly once, or an EQUIVALENT entry that matches no generated mutant, is stale and fails
 the run. Run it after every change to scripts/ (on demand: about 20 minutes).
 """
-import ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, subprocess, sys, tempfile
+import ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 COPY = ["AGENTS.md", "CLAUDE.md", "README.md", "backlog.md", ".claude", ".agents", "docs", "work", "scripts"]
 GIT = ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid",
        "-c", "commit.gpgsign=false"]
 ENV = dict(os.environ)
+ENV.pop("SLUMPY_CHECK_BASE", None)  # each fixture owns its history and comparison base
 # The cases' clock: SLUMPY_NOW when --mutants fixes one instant for the whole run, else the time
 # now. A case with its own SLUMPY_NOW overrides it; SLUMPY_NOW="" makes a check read the real clock.
 NOW = (datetime.datetime.fromisoformat(os.environ["SLUMPY_NOW"]) if os.environ.get("SLUMPY_NOW")
@@ -39,7 +40,59 @@ LESSON = ("\n### {title}\n\n- **Symptom:** x\n- **Cause:** y\n- **Now guarded by
 
 
 def sh(d, *cmd):
-    subprocess.run(GIT + list(cmd), cwd=d, check=True, capture_output=True)
+    run_bounded(GIT + list(cmd), cwd=d, timeout=60).check_returncode()
+
+
+def kill_posix_tree(pid):
+    """Freeze owned fixture descendants before killing, including nested process sessions.
+
+    Fixtures wait for their children; daemonizing/detaching fixtures are not supported.
+    """
+    stopped = set()
+    pending = {pid}
+    try:
+        for _ in range(16):
+            for child in pending:
+                try:
+                    os.kill(child, signal.SIGSTOP)
+                    stopped.add(child)
+                except ProcessLookupError:
+                    pass
+            listing = subprocess.run(["ps", "-e", "-o", "pid=", "-o", "ppid="],
+                                     capture_output=True, text=True, check=True, timeout=15)
+            parents = [tuple(map(int, line.split())) for line in listing.stdout.splitlines()]
+            pending = {child for child, parent in parents if parent in stopped} - stopped
+            if not pending:
+                break
+        else:
+            raise RuntimeError("fixture process tree exceeds cleanup depth budget")
+    finally:
+        for child in stopped:
+            try:
+                os.kill(child, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def run_bounded(command, *, timeout, input=None, **kwargs):
+    """Kill the owned process tree on timeout, including a check spawned by scripts/check."""
+    with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, start_new_session=os.name != "nt",
+                          **kwargs) as process:
+        try:
+            stdout, stderr = process.communicate(input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            try:
+                if os.name == "nt":
+                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                   capture_output=True, check=True, timeout=15)
+                else:
+                    kill_posix_tree(process.pid)
+            finally:
+                process.kill()
+                process.wait(timeout=15)
+            raise
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def copy_files(src_root, dst):
@@ -108,8 +161,8 @@ def run_case(template, tmp, n, c):
         for cmd in step.get("git", []):
             sh(d, *[a.replace("{template}", str(template)) for a in cmd])
         args = step.get("script", c["script"])
-        outs.append(subprocess.run([sys.executable, "-I", str(d / "scripts" / args[0]), *args[1:]],
-                                   cwd=d / step.get("cwd", "."), capture_output=True, text=True,
+        outs.append(run_bounded([sys.executable, "-I", str(d / "scripts" / args[0]), *args[1:]],
+                                   cwd=d / step.get("cwd", "."), text=True,
                                    input=step.get("stdin"), env=dict(ENV, **c.get("env", {})),
                                    timeout=60))
     shutil.rmtree(d, ignore_errors=True)
@@ -149,6 +202,60 @@ def is_silent(p): return p.returncode == 0 and p.stdout.strip() == ""
 
 HOOK = json.dumps({"stop_hook_active": False})
 CONTINUING = json.dumps({"stop_hook_active": True})
+CHECK_EXECUTION_PROBE = '''import contextlib, io, pathlib, runpy, subprocess, sys
+mode = sys.argv[1]
+path = str(pathlib.Path(__file__).with_name("check"))
+sys.argv = [path]
+def invoke():
+    report = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(report):
+            runpy.run_path(path, run_name="__main__")
+    except SystemExit as exit:
+        return exit.code, report.getvalue()
+    return 0, report.getvalue()
+if mode == "timeout":
+    duration = 44.5
+    def simulated(command, *, capture_output=False, text=False, timeout=None):
+        if timeout is not None and duration > timeout:
+            raise subprocess.TimeoutExpired(command, timeout)
+        output = "fixture ok" if text else b"fixture ok"
+        empty = "" if text else b""
+        return subprocess.CompletedProcess(command, 0, output if capture_output else None,
+                                           empty if capture_output else None)
+    subprocess.run = simulated
+    code, report = invoke()
+    assert code == 0 and "[ok]" in report, "an operation below the 45-second budget must complete"
+    duration = 45.5
+    code, report = invoke()
+    assert code != 0 and "unavailable: check timed out" in report, "an operation above the 45-second budget must be unavailable"
+else:
+    def missing(command, *, capture_output=False, text=False, timeout=None):
+        raise FileNotFoundError("fixture executable unavailable")
+    subprocess.run = missing
+    code, report = invoke()
+    assert code != 0 and "unavailable: fixture executable unavailable" in report
+print("execution probe passed")
+'''
+COMMIT_PREFIX_PROBE = '''import hashlib, os, pathlib, subprocess, sys
+root = pathlib.Path(__file__).resolve().parent.parent
+commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+prefix = commit[:4]
+for number in range(2000000):
+    payload = f"collision-{number}".encode()
+    header = b"blob " + str(len(payload)).encode() + bytes([0])
+    if hashlib.sha1(header + payload).hexdigest().startswith(prefix):
+        break
+else:
+    raise AssertionError("could not construct the commit/blob prefix collision")
+subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=root,
+               input=payload, capture_output=True, check=True)
+result = subprocess.run([sys.executable, str(root / "scripts/check-risk")], cwd=root,
+                        env=dict(os.environ, SLUMPY_CHECK_BASE=prefix),
+                        capture_output=True, text=True)
+assert result.returncode == 0, result.stdout + result.stderr
+print("commit prefix probe passed")
+'''
 ADR_NEW = ("docs/decisions/0099-test.md", "# ADR-0099\n", "write")
 PKG = ("Package.swift", "// swift-tools-version: 6.0\n", "write")
 KEYCHAIN = ("App/Store.swift", "let s = SecItemAdd(q, nil)\n", "write")
@@ -300,6 +407,16 @@ STATIC = [
     ("dated audit records are not current instructions", dict(runs=one([("work/agent-system-audit/old.md", "See `core-process.md`, «Nope».\n", "write")], commit=True), script=["check-pointers"], expect=passes)),
     # check-risk
     ("clean copy passes check-risk", dict(script=["check-risk"], expect=clean("check-risk"))),
+    ("explicit task base catches committed work on dev", dict(env={"SLUMPY_CHECK_BASE": "task-start"}, runs=one([PKG], commit=True, git_before=[["checkout", "-q", "dev"], ["tag", "task-start"]]), script=["check-risk"], expect=fails_with("T2 signal"))),
+    ("explicit task base catches committed work on feature", dict(env={"SLUMPY_CHECK_BASE": "dev"}, runs=one([PKG], commit=True), script=["check-risk"], expect=fails_with("T2 signal"))),
+    ("explicit task base includes staged work", dict(env={"SLUMPY_CHECK_BASE": "dev"}, runs=one([PKG], git=[["add", "-A"]]), script=["check-risk"], expect=fails_with("T2 signal"))),
+    ("explicit task base includes untracked work", dict(env={"SLUMPY_CHECK_BASE": "dev"}, runs=one([PKG]), script=["check-risk"], expect=fails_with("T2 signal"))),
+    ("explicit task base does not silently fall back", dict(env={"SLUMPY_CHECK_BASE": "missing-ref"}, script=["check-risk"], expect=fails_with("git failed"))),
+    ("explicit task base rejects unrelated history", dict(env={"SLUMPY_CHECK_BASE": "dev"}, runs=one(git=[["checkout", "--orphan", "unrelated"], ["commit", "-q", "-m", "unrelated"]]), script=["check-risk"], expect=fails_with("git failed"))),
+    ("explicit task base rejects a related non-ancestor", dict(env={"SLUMPY_CHECK_BASE": "side"}, runs=one([("notes/branch.txt", "x\n", "write")], commit=True, git=[["branch", "side"], ["reset", "--soft", "dev"]]), script=["check-risk"], expect=fails_with("git failed"))),
+    ("explicit task base can be clean", dict(env={"SLUMPY_CHECK_BASE": "dev"}, script=["check-risk"], expect=clean("check-risk"))),
+    ("explicit task base accepts a leading-dash commit tag", dict(env={"SLUMPY_CHECK_BASE": "-task-base"}, runs=one(git=[["update-ref", "refs/tags/-task-base", "HEAD"]]), script=["check-risk"], expect=clean("check-risk"))),
+    ("explicit task base disambiguates commit from blob prefix", dict(runs=[dict(edits=[("scripts/commit-prefix-probe", COMMIT_PREFIX_PROBE, "write")], script=["commit-prefix-probe"])], script=["check-risk"], expect=lambda o: passes(o) and "commit prefix probe passed" in o[-1].stdout)),
     ("t2 path with a new untracked ADR as the only evidence", dict(runs=one([PKG, ADR_NEW]), script=["check-risk"], expect=passes)),
     ("the hook blocks when git cannot list the change set", dict(runs=one([KEYCHAIN], git=[["config", "core.bare", "true"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set"))),
     ("t2 path with a new committed ADR", dict(runs=one([PKG, ADR_NEW], commit=True), script=["check-risk"], expect=passes)),
@@ -406,6 +523,15 @@ STATIC = [
     ("a paragraph after the upkeep table passes", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n\nA note after the table.\n")]), script=["check-upkeep"], expect=passes)),
     ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
+    ("codex hook clean state emits JSON", dict(runs=one(stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: passes(o) and json.loads(o[-1].stdout) == {})),
+    ("codex hook passing change emits JSON", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: passes(o) and json.loads(o[-1].stdout) == {})),
+    ("codex hook requests continuation on failed check", dict(runs=one([CORE_BAD], stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_error(o[-1], "check-layers"))),
+    ("codex hook failure then correction", dict(runs=[dict(edits=[CORE_BAD], stdin=HOOK), dict(edits=[(".claude/rules/core-process.md", (CORE_BAD[1], ""), "replace")], stdin=CONTINUING)], script=["check", "--codex-hook"], expect=lambda o: is_error(o[0]) and json.loads(o[1].stdout) == {})),
+    ("codex hook bounds repeat continuation", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]) and "incomplete acceptance" in o[-1].stdout)),
+    ("codex hook reports a crash", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_error(o[-1], "crashed"))),
+    ("codex hook bounds repeated crashes", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]))),
+    ("check timeout respects its operation boundary", dict(runs=[dict(edits=[("scripts/execution-probe", CHECK_EXECUTION_PROBE, "write")], script=["execution-probe", "timeout"])], script=["check"], expect=lambda o: passes(o) and "execution probe passed" in o[-1].stdout)),
+    ("missing check executable is unavailable", dict(runs=[dict(edits=[("scripts/execution-probe", CHECK_EXECUTION_PROBE, "write")], script=["execution-probe", "missing"])], script=["check"], expect=lambda o: passes(o) and "execution probe passed" in o[-1].stdout)),
     ("the hook blocks a failing committed change", dict(runs=one([CORE_BAD], commit=True, stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook blocks when there is no base, the change set first", dict(runs=one([CORE_BAD], commit=True, git=[["branch", "-D", "dev"]], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "change set: check-risk: no base") and "shallow clone)\n\ncheck-layers:\n" in context(o[-1]))),
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
@@ -429,9 +555,11 @@ STATIC = [
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
 MUTANTS = [
+    ("check", 'CompletedProcess(command, 124,', 'CompletedProcess(command, 0,', "timeout reported as success"),
+    ("check", 'CompletedProcess(command, 127,', 'CompletedProcess(command, 0,', "missing executable reported as success"),
     ("check", "    if changed.returncode == 0 and not changed.stdout:", "    if True:", "the hook never runs the checks"),
     ("check", "    if changed.returncode != 0:", "    if False:", "change-set error hidden"),
-    ("check", "    elif error:", "    elif True:", "check failures shown as a hook error"),
+    ("check", "    elif error or codex:", "    elif True:", "check failures shown as a hook error"),
     ("check", "    if continuing:\n        out = {\"systemMessage\": reason}", "    if False:\n        out = {\"systemMessage\": reason}", "no message while continuing"),
     ("check-risk", 'if needs["t2"] and not (new_adr or t1_line):', "if False:", "t2 rule off"),
     ("check-risk", "not (new_adr or t1_line)", "not (t1_line)", "new ADR ignored"),
@@ -489,6 +617,11 @@ def run_cases():
     if cases is None:
         return 0, failures
     only = os.environ.get("SLUMPY_CASES_FOR")  # a mutant in this script: only cases that run it
+    if not only:
+        try:
+            test_process_cleanup()
+        except Exception as error:
+            return 0, [f"process-tree cleanup regression failed: {error}"]
     if only:
         cases = [c for c in cases if c[1].get("script", ["check"])[0] in (only, "check")
                  or any(step.get("script", c[1]["script"])[0] in (only, "check")
@@ -513,7 +646,28 @@ def run_cases():
                         for other in futures:
                             other.cancel()
                         break
-    return len(cases), failures
+    return len(cases) + (not only), failures
+
+
+def test_process_cleanup():
+    """A timed-out parent must not leave its child writing into a disposed fixture."""
+    with tempfile.TemporaryDirectory() as folder:
+        root = pathlib.Path(folder)
+        child = root / "child.py"
+        child.write_text("import pathlib, time\npathlib.Path('ready').touch()\n"
+                         "time.sleep(7)\npathlib.Path('late').touch()\n", encoding="utf-8")
+        parent = root / "parent.py"
+        parent.write_text("import subprocess, sys, time\n"
+                          "subprocess.Popen([sys.executable, 'child.py'], start_new_session=True)\n"
+                          "time.sleep(60)\n", encoding="utf-8")
+        try:
+            run_bounded([sys.executable, str(parent)], cwd=root, timeout=5)
+        except subprocess.TimeoutExpired:
+            assert (root / "ready").exists(), "child never started; cleanup was not exercised"
+            time.sleep(7)
+            assert not (root / "late").exists(), "child survived its parent's timeout"
+        else:
+            raise AssertionError("parent did not time out")
 
 
 # Generated mutants: every condition forced true and false, each operand of and/or dropped, each
@@ -537,6 +691,14 @@ MATCHERS = ("fullmatch", "match", "search")
 STRING_METHODS = ("strip", "lstrip", "rstrip", "lower", "upper", "casefold")
 NONE_EXIT = "the function's value becomes the exit code, and None exits with 0 as 0 does"
 EQUIVALENT = {
+    ("check", "run_hook", "argument 4 dropped at column 0", 'respond("scripts/check --hook crashed:\\n" + traceback.format_exc(), continuing, error=True, codex=codex)'): "error=True already selects the block response for either client; continuing selects systemMessage before testing either flag, so codex cannot change any CLI result in this call",
+    # script() has only two callers: run_checks and hook. They consume returncode only as
+    # == 0 / != 0; no exact internal code is printed or returned by the CLI. These four
+    # changes preserve every caller outcome. Written zero-code mutants test the real boundary.
+    ("check", "script", "124 to 125 at column 44", 'return subprocess.CompletedProcess(command, 124, "", "unavailable: check timed out")'): "internal nonzero code; all callers distinguish zero from nonzero only",
+    ("check", "script", "124 to 123 at column 44", 'return subprocess.CompletedProcess(command, 124, "", "unavailable: check timed out")'): "internal nonzero code; all callers distinguish zero from nonzero only",
+    ("check", "script", "127 to 128 at column 44", 'return subprocess.CompletedProcess(command, 127, "", "unavailable: " + str(error))'): "internal nonzero code; all callers distinguish zero from nonzero only",
+    ("check", "script", "127 to 126 at column 44", 'return subprocess.CompletedProcess(command, 127, "", "unavailable: " + str(error))'): "internal nonzero code; all callers distinguish zero from nonzero only",
     ("check", "<module>", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
     ("check-risk", "<module>", "condition always true at column 3", 'if __name__ == "__main__":'): "the file only runs as a script",
     ("check", "hook", "statement removed at column 0", "return 0"): NONE_EXIT,
@@ -664,8 +826,8 @@ def run_copy(mutant=None, now=None):
         if mutant:
             env.update(SLUMPY_CASES_FOR=script, SLUMPY_FAIL_FAST="1")
         try:
-            p = subprocess.run([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
-                               capture_output=True, text=True, env=env, timeout=600)
+            p = run_bounded([sys.executable, "-I", str(d / "scripts" / "test-checks")], cwd=d,
+                               text=True, env=env, timeout=600)
         except subprocess.TimeoutExpired:            # neither a kill nor a pass: report it
             return f"self-test timed out: {name if mutant else 'baseline'}"
         if mutant is None:

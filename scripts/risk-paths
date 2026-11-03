@@ -6,6 +6,10 @@
 # The change set: everything since the merge base with origin/dev (or dev), plus uncommitted and
 # untracked files, deleted files included. Files under scripts/, .claude/, docs/, work/, evals/ and Markdown files
 # are the agent system and its records, not app code, and are not matched.
+# For task acceptance, set SLUMPY_CHECK_BASE to the task-start commit SHA. It must be an ancestor
+# of HEAD; an invalid value fails instead of falling back. This preserves committed task changes
+# when working directly on dev. Without it, a dev branch with no origin/dev compares to itself.
+# Evidence presence is not proof of a review or the quality of its conclusions.
 #
 # Evidence counts only when the same change set adds it:
 #   t2        a new ADR file in docs/decisions/, or an added line in a work/*/plan.md that starts

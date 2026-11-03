@@ -5,7 +5,8 @@ layout) are in AGENTS.md and the ADRs.
 
 - Code rules: `.claude/rules/swift.md` (loads with `.swift` files), with the platform's review
   rubric.
-- Builds and tests need a Mac with Xcode; cloud sessions cannot run them.
+- Apple app builds and simulator tests need an accessible Mac with Xcode. Check the actual host,
+  tools and permissions; a cloud or desktop label alone does not establish availability.
 - Docs recipe: append `.md` to a developer.apple.com documentation URL to get markdown, e.g.
   `https://developer.apple.com/documentation/familycontrols.md`.
 - New platform capabilities: an app extension, an entitlement, a system service.

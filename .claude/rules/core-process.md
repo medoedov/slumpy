@@ -19,6 +19,11 @@ open (a file, a module, a value) and points to the rule; it never restates the r
 
 ## Decision rights
 
+Own the technical completeness of the requested outcome: identify material missing requirements,
+test questionable premises, research decisive unknowns, and carry authorized reversible local
+work through implementation and available verification. A plan or first diff is not completion.
+Keep unresolved evidence explicit; this does not authorize new product scope or external actions.
+
 The owner is not a programmer and does not read code. The owner decides only: what the user sees
 or feels, scope, privacy and user data, money, and external actions (AGENTS.md lists them). Decide
 everything else yourself and record it (plan.md; an ADR for T2). Never ask the owner a technical
@@ -115,5 +120,7 @@ a review did not converge; a manual device checklist if a check needs the device
 
 ## Compaction
 
-Keep: files changed so far, the current plan.md step, verification commands and their last
-result, open review findings.
+Keep: the goal, current decisions and their reasons, files changed so far, task-start commit,
+the current plan.md step or hypothesis, verification commands and the state their last result
+covered, open risks and review findings. Recover these before continuing in a new session;
+load historical traces only for an unresolved question.

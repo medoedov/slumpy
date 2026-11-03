@@ -8,7 +8,7 @@ success on input it could not read.
 --changed     print the change set, NUL-separated (the only definition of it; scripts/check uses it)
 --rules       print the parsed rules as JSON (scripts/test-checks builds a case from each)
 """
-import fnmatch, json, pathlib, re, subprocess, sys
+import fnmatch, json, os, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RULES = ROOT / "scripts/risk-paths"
@@ -48,7 +48,12 @@ def load_rules():
 
 
 def base():
-    """The merge base with origin/dev, or with dev when there is no origin/dev."""
+    """An explicit task-start base, otherwise the default development merge base."""
+    explicit = os.environ.get("SLUMPY_CHECK_BASE")
+    if explicit:
+        resolved = out("rev-parse", "--verify", "--end-of-options", explicit + "^{commit}").strip()
+        git("merge-base", "--is-ancestor", resolved, "HEAD")
+        return resolved
     for ref in ("origin/dev", "dev"):
         p = git("merge-base", "HEAD", ref, check=False)
         if p.returncode == 0:

@@ -35,7 +35,7 @@ integrations come from the draft [mvp.md](../../../../mvp.md) and are product hy
 
 - One app target.
 - Separate targets for extensions: Live Activity widget, DeviceActivity monitor, shield screen
-  if needed. Extensions stay minimal (monitor memory limit, see the Swift rule).
+  if needed. Extensions stay minimal (monitor resource validation, see the Swift rule).
 - One local Swift package with pure logic: the "today" calculation, session rules, models. It
   must not import UI frameworks.
 - App Group shared by the app and its extensions from day one.
