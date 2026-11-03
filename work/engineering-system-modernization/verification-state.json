@@ -1,10 +1,12 @@
 {
-  "head": "d4d87c32c75fb70834a4e582b880a067440044d6",
-  "base": "d4d87c32c75fb70834a4e582b880a067440044d6",
+  "captured_at_utc": "2026-11-03T13:38:01.883658+00:00",
+  "head": "9366805e03c2a74b499ea944c8c620a21405d14f",
+  "base": "9366805e03c2a74b499ea944c8c620a21405d14f",
   "index_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "worktree_diff_excluding_evidence_sha256": "878198a2e3c950947b567fa1b2900da78297845e601de897b38b21fbc2769889",
   "hooks_path": "/dev/null",
   "excludes": [
-    "work/engineering-system-modernization/verification-state.json (this evidence artifact)"
+    "work/engineering-system-modernization/verification-state.json (self-reference excluded from file/diff hashes; ignored scratch outputs excluded)"
   ],
   "files": {
     ".agents/skills/engineering-design/SKILL.md": "0deb9484944e1e35a6b9a280be08b53e75ed91b98657d5e7ee70bbe575fcee85",
@@ -16,16 +18,16 @@
     ".claude/rules/core-process.md": "4258dcbfecc7a3150457a3da0ef8635b7a5431bb513686eefe1254851d212bea",
     ".claude/rules/platform.md": "26910feca0a386eba9562a41a8e679d2b49d5908429a54cec6001f578bb9802a",
     ".claude/rules/swift.md": "4d4de1981db50e26554bdd9b2f2fbab837297fa5ad573365aad23e599bd36153",
-    ".claude/settings.json": "d97a21cbc8e7630ca5adbcc7fbf4867df6d189bf26633f61bdf9c90fa5a0185c",
+    ".claude/settings.json": "89a68fb52e6be057fb739300a6e3392856bd61125d02b0787ae283faef6df333",
     ".claude/skills/engineering-design/SKILL.md": "4fe684793aa547a73cf991ad5b7b3d25dcd34f607bf437f34a07d095430d71e3",
     ".claude/skills/product-spec/SKILL.md": "386ed56eab4f4483817a4207831677e08cd13b9a1ab2da6db40e6db84d1b3fc7",
-    ".claude/skills/project-knowledge/SKILL.md": "5f5fc21bb10214c3b577265f13fd6a564e1bc779c8acc33cbd81dbf45c876a46",
+    ".claude/skills/project-knowledge/SKILL.md": "651bca836e13b5c8c36c4b5dc9de5d762ecbdb1bc1631f4e848c1b00144f5690",
     ".claude/skills/project-knowledge/references/architecture.md": "5ccc75a6d7b78a411e08d5266319ee29412046e92579b74fdf13ae8f592e875a",
     ".claude/skills/project-knowledge/references/deployment.md": "ef526adc562f0ad7b24c610522224daf3059f027d2640a3f71ba64ef2e610814",
-    ".claude/skills/project-knowledge/references/patterns.md": "ca7fa4b4728531ce3d56f41c80cc7301075549669c176778afd32766ca316bb0",
+    ".claude/skills/project-knowledge/references/patterns.md": "62ca0deb0e86dd075fc8f917a2de9c4c0a62254afb4d88816ff92e3f9edca2ea",
     ".claude/skills/project-knowledge/references/project.md": "ca0e9fb8412590e027f7202e8b32e76f33f72bed588efa4e5f09b05b52ea603a",
     ".claude/skills/project-knowledge/references/ux-guidelines.md": "749aa934dd3c3ced8ae8e2d99b4e0bd4ffd5e3fe1f2a50e49fcc509780d7c823",
-    ".codex/hooks.json": "870042f7b8324f00b74000b382113f7f0d50588ababdcd0391aa9ac822745a6d",
+    ".codex/hooks.json": "bda42aface39c669310b766cefb35e91412d0916f4892b6d59002d62baabaebd",
     ".env.example": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     ".gitattributes": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
     ".githooks/pre-commit": "0d09461312342186134b1e496650d8e3c8642912e05125de0eb1d337a1a6c959",
@@ -33,15 +35,15 @@
     ".gitignore": "3905e46175fe3e86082b7b0aee3a7e9528d97532d9f144b552d1d2587ed8a6c7",
     ".mcp.bot.json": "b9a634bee45c904a4d0354818ec831178c7c2edde7ada9c87dd53faca4509b91",
     ".mcp.json": "b9a634bee45c904a4d0354818ec831178c7c2edde7ada9c87dd53faca4509b91",
-    "AGENTS.md": "f323272b7144ee1726d3af37a62da6575d0be3d6b717bc730aad6c3f26f2c01d",
+    "AGENTS.md": "641d81c3c67f7684feb7d01326ad0bb9d8e7c5601c8ee5a2c2fcdc06fb75df2d",
     "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "README.md": "72d4bc00192ba948da14a694129003fbdcc160d28071b59f4aa75204fbccef7b",
-    "backlog.md": "ad7bd80a06321b5d1e601d43455d27288910b83ea4d03351c00f435b699288d2",
-    "docs/agent-system.md": "c9431252a18e996aed3a6615ea172c59b158063a59a2187304f80bef17dcb70b",
+    "backlog.md": "7a5ebe05ce05382afc65af343b31b33dd929c2a7aed455f5b6cd2cc82a39fdfe",
+    "docs/agent-system.md": "76e3f38657e87cb3cdaedcf1021618556545b65f4e1fb36230bc9f329510960d",
     "docs/decisions/0001-stack-and-project-structure.md": "5016a95ae8bbb3935443e0fcd5e56691a42bf405708e545d2bea8c8af1fcd1ff",
     "docs/decisions/README.md": "43ef33aff201000656408dc512e765bd121bcad192f7c143149dce77e86b7d0c",
     "docs/lessons.md": "698cf1350c2641ec7bc9a4b689aba55e0b461867b491b48c603b74e2c90774a2",
-    "docs/tech-debt.md": "70f9c26c8d06aedcc24ed9846394813c2a8574dbca3912a79005f4fd891258a0",
+    "docs/tech-debt.md": "1763c3524c2544be17acad737965cf175090698c79e25272afae771f498e7095",
     "evals/.gitignore": "b1227fbcff5217ba2d093f28385f173b341e14a5f158bfe5d493062f0d85e3fb",
     "evals/README.md": "5d3f58c93efc823bdcc0a1350225bea2c0fd3849460324714a5a0fafa30725ff",
     "evals/cases/design/d1-reading-goals/graders/boundaries.md": "3bf5b494a268955b5de7011e53fb764cda63202df128700c23732e68c75758a9",
@@ -322,14 +324,16 @@
     "evals/scripts/test_build_plugin.py": "d297fae1ec8c0962df5325bcc294e4c4b9b0e0d7e707b0e4cbcdbffbb88fe90c",
     "evals/scripts/test_collect.py": "e2666a5fc7e8672fda20f3ca94c71d467d333d5ebe598c515a3d06d361279fde",
     "mvp.md": "307d1b4f69bf947f4f267993070b34e08777cbe28ae2c6e182ed251150acf406",
-    "scripts/check": "67418b6ecfddba216f3de46fbb535f23338e277bc389fa9b4933c4f6342a09ca",
+    "scripts/check": "2cb63ca102bfcf6fb9eb7331c1af82ad4ac85edb97d6327b580e741a066275b0",
     "scripts/check-layers": "c737735f47d9a69ceb6c41ef91f3ad4a835022077a0a3cde46eae83d0a6c1fba",
     "scripts/check-lessons": "a4fe1a90c0aafb538671c8852874849fdb5406502c73874bd20ff8fadf897502",
     "scripts/check-pointers": "c0723adbeac6893c0110c371ae57a18fa8f77dcc0671365e8737d570273f7d8b",
     "scripts/check-risk": "27ab819141409508afe95a05f88ebbbc3aa5fc9e7a7d1049668c64b28609d171",
+    "scripts/check-state": "5793bc0f4e66204cf9a4080eade787bcd7515763cb4dbe910dcdae9e2d948eb4",
     "scripts/check-upkeep": "d55ffac5e145bb3410e6736993aabac42e90268be9774b6fac63328a82712bdb",
     "scripts/risk-paths": "860bb261951781466d72447f6df5d194417f3e06c4902f49c55d7988d6c7485f",
-    "scripts/test-checks": "3b85c3495f897c928934ecc706703dd93d7f71d08da0483f2be1bb60e7b55df3",
+    "scripts/test-checks": "28556bd67408afbb33e3faa2af2c0a0671f64682ffcd7ef1a25ed4376671fe58",
+    "work/STATUS.md": "d2cb1c3ed13cb25061d87b477d380747159724f6007d3e0cfed9c4e32f875fad",
     "work/agent-system-audit/audit-and-plan.md": "f5b1bbd1a97c062fa3cfd5f2ffb4ca835d82c137f8e741dd021b391940a2eb75",
     "work/agent-system-audit/baseline.md": "f69faa673dbf9498ed8e7ca6aa18b4f9985e72b9f4fb9912d8190685cdb76cbf",
     "work/agent-system-audit/deviations.md": "eec24be72674b2122be5fe026f7ef87a2558f80e53ffdf5966b5c19e871e6caf",
@@ -339,12 +343,348 @@
     "work/agent-system-gates/plan.md": "d0c8528a43d0e00fca7022cbe6b12c64c8ac7236000fe8cbccbddee892974689",
     "work/agent-system-layers/plan.md": "5eb3efff8ce5dccf519ab15800f2015bd8271247822c2f5fc2b9400d8ffa92ac",
     "work/agent-system-self-review/plan.md": "650e58e02cdba1d55c31036239d16d737a85281048428d28eeabb679bdc8baee",
-    "work/agent-system-unified/plan.md": "bb803519734bc12daadb8856184db7eea898f5d186194006a9b681add9068997",
     "work/completed/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "work/completed/agent-system-unified/plan.md": "bb803519734bc12daadb8856184db7eea898f5d186194006a9b681add9068997",
     "work/engineering-system-modernization/audit.md": "5ede34701678022400f3156875b2e3924703aad0f843d7a2b77a041c4d96a151",
-    "work/engineering-system-modernization/plan.md": "691d72171586f6ac6be225fe7e119934174a232e7c3c7034b71994677a5c3e12",
-    "work/engineering-system-modernization/report.md": "2d1f4a5bb1bbf2a2bb0280ae1ea86ede8f14282ed57ba2fb5ec4245afda2917f",
-    "work/engineering-system-modernization/script-verification.md": "aeb8a45d9d59edf57cf884ecbc2b7122ecb12cec97b6a932524b73a5f5ef3949"
+    "work/engineering-system-modernization/deferred.md": "e335dadafbd20138dd1bc05771fbfc525b69ed0f6ddddecb398b707acc6450c7",
+    "work/engineering-system-modernization/plan.md": "8d64a6618ab8573ed4e941ba253da899f851323f0568beb9129e7a8065f1c941",
+    "work/engineering-system-modernization/report.md": "69bbeeaba860b5c1c3c45379687196f71e4803f0c0b9bb071f4eea71d76776bf",
+    "work/engineering-system-modernization/script-verification.md": "8a3e77ab63f25cbe050c0908787b53711f3920a0ba2c7c1ced4c32509f3c9b5a",
+    "work/engineering-system-modernization/v2-mutation-results.txt": "22318cfc4e5c454c87d0344f09f890481083b1000cf09fa9730105b6d2a8fc22"
   },
-  "state_sha256": "036e6204f85bc974d02b4c4edcc2e3738989942ef2a71014cdb4cc5ae80393fd"
+  "deleted_files": [
+    "work/agent-system-unified/plan.md"
+  ],
+  "verification": {
+    "document_check": {
+      "command": "SLUMPY_CHECK_BASE=9366805 python scripts/check",
+      "exit_code": 0,
+      "checks_passed": 6,
+      "not_run": [
+        "app build",
+        "app tests",
+        "app lint"
+      ]
+    },
+    "diff_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    "full_mutation_run": {
+      "command": "python scripts/test-checks --mutants",
+      "exit_code": 1,
+      "seconds": 6149.6159584,
+      "executable": 1081,
+      "killed": 1053,
+      "survivors": 28,
+      "written": 38,
+      "generated": 1057,
+      "existing_equivalents": 14,
+      "test_source_sha256": "ab7b2d9418ee69cacebf7e0a15d6ddfe31b1449c28b3b4cfbbce4d0372442b87",
+      "production_script_sha256": {
+        "scripts/check": "2cb63ca102bfcf6fb9eb7331c1af82ad4ac85edb97d6327b580e741a066275b0",
+        "scripts/check-layers": "c737735f47d9a69ceb6c41ef91f3ad4a835022077a0a3cde46eae83d0a6c1fba",
+        "scripts/check-lessons": "a4fe1a90c0aafb538671c8852874849fdb5406502c73874bd20ff8fadf897502",
+        "scripts/check-pointers": "c0723adbeac6893c0110c371ae57a18fa8f77dcc0671365e8737d570273f7d8b",
+        "scripts/check-risk": "27ab819141409508afe95a05f88ebbbc3aa5fc9e7a7d1049668c64b28609d171",
+        "scripts/check-state": "5793bc0f4e66204cf9a4080eade787bcd7515763cb4dbe910dcdae9e2d948eb4",
+        "scripts/check-upkeep": "d55ffac5e145bb3410e6736993aabac42e90268be9774b6fac63328a82712bdb",
+        "scripts/risk-paths": "860bb261951781466d72447f6df5d194417f3e06c4902f49c55d7988d6c7485f"
+      }
+    },
+    "final_ordinary_suite": {
+      "command": "python scripts/test-checks",
+      "exit_code": 0,
+      "cases": 347,
+      "state_cases": 78,
+      "appended_cases": 17,
+      "test_source_sha256": "28556bd67408afbb33e3faa2af2c0a0671f64682ffcd7ef1a25ed4376671fe58",
+      "old_source_reconstructed_exactly": true
+    },
+    "targeted_followup": {
+      "driver": "existing generated_mutants and run_copy, four workers",
+      "exit_code": 0,
+      "seconds": 927.8169084,
+      "survivor_labels": 28,
+      "concrete_candidates": 29,
+      "killed": 29,
+      "unresolved": 0,
+      "reason_for_extra_candidate": "one printed label maps to two AST variants; both checked",
+      "candidates": [
+        {
+          "generated_index": 902,
+          "script": "check-state",
+          "start": 1398,
+          "end": 1412,
+          "replacement": "False",
+          "label": "check-state, check: condition always false at column 3: if len(cells) < 3:"
+        },
+        {
+          "generated_index": 916,
+          "script": "check-state",
+          "start": 2390,
+          "end": 2433,
+          "replacement": "False",
+          "label": "check-state, check: condition always false at column 3: if not re.fullmatch(ID, task) or task in plans:"
+        },
+        {
+          "generated_index": 919,
+          "script": "check-state",
+          "start": 2553,
+          "end": 2612,
+          "replacement": "False",
+          "label": "check-state, check: condition always false at column 3: if state not in (\"in-progress\", \"blocked\", \"verified\", \"done\"):"
+        },
+        {
+          "generated_index": 922,
+          "script": "check-state",
+          "start": 2749,
+          "end": 2778,
+          "replacement": "False",
+          "label": "check-state, check: condition always false at column 3: if (state == \"done\") != archived:"
+        },
+        {
+          "generated_index": 930,
+          "script": "check-state",
+          "start": 3513,
+          "end": 3527,
+          "replacement": "False",
+          "label": "check-state, check: condition always false at column 3: if len(cells) < 2:"
+        },
+        {
+          "generated_index": 948,
+          "script": "check-state",
+          "start": 1426,
+          "end": 1470,
+          "replacement": "pass",
+          "label": "check-state, check: statement removed at column 0: raise ValueError(\"malformed index task row\")"
+        },
+        {
+          "generated_index": 960,
+          "script": "check-state",
+          "start": 2390,
+          "end": 2433,
+          "replacement": "(task in plans)",
+          "label": "check-state, check: operand 1 of or dropped at column 3: if not re.fullmatch(ID, task) or task in plans:"
+        },
+        {
+          "generated_index": 961,
+          "script": "check-state",
+          "start": 2390,
+          "end": 2433,
+          "replacement": "(not re.fullmatch(ID, task))",
+          "label": "check-state, check: operand 2 of or dropped at column 3: if not re.fullmatch(ID, task) or task in plans:"
+        },
+        {
+          "generated_index": 962,
+          "script": "check-state",
+          "start": 2447,
+          "end": 2504,
+          "replacement": "pass",
+          "label": "check-state, check: statement removed at column 0: raise ValueError(f\"invalid or duplicate plan ID: {task}\")"
+        },
+        {
+          "generated_index": 964,
+          "script": "check-state",
+          "start": 2626,
+          "end": 2673,
+          "replacement": "pass",
+          "label": "check-state, check: statement removed at column 0: raise ValueError(f\"invalid plan state: {task}\")"
+        },
+        {
+          "generated_index": 965,
+          "script": "check-state",
+          "start": 2749,
+          "end": 2778,
+          "replacement": "(state == \"done\" == archived)",
+          "label": "check-state, check: comparison 1 to == at column 3: if (state == \"done\") != archived:"
+        },
+        {
+          "generated_index": 966,
+          "script": "check-state",
+          "start": 2792,
+          "end": 2842,
+          "replacement": "pass",
+          "label": "check-state, check: statement removed at column 0: raise ValueError(f\"done/archive mismatch: {task}\")"
+        },
+        {
+          "generated_index": 978,
+          "script": "check-state",
+          "start": 3513,
+          "end": 3527,
+          "replacement": "(len(cells) <= 2)",
+          "label": "check-state, check: comparison 1 to <= at column 3: if len(cells) < 2:"
+        },
+        {
+          "generated_index": 979,
+          "script": "check-state",
+          "start": 3541,
+          "end": 3587,
+          "replacement": "pass",
+          "label": "check-state, check: statement removed at column 0: raise ValueError(\"malformed backlog task row\")"
+        },
+        {
+          "generated_index": 989,
+          "script": "check-state",
+          "start": 1022,
+          "end": 1055,
+          "replacement": "re.match(r\"[-: ]+\", cells[0])",
+          "label": "check-state, task_rows: fullmatch to match at column 23: if cells[0] == \"ID\" or re.fullmatch(r\"[-: ]+\", cells[0]):"
+        },
+        {
+          "generated_index": 992,
+          "script": "check-state",
+          "start": 1093,
+          "end": 1119,
+          "replacement": "re.match(ID, cells[0])",
+          "label": "check-state, task_rows: fullmatch to match at column 7: if not re.fullmatch(ID, cells[0]):"
+        },
+        {
+          "generated_index": 993,
+          "script": "check-state",
+          "start": 1093,
+          "end": 1119,
+          "replacement": "re.search(ID, cells[0])",
+          "label": "check-state, task_rows: fullmatch to search at column 7: if not re.fullmatch(ID, cells[0]):"
+        },
+        {
+          "generated_index": 994,
+          "script": "check-state",
+          "start": 1139,
+          "end": 1170,
+          "replacement": "ValueError()",
+          "label": "check-state, task_rows: argument 1 dropped at column 6: raise ValueError(\"malformed task ID\")"
+        },
+        {
+          "generated_index": 996,
+          "script": "check-state",
+          "start": 1411,
+          "end": 1412,
+          "replacement": "2",
+          "label": "check-state, check: 3 to 2 at column 16: if len(cells) < 3:"
+        },
+        {
+          "generated_index": 997,
+          "script": "check-state",
+          "start": 1432,
+          "end": 1470,
+          "replacement": "ValueError()",
+          "label": "check-state, check: argument 1 dropped at column 6: raise ValueError(\"malformed index task row\")"
+        },
+        {
+          "generated_index": 1021,
+          "script": "check-state",
+          "start": 3526,
+          "end": 3527,
+          "replacement": "3",
+          "label": "check-state, check: 2 to 3 at column 16: if len(cells) < 2:"
+        },
+        {
+          "generated_index": 1022,
+          "script": "check-state",
+          "start": 3526,
+          "end": 3527,
+          "replacement": "1",
+          "label": "check-state, check: 2 to 1 at column 16: if len(cells) < 2:"
+        },
+        {
+          "generated_index": 1023,
+          "script": "check-state",
+          "start": 3547,
+          "end": 3587,
+          "replacement": "ValueError()",
+          "label": "check-state, check: argument 1 dropped at column 6: raise ValueError(\"malformed backlog task row\")"
+        },
+        {
+          "generated_index": 1029,
+          "script": "check-state",
+          "start": 1826,
+          "end": 1839,
+          "replacement": "(ROOT)",
+          "label": "check-state, check: right operand dropped at column 20: for plan in sorted((ROOT / \"work\").rglob(\"plan.md\")):"
+        },
+        {
+          "generated_index": 1032,
+          "script": "check-state",
+          "start": 2084,
+          "end": 2118,
+          "replacement": "(r\"[ \\t]*:(.*)$\")",
+          "label": "check-state, check: left operand dropped at column 19: found = re.findall(r\"^[ \\t]*\" + key + r\"[ \\t]*:(.*)$\", body, re.M)"
+        },
+        {
+          "generated_index": 1035,
+          "script": "check-state",
+          "start": 2394,
+          "end": 2416,
+          "replacement": "re.match(ID, task)",
+          "label": "check-state, check: fullmatch to match at column 7: if not re.fullmatch(ID, task) or task in plans:"
+        },
+        {
+          "generated_index": 1036,
+          "script": "check-state",
+          "start": 2394,
+          "end": 2416,
+          "replacement": "re.search(ID, task)",
+          "label": "check-state, check: fullmatch to search at column 7: if not re.fullmatch(ID, task) or task in plans:"
+        },
+        {
+          "generated_index": 1041,
+          "script": "check-state",
+          "start": 543,
+          "end": 560,
+          "replacement": "target.split()",
+          "label": "check-state, local_target: argument 1 dropped at column 24: path = (source.parent / target.split(\"#\")[0]).resolve()"
+        },
+        {
+          "generated_index": 1048,
+          "script": "check-state",
+          "start": 2084,
+          "end": 2100,
+          "replacement": "(key)",
+          "label": "check-state, check: left operand dropped at column 19: found = re.findall(r\"^[ \\t]*\" + key + r\"[ \\t]*:(.*)$\", body, re.M)"
+        }
+      ]
+    },
+    "interpretation": "Composite evidence, not a second green full mutation run. Production and previous cases are unchanged; no new equivalent exemptions.",
+    "review": {
+      "model_request": "gpt-6-astra",
+      "v2_calls": 2,
+      "verdicts": [
+        "changes needed",
+        "clean"
+      ],
+      "scope_limit": "17 final acceptance cases and final evidence added after source review; directly verified, no third review"
+    },
+    "handoff": "Fresh Astra subagent restored recorded task state, decisions and pending acceptance; not actual compaction or cross-client root proof",
+    "remaining_task_python_workers": 0
+  },
+  "git_status_porcelain": [
+    " M .claude/settings.json",
+    " M .claude/skills/project-knowledge/SKILL.md",
+    " M .claude/skills/project-knowledge/references/patterns.md",
+    " M .codex/hooks.json",
+    " M AGENTS.md",
+    " M backlog.md",
+    " M docs/agent-system.md",
+    " M docs/tech-debt.md",
+    " M scripts/check",
+    " M scripts/test-checks",
+    " D work/agent-system-unified/plan.md",
+    " M work/engineering-system-modernization/plan.md",
+    " M work/engineering-system-modernization/report.md",
+    " M work/engineering-system-modernization/script-verification.md",
+    " M work/engineering-system-modernization/verification-state.json",
+    "?? scripts/check-state",
+    "?? work/STATUS.md",
+    "?? work/completed/agent-system-unified/",
+    "?? work/engineering-system-modernization/deferred.md",
+    "?? work/engineering-system-modernization/v2-mutation-results.txt"
+  ],
+  "publication_preparation": {
+    "at_utc": "2026-11-03T13:42:59.457622+00:00",
+    "change": "Removed one trailing blank line from the evidence transcript; production and tests unchanged. Existing HEAD/status fields describe the earlier verification snapshot, before staging and commit.",
+    "path": "work/engineering-system-modernization/v2-mutation-results.txt",
+    "previous_sha256": "d1df33605fee8bfd96a8f24d70af6bbaa173e0bef27f758cdb59c70e70183a27",
+    "current_sha256": "22318cfc4e5c454c87d0344f09f890481083b1000cf09fa9730105b6d2a8fc22"
+  }
 }

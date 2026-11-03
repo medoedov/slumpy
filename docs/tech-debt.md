@@ -18,6 +18,17 @@ this list; remove an entry when it is fixed.
 
 ## Entries
 
+### Full mutation-run cost and sparse progress evidence
+
+- **Where:** `scripts/test-checks`, mutation runner; SYS-001 v2 script-verification record.
+- **Problem:** the completed 1081-variant run took 6149.616 seconds on Windows and emitted results
+  only at the end. One survivor label named two distinct AST variants, requiring both to be
+  rechecked. This is measured verification cost and limited trace precision, not model latency.
+- **Fix:** at the next test-infrastructure change, measure fixture/setup/check cost and consider
+  narrow progress/variant-identity improvements while preserving isolation and every accepted
+  case. No runner refactor or optimization is part of SYS-001 v2.
+- **Found:** 2026-11-03, complete mutation run and targeted follow-up for SYS-001.
+
 ### baseline.md describes a past rule in the present tense
 
 - **Where:** `work/agent-system-audit/baseline.md`, section 10.2, "как требует CLAUDE.md для задач T1 и T2".
@@ -48,6 +59,9 @@ this list; remove an entry when it is fixed.
   the three parts back, each through review. The project-marker failure is due at the skeleton
   ADR at the latest.
 - **Found:** 2026-10-28, gates review, fresh round 2.
+- **Update 2026-11-03:** commit `9366805` added an explicit task-start base via
+  `SLUMPY_CHECK_BASE`; do not reimplement that fix. Automatic session-start capture and the other
+  two deferred parts remain distinct, unshipped work.
 
 ### check-pointers scans only tracked Markdown
 

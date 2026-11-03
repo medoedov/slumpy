@@ -1,5 +1,49 @@
 # Script verification — 2026-11-03
 
+## SYS-001 v2 completed evidence
+
+This section describes the supplement from clean HEAD `9366805`. Sections below it are the
+earlier committed modernization, not results rerun by v2.
+
+- `python scripts/test-checks`: 330 cases passed in 68.0148s before mutation.
+- `python scripts/test-checks --mutants`: **exit 1**, 1053/1081 executable variants killed;
+  28 survivors, all in check-state, no stale entries. 6149.616s (102m29.6s).
+  Inventory: 38 written, 1057 generated, 14 existing equivalents. All input hashes stayed fixed.
+- Added 17 independent acceptance cases after interpreting the failures; earlier tests and all
+  production/runner logic stayed unchanged. Full `python scripts/test-checks`: **347 pass**.
+  Cases now include 78 state cases, 3 new check-integration cases and the previous 266 cases.
+- Targeted replay used the existing generator and `run_copy`, with the same four-worker limit:
+  **29/29 concrete candidates killed**, exit 0, 927.817s (15m27.8s). A single diagnostic label
+  identified two AST variants; both were exercised, covering every one of the 28 survivor labels.
+  [Raw full/follow-up output](v2-mutation-results.txt); exact candidate identities are in the
+  final `verification-state.json`.
+
+This is a composite result, **not a newly successful full mutation run**. No equivalence waiver
+was added. Removing the contiguous block starting `# Full mutation run exposed` and ending just
+before the state-case return reconstructs the earlier test file byte-for-byte, including the
+earlier case order. That proves the retained-test boundary rather than inferring it from counts.
+
+| Input | SHA256 |
+|---|---|
+| check-state, unchanged throughout full run and follow-up | 5793bc0f4e66204cf9a4080eade787bcd7515763cb4dbe910dcdae9e2d948eb4 |
+| test-checks during full run / exact reconstruction | ab7b2d9418ee69cacebf7e0a15d6ddfe31b1449c28b3b4cfbbce4d0372442b87 |
+| test-checks with 17 appended acceptance cases | 28556bd67408afbb33e3faa2af2c0a0671f64682ffcd7ef1a25ed4376671fe58 |
+
+Coverage repairs isolate malformed-row diagnostics from unpacking errors, invalid/duplicate
+archived IDs, matching invalid plan/index states, done-without-archive with no unrelated blocker,
+separator/ID prefixes and suffixes, metadata words in prose, plan discovery scope and file-fragment
+links. Earlier admission/rejection cases were not removed or weakened. Direct follow-up covers
+these additions after the two-call source-review budget; no third independent review is claimed.
+
+Limits: declared state is not semantic truth, a proof that a blocker was resolved, or detection
+of every unmarked legacy plan. Generated operators do not cover arbitrary mutations. Native
+hooks, actual compaction/cross-client root continuation, Swift/iOS and POSIX cleanup remain in
+the active deferred registry. This suite does not measure model ability or token efficiency.
+The costly full runner is left unchanged; a narrowly scoped future measurement is in tech-debt.
+Post-run process check found zero task Python workers. No paid model/API run was involved.
+
+## Earlier committed verification
+
 ## Confirmed failures before correction
 
 Three isolated Git fixtures exercised the old check-risk implementation: committed work directly

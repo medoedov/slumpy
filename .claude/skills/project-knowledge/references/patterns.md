@@ -36,7 +36,8 @@ features only after a review audit; until then there is no house pattern to copy
 - `scripts/check` is the single entry point. Now: `check-layers`, `check-pointers`, `check-risk`
   (rules and evidence format: `scripts/risk-paths`, header; the paths are a signal and do not set
   the tier), `check-lessons`, `check-upkeep` (the upkeep table in `docs/agent-system.md`; overdue
-  tasks are advisory, malformed maintenance data still fails). The
+  tasks are advisory, malformed maintenance data still fails), `check-state` (declared IDs,
+  plan/index links and completion blockers; conventions in `work/STATUS.md`). The
   self-test `scripts/test-checks` runs on demand. Planned on the Mac: build, package and app tests,
   lint, format, gate-bypass scan.
 - For task acceptance, capture the task-start commit before edits and set `SLUMPY_CHECK_BASE` to

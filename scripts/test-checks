@@ -277,15 +277,17 @@ PLAN = "work/feature/plan.md"
 # The line each check prints when it passes, and only then.
 SUCCESS = {"check-layers": "core files clean", "check-pointers": "all section pointers resolve",
            "check-risk": "evidence present where needed", "check-lessons": "none overdue",
-           "check-upkeep": "none due"}
+           "check-upkeep": "none due", "check-state": "task index consistent"}
 def lines_of(path): return len((ROOT / path).read_text(encoding="utf-8").splitlines())
 # A failure each check must report, for the data-driven cases over CHECKS, and the detail it prints.
 PLANT_TEXT = {"check-layers": f"core-process.md:{lines_of('.claude/rules/core-process.md') + 2}: platform or project term: Slumpy uses iOS 18.",
               "check-pointers": "has no section 'Risk tiers'",
               "check-risk": "security-pass trigger without an added 'Security pass:' line in a work/*/plan.md (scripts/risk-paths): App/Store.swift",
-              "check-lessons": "lesson 'Old trap'", "check-upkeep": "upkeep 'Invalid task': the interval"}
+              "check-lessons": "lesson 'Old trap'", "check-upkeep": "upkeep 'Invalid task': the interval",
+              "check-state": "unresolved local link: missing-plan.md"}
 PLANT = {"check-layers": [CORE_BAD], "check-pointers": [POINTER_BAD], "check-risk": [KEYCHAIN],
-         "check-lessons": [OVERDUE], "check-upkeep": [UPKEEP_BAD]}
+         "check-lessons": [OVERDUE], "check-upkeep": [UPKEEP_BAD],
+         "check-state": [("work/STATUS.md", "\n[missing](missing-plan.md)\n", "append")]}
 
 
 def one(edits=(), commit=False, git=(), stdin=None, git_before=(), cwd="."):
@@ -323,6 +325,89 @@ def rule_cases(rules):
             cases.append((f"risk-paths:{n} {cat} {r['pattern']}{label} with its evidence passes",
                           dict(runs=one(fs + [(PLAN, other + own, "write")]), script=["check-risk"], expect=passes)))
     return cases
+
+
+def state_cases():
+    """Task-state transitions use small real Markdown inputs, independent of the live plan."""
+    path = "work/engineering-system-modernization/plan.md"
+    plan = "Task-ID: SYS-001\nState: blocked\nBlockers: Mac unavailable\nOwner: Astra\n"
+    index = "| SYS-001 | blocked | [plan](engineering-system-modernization/plan.md) | Astra |\n"
+    initial = [(path, plan, "write"), ("work/STATUS.md", index, "write"),
+               ("backlog.md", "| SL-001 | proposed | Later |\n", "write")]
+    tests = [
+        ("blocked Mac state is valid", [], passes),
+        ("missing index fails", [("work/STATUS.md", "", "delete")], fails),
+        ("unreadable index fails", [("work/STATUS.md", b"\xff", "bytes")], fails),
+        ("duplicate index ID fails", [("work/STATUS.md", index, "append")], fails),
+        ("missing index plan fails", [("work/STATUS.md", "| SYS-001 | blocked | [x](missing.md) |\n", "write")], fails),
+        ("external index link fails", [("../outside.md", "outside sentinel", "write"), ("work/STATUS.md", "[x](../../outside.md)", "append")], fails),
+        ("malformed index ID fails", [("work/STATUS.md", ("SYS-001", "SYS-01"), "replace")], fails),
+        ("short index row fails", [("work/STATUS.md", "| SYS-001 |\n", "write")], fails),
+        ("index without link fails", [("work/STATUS.md", "| SYS-001 | blocked | no link |\n", "write")], fails),
+        ("two plan links fail", [("work/STATUS.md", ("[plan]", "[other](STATUS.md) [plan]"), "replace")], fails),
+        ("orphan active plan fails", [("work/STATUS.md", "# No active work\n", "write")], fails),
+        ("index state mismatch fails", [("work/STATUS.md", ("blocked", "verified"), "replace")], fails),
+        ("index ID without plan fails", [("work/STATUS.md", ("SYS-001", "SYS-002"), "replace")], fails),
+        ("duplicate plan ID fails", [("work/duplicate/plan.md", plan, "write")], fails),
+        ("invalid plan ID fails", [(path, ("SYS-001", "bad-id"), "replace")], fails),
+        ("invalid plan state fails", [(path, ("blocked", "finished"), "replace")], fails),
+        ("blocked without reason fails", [(path, ("Mac unavailable", "none"), "replace")], fails),
+        ("done before archive fails", [(path, ("blocked", "done"), "replace")], fails),
+        ("duplicate future ID fails", [("backlog.md", "| SL-001 | ready | Duplicate |\n", "append")], fails),
+        ("active task in backlog fails", [("backlog.md", "| SYS-001 | ready | Duplicate |\n", "append")], fails),
+        ("started backlog task fails", [("backlog.md", ("proposed", "in-progress"), "replace")], fails),
+        ("ready future task passes", [("backlog.md", ("proposed", "ready"), "replace")], passes),
+        ("malformed backlog ID fails", [("backlog.md", ("SL-001", "SL-01"), "replace")], fails),
+        ("short backlog row fails", [("backlog.md", "| SL-001 |\n", "write")], fails),
+    ]
+    for field in ("Task-ID", "State", "Blockers", "Owner"):
+        value = next(line for line in plan.splitlines() if line.startswith(field + ":"))
+        # Task-ID absence marks legacy history; an index entry must still fail without its plan ID.
+        tests.append((f"missing {field} fails", [(path, (value + "\n", ""), "replace")], fails))
+        tests.append((f"duplicate {field} fails", [(path, value + "\n", "append")], fails))
+        tests.append((f"blank {field} fails", [(path, (value, field + ":   "), "replace")], fails))
+        tests.append((f"empty duplicate {field} fails", [(path, field + ":\n", "append")], fails))
+        tests.append((f"spaced duplicate {field} fails", [(path, "  " + field + " :\n", "append")], fails))
+        tests.append((f"compact {field} passes", [(path, (value, value.replace(": ", ":")), "replace")], passes))
+    for label, row in (("compact", "|SYS-001|blocked|[plan](engineering-system-modernization/plan.md)|"),
+                       ("indented", "  " + index.strip()),
+                       ("no outer pipes", index.strip().strip("|"))):
+        tests.append((label + " index passes", [("work/STATUS.md", row + "\n", "write")], passes))
+        tests.append((label + " duplicate index fails", [("work/STATUS.md", row + "\n", "append")], fails))
+        tests.append((label + " duplicate backlog fails", [("backlog.md", row.replace("blocked", "ready") + "\n", "append")], fails))
+    archived = "work/completed/state-fixture/plan.md"
+    finish = [(path, "", "delete"), (archived, plan.replace("blocked", "done").replace("Mac unavailable", "none"), "write"),
+              ("work/STATUS.md", "# No active work\n[completed](completed/state-fixture/plan.md)\n", "write")]
+    tests.extend([
+        ("archive completed task passes", finish, passes),
+        ("done with required blocker fails", finish + [(archived, ("Blockers: none", "Blockers: Mac"), "replace")], fails),
+        ("unfinished archived task fails", finish + [(archived, ("State: done", "State: blocked"), "replace")], fails),
+        ("completed task still indexed fails", finish + [("work/STATUS.md", "| SYS-001 | done | [plan](completed/state-fixture/plan.md) |\n", "append")], fails),
+    ])
+    # Full mutation run exposed violations masked by another guard and unobserved diagnostics.
+    # Keep the earlier cases unchanged; these isolate the declared contract at each boundary.
+    tests.extend([
+        ("two-cell index row has actionable diagnostic", [("work/STATUS.md", "| SYS-001 | blocked |\n", "write")], fails_with("malformed index task row")),
+        ("one-cell backlog row has actionable diagnostic", [("backlog.md", "| SL-001 |\n", "write")], fails_with("malformed backlog task row")),
+        ("minimal two-cell backlog row passes", [("backlog.md", "| SL-001 | ready |\n", "write")], passes),
+        ("separator prefix is not a separator", [("backlog.md", "| --invalid | proposed |\n", "append")], fails_with("malformed task ID")),
+        ("backlog ID suffix fails", [("backlog.md", "| SL-001tail | proposed |\n", "write")], fails_with("malformed task ID")),
+        ("backlog ID prefix fails", [("backlog.md", "| xSL-001 | proposed |\n", "write")], fails_with("malformed task ID")),
+        ("matching invalid states fail", [(path, ("State: blocked", "State: invented"), "replace"), ("work/STATUS.md", ("blocked", "invented"), "replace")], fails_with("invalid plan state")),
+        ("unarchived done without other blockers fails", [(path, ("State: blocked", "State: done"), "replace"), (path, ("Mac unavailable", "none"), "replace")], fails_with("done/archive mismatch")),
+        ("metadata word in prose is not a declaration", [(path, "Note State: mentioned in prose only\n", "append")], passes),
+        ("index file fragment resolves", [(path, "\n# Details\n", "append"), ("work/STATUS.md", ("plan.md)", "plan.md#details)"), "replace")], passes),
+        ("plan outside work is not task state", [("docs/example/plan.md", plan, "write")], passes),
+        ("extra index alias fails", [("work/STATUS.md", index.replace("SYS-001", "SYS-002"), "append")], fails_with("index has no active plan")),
+        ("duplicate archived IDs fail", finish + [("work/completed/duplicate/plan.md", plan.replace("blocked", "done").replace("Mac unavailable", "none"), "write")], fails_with("invalid or duplicate plan ID")),
+        ("archived ID suffix fails", finish + [(archived, ("SYS-001", "SYS-001tail"), "replace")], fails_with("invalid or duplicate plan ID")),
+        ("archived ID prefix fails", finish + [(archived, ("SYS-001", "xSYS-001"), "replace")], fails_with("invalid or duplicate plan ID")),
+    ])
+    for state in ("in-progress", "verified"):
+        tests.append((state + " state passes", [(path, ("State: blocked", "State: " + state), "replace"),
+                      ("work/STATUS.md", ("blocked", state), "replace")], passes))
+    return [("state: " + name, dict(script=["check-state"], runs=one(initial + edits), expect=expect))
+            for name, edits, expect in tests]
 
 
 def check_cases():
@@ -609,7 +694,7 @@ def all_cases():
     rules = json.loads(p.stdout)
     if len(rules) != rule_lines():
         return None, [f"check-risk --rules returned {len(rules)} rules for {rule_lines()} rule lines"]
-    return STATIC + rule_cases(rules) + check_cases(), []
+    return STATIC + rule_cases(rules) + check_cases() + state_cases(), []
 
 
 def run_cases():
@@ -682,7 +767,7 @@ def test_process_cleanup():
 # An entry is keyed by script, enclosing function, mutation, and line, and must match exactly one
 # generated mutant; one that matches none or several fails the run.
 GENERATED_FROM = ["check", "check-risk", "check-lessons", "check-layers", "check-pointers",
-                  "check-upkeep"]
+                  "check-upkeep", "check-state"]
 OPS = {ast.Gt: ">", ast.GtE: ">=", ast.Lt: "<", ast.LtE: "<=", ast.Eq: "==", ast.NotEq: "!=",
        ast.In: "in", ast.NotIn: "not in", ast.Is: "is", ast.IsNot: "is not"}
 FLIP = {ast.Gt: ">=", ast.GtE: ">", ast.Lt: "<=", ast.LtE: "<", ast.Eq: "!=", ast.NotEq: "==",

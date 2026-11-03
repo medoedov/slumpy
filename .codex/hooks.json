@@ -8,7 +8,7 @@
             "type": "command",
             "command": "python3 -I \"$(git rev-parse --show-toplevel)/scripts/check\" --codex-hook",
             "commandWindows": "python -I \"$(git rev-parse --show-toplevel)/scripts/check\" --codex-hook",
-            "timeout": 300,
+            "timeout": 360,
             "statusMessage": "Checking Slumpy documents"
           }
         ]

@@ -11,6 +11,7 @@ for older Claude Code installations; do not generate a second copy of these inst
 
 Read `.claude/rules/core-process.md` and `.claude/rules/platform.md` at the start of project work
 unless already loaded. The `.claude/` paths below hold shared content, not a second methodology.
+Read `work/STATUS.md` at start/resume, then the linked plan for the assigned task.
 Use this project's workflow where a generic installed skill prescribes a different workflow;
 do not run the former Claude-to-Codex converter on this repository.
 
@@ -28,6 +29,7 @@ Load only the additional context needed by the task:
 Runtime setup and the mechanism ledger: `docs/agent-system.md`. Codex skill entries in
 `.agents/skills/` are small adapters to the shared skills. Historical `work/` records describe
 the versions measured then; they do not override current instructions.
+Codex model routing: `docs/agent-system.md`, Model policy. Task-state conventions: `work/STATUS.md`.
 
 ## Project facts
 

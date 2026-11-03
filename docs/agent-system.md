@@ -2,7 +2,7 @@
 
 How to change the agent system: `.claude/rules/core-agent-system.md`. Historical measurement results:
 `work/agent-system-audit/baseline.md`. Current migration evidence:
-`work/agent-system-unified/plan.md`. Current modernization and verification limits:
+`work/completed/agent-system-unified/plan.md`. Current modernization and verification limits:
 `work/engineering-system-modernization/plan.md` and its audit.
 
 ## Runtime loading
@@ -57,6 +57,53 @@ skills and their source routes, and a review call using the shared role. This is
 check, not a quality or cost measurement. Compare outcome quality, cost per successful task, tool
 calls, time, and owner involvement separately on each runtime before claiming an improvement.
 
+## Model policy
+
+Owner decision, 2026-11-03: Codex implementation and final engineering responsibility use
+`gpt-6-astra`. Launch CLI work with `codex -m gpt-6-astra`; select Astra explicitly in other
+clients and verify their actual session setting. No silent model substitution. The shared
+review role remains `.claude/agents/reviewer.md`; model selection is a launch property, not a
+second profession or copy of the review prompt. Critical independent review uses fresh Astra.
+Terra may assist with a bounded factual checklist or low-risk diff only after access and a
+small smoke test are confirmed; it never solely judges architecture, concurrency, migrations,
+security, privacy, data or a new system API. The author verifies each finding.
+
+Observed during SYS-001 v2: the executor was explicitly spawned with `gpt-6-astra` in a fresh
+context. Read-only inspection of user config found `model = "gpt-6-astra"` and effort `high`;
+the earlier audit's `medium` is historical. No settings were edited. Cached model discovery
+contains Astra and Terra but does not prove availability or execution. Installed CLI remains
+0.145.0; [official model documentation](https://learn.chatgpt.com/docs/models), checked
+2026-11-03, requires 0.159.0+ for Terra. Terra therefore remains disconnected in this CLI;
+no untested `.codex/agents` file is installed. This explicit Astra call confirms the current
+executor, not every future Desktop chat's effective model or effort. Recheck on a new host.
+
+There is one writing executor per area;
+reviewers receive the bounded diff, shared role and necessary source links. Current tool access
+is write-capable despite the no-edit review instruction: compare content before/after. The
+[custom-agent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents)
+explicitly says a custom agent's `sandbox_mode` does not override its parent, so a TOML flag
+must not be described as enforced read-only access. No custom orchestrator or additional role.
+
+## Task state
+
+`work/STATUS.md` is the start/resume index; the linked plan owns progress, accepted scope and
+evidence. Backlog owns only unstarted proposed/ready work; ADRs, knowledge, lessons and debt
+keep their existing distinct responsibilities. IDs are allocated when work is recorded, never
+from a second memory. Historical plans without Task-ID are not active state records.
+
+New plans declare exactly one `Task-ID: PREFIX-001`, `State: in-progress|blocked|verified|done`,
+`Blockers: <reason or none>` and `Owner: <executor>` line. Active index rows use
+`| ID | State | [plan](relative-path) | owner/scope | next step |`. Future backlog rows begin
+`| ID | proposed|ready |`. Semantic duplicate search is still the author's job. On completion,
+resolve required blockers with evidence, update affected canonical facts and remove the active
+row while moving the plan folder into `work/completed/`; keep a short result link. This is one
+logical transition. `scripts/check-state` checks these declarations and local index links,
+including untracked plans; it cannot certify the claims in them or remote issue consistency.
+
+Current pending live-client/Mac checks have one registry linked from STATUS. Existing historical
+checklists are not competing active queues. Model updates invalidate behavioral measurements;
+no historical Claude score establishes present Astra/Terra quality or cost.
+
 ## Upkeep
 
 `scripts/check-upkeep` reports an advisory reminder when a task's last date is older than its
@@ -104,6 +151,8 @@ not as measured improvements.
 | 28 | Bounded eval output and content provenance | `evals/scripts/build_plugin.py`; `test_build_plugin.py`; `run.sh`; `collect.py`; `test_collect.py` | Arbitrary deletion, dirty input mislabeled as HEAD, failed eval reported successful | gate | Existing output never deleted; collector retains trace directories; actual payload hashed; real junction guard and Bash stub exit propagation verified; symlink/real Claude/v0 unverified | Rejected dangerous paths, preserved unrelated trace-neighbor files, changed-content digest, runner failure propagation | A direct unsafe path passes or input changes without digest changing; revise guard |
 | 29 | Executable initial/follow-up engineering fixture | `evals/engineering/` | Text-only graders and weak tests mistaken for engineering evidence | test when run | Reference/fault discrimination only; no autonomous model comparison or Swift evidence | Accepted behavior, escaped defects, owner interventions, next-change regressions and total cost | Cases cannot distinguish realistic defects or leak acceptance changes into runs; revise before comparison |
 | 30 | Bounded test process cleanup | `scripts/test-checks` | Timed-out mutant leaves descendants consuming resources | executable cleanup and regression | Old parent-only timeout reproduced a surviving child; final platform results in current plan | Descendant stops after timeout; no leaked workers after mutant run | Any owned descendant survives; do not interpret timeout as a killed mutant |
+| 31 | One task index with checked transitions | `work/STATUS.md`; `scripts/check-state`; `scripts/test-checks` | Duplicate IDs, orphan plans, forgotten blockers and completed work reappearing | gate plus semantic handoff | SYS-001 v2: 347 total cases pass; composite mutation evidence and fresh Astra handoff in active plan; semantic truth, unmarked legacy plans and remote consistency are outside the lint | Fresh agent restores ID/decision/last evidence/next step; blocked-to-completed fixture; false positives | A real transition bypasses a check or >1 false positive in 5 changes: repair/narrow, no task database |
+| 32 | Explicit Astra ownership and conditional Terra | Model policy above | Unobserved model inheritance or a cheaper helper replacing critical review | owner policy plus launch evidence | User config and explicit Astra executor observed; Terra CLI unsupported; no model-quality comparison | Actual model on fresh host/client; bounded helper findings and cost if enabled | Revisit on owner's model decision or client change; never infer support from cache |
 
 Local installation correction on 2026-11-03: `.git/config` still selected `.githooks`, contrary to
 the documented disabled state. Its pre-commit invokes the prohibited external converter. Only the

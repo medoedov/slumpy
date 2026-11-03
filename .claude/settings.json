@@ -44,7 +44,7 @@
           {
             "type": "command",
             "command": "if [ \"$OS\" = Windows_NT ]; then python -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook; else python3 -I \"$CLAUDE_PROJECT_DIR\"/scripts/check --hook; fi",
-            "timeout": 300
+            "timeout": 360
           }
         ]
       }

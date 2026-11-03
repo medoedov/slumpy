@@ -18,13 +18,13 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
 --codex-hook uses the same checks with Codex Stop JSON: an empty object on success, a block
         decision on the first failure, and a system message on a repeated Stop. Neither hook's
         bounded continuation is acceptance; a failed explicit check still exits nonzero.
-        Each subprocess is limited to 45 seconds so the six-call hook fits its 300-second budget.
+        Each subprocess is limited to 45 seconds so the seven-call hook fits its 360-second budget.
         Hooks are feedback mechanisms; timed-out or crashed checks do not establish readiness.
 """
 import json, os, pathlib, subprocess, sys, traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "check-upkeep"]
+CHECKS = ["check-layers", "check-pointers", "check-risk", "check-lessons", "check-upkeep", "check-state"]
 
 
 def script(name, *args):

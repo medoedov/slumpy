@@ -1,5 +1,114 @@
 # Engineering system modernization
 
+Task-ID: SYS-001
+State: blocked
+Blockers: deferred.md (live client and Mac acceptance)
+Owner: Astra
+
+## v2 continuation — 2026-11-03
+
+Continue the existing modernization at clean `dev` HEAD `9366805`, not a second refactor.
+The owner's v2 supplement authorizes this new scope; previous review rounds and evidence below
+remain historical and are not reset. One writer (Astra) owns agent instructions, state and checks.
+
+- T1 because the additions are reversible task-state validation and runtime policy within the
+  existing system. No app feature, dependency, global configuration, paid run or release changes.
+- Model: explicit `gpt-6-astra` executor; independent Astra review for this supplement. Terra is
+  optional and remains disconnected on CLI 0.145.0; no untested profile or silent fallback.
+- Data: Markdown is the source, with Task-ID/State/Blockers/Owner in new active plans, one index
+  and existing backlog. Old records retain their IDs/paths except the demonstrably completed
+  unified migration, which moves to completed with its references repaired.
+- Boundary: a small document check validates declared IDs, plan/index links and completion
+  blockers. It cannot detect semantic duplicates, prove a blocker was resolved or certify iOS.
+- Scenarios: duplicate ID/plan, missing link, orphan active task, done with required blocker,
+  blocked Mac handoff, and completion/archive transition. Empty or malformed state fails closed.
+- P0: verify actual runtime/model and prior work; P1: state check, one deferred registry and
+  fresh-context handoff; P2: keep existing useful mechanisms and report unmeasured behavior.
+- Verification: check, self-tests and mutants for scripts; fresh independent review of this
+  new scope (at most two calls), fresh-context handoff, exact final file identities. No model
+  comparison or engineering-quality/cost claim without comparable runs.
+
+Latest step: available Windows implementation is verified; overall acceptance is blocked
+on the live-client/Mac rows in [deferred.md](deferred.md). The sections after this continuation
+describe the previous commit unless explicitly labeled v2.
+
+### v2 evidence
+
+- `python scripts/check` with `SLUMPY_CHECK_BASE=9366805` passes six document checks.
+  Build/app tests/lint remain explicitly not run. Final document-state result and file identities
+  are recorded in `verification-state.json`; the script evidence is detailed below.
+- Sandbox self-test attempts failed before acceptance: OS temp access denied, then `taskkill`
+  denied for an owned child. Approved local execution with workspace tmp passed the process
+  cleanup case; no assertion or sandbox restriction was bypassed in the implementation.
+- `codex --version` 0.145.0; hooks stable/enabled; Claude 2.1.220; repository Git hooks `/dev/null`.
+  Read-only user config is Astra/high; explicit executor spawn is Astra. No global edits.
+- Read the three source-routing adapters and current shared role. Stable reading-day decision
+  remains ADR-0001; no new app code or approved product fact. Archived only the completed unified
+  migration; other old work folders remain identified as historical in STATUS.
+- Independent review and fresh-context handoff are recorded below; the previous commit's clean
+  review is not relabeled as review of this supplement.
+
+### v2 review and handoff
+
+- Code T1 call 1, fresh explicit Astra, verdict `changes needed`: in-memory execution reproduced
+  a fail-open parser class. Compact/indented Markdown rows bypassed duplicate detection; empty
+  duplicate metadata declarations were ignored. Fixed recognition once in a shared row parser,
+  count every field declaration before validating its value. Added canonical/compact/indented/
+  no-outer-pipe rows and all four empty/spaced duplicate-field regressions. Targeted state plus
+  check-integration suite: **105 passed**. Explicit-base check: six pass; diff whitespace check pass.
+- Previous expanded full suite: **309 passed**. The first mutation run was stopped incomplete
+  after 87.74 seconds when review found the parser gap; no score retained. Revalidated only its
+  Python PID/parent/command before terminating that tree. Subsequent process listing found no
+  remaining Python workers under the task's tmp path. The later completed run is recorded below.
+- Fresh-context handoff passed before the reviewer read the diff: recovered SYS-001, Astra,
+  blocked state, the earlier verified snapshot versus tests still running, next explicit-base
+  command, Mac/live-client dependencies and the approved 04:00/start-day/stored-zone contract.
+  Observed reads: STATUS -> plan -> ADR; all three adapters -> shared sources -> patterns reference.
+  No owner question or duplicate task. This is a fresh subagent test, not actual compaction or
+  cross-client root-session proof. Tree hashes before/after review were identical (342 files).
+- Wrong-premise probe: reviewer rejected response caching after two stipulated failed fixes and
+  identified separate durable effect/marker transactions. Crash after 600->660 before marker,
+  then retry ->720; recommended atomic operation identity+effect without weakening acceptance.
+  Actual unchanged fixture runs: reference **10 pass**, 7.605s; faulty exits 1 with four failing
+  methods/six assertions, 8.779s. This diagnoses the planted premise and weak-test case; it is
+  not an autonomous before/after implementation run or model-quality comparison.
+- Remote duplicate check: read-only `gh issue list` and `gh pr list`, open state, both returned
+  empty arrays. Initial sandbox network attempt was unavailable; approved read succeeded.
+- Code T1 call 2, fresh explicit Astra, verdict **clean**. Reviewed the parser fixes, affected
+  integration and open invariants; 26 additional in-memory probes passed (normal row variants,
+  duplicate IDs/fields and malformed IDs). Both v2 review calls are used; original commit review
+  budget remains unchanged. Tree hashes before/after call 2 were identical. This is source review,
+  not live-client/Mac acceptance. Subsequent changes added only acceptance cases and final evidence;
+  those additions were checked directly within the exhausted review budget, not by a third review.
+
+### v2 final script evidence and handoff
+
+- Full standalone suite before mutation: **330 pass**, 68.0148s. Completed full mutation run:
+  **1053/1081 executable mutants killed**, exit **1**, 6149.616s (102m29.6s). Inventory: 38 written
+  +1057 generated -14 existing equivalents. All 28 survivors concern the new check-state;
+  no stale entry or survivor in an older checker. No files changed during that run.
+- Added **17 cases**, retaining the earlier 330 cases, their order and all production/runner
+  logic. Full ordinary suite: **347 pass** (266 existing, 3 new check-integration, 78 state cases).
+  The additions isolate archive/ID/state violations from other guards, validate error diagnostics,
+  minimal rows, identifier boundaries, table separators, scoped plan discovery and file fragments.
+- Addressed every survivor label with the unchanged `run_copy` and four workers: **29/29
+  candidates killed**, exit 0, 927.817s (15m27.8s). One label maps to two AST variants, so both
+  were checked; this covers 28 prior survivors plus one ambiguous already-killed candidate.
+  No new equivalent exemption. This is a **composite result**, not a second green full run.
+- Removing only the new 17-case block reconstructs the exact full-run test-source SHA256.
+  All production-script hashes are unchanged. Detailed hashes and raw output:
+  [script-verification.md](script-verification.md), [v2-mutation-results.txt](v2-mutation-results.txt).
+  Old kills remain applicable at that explicit boundary; an arbitrary future script change does
+  not inherit this result. Temporary task Python workers after completion: **0**.
+- Available source checks and fresh-agent handoff are complete. Native root-client Stop/trust,
+  actual compaction/cross-client continuation, Terra CLI and Apple execution remain unverified
+  as listed in deferred.md. SYS-001 stays blocked and its folder stays active; do not open a
+  duplicate migration or mark the iOS app done. Next: RT-01/RT-02 when a suitable live client is
+  available, then MAC-01 and its dependent rows on the configured Mac.
+- No commit, push, publication, global configuration update or paid model run. No product scope
+  or approved reading-day fact changed. Restore only this supplement against clean base 9366805
+  if reverting, preserving unrelated later work and keeping frozen Git hooks disabled.
+
 ## Brief
 
 - T1 because this changes reversible local tooling and shared engineering guidance within the

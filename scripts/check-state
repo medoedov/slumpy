@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Validate the small Markdown task index, including untracked plans.
+
+This checks declared state, not truth of evidence or semantic duplicates. Legacy plans without
+Task-ID are historical; new work uses the metadata described in work/STATUS.md.
+"""
+import pathlib, re, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+ID = r"[A-Z]+-\d{3}"
+LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+
+
+def read(path):
+    return path.read_text(encoding="utf-8")
+
+
+def local_target(source, target):
+    path = (source.parent / target.split("#")[0]).resolve()
+    if not path.is_relative_to(ROOT.resolve()) or not path.is_file():
+        raise ValueError(f"unresolved local link: {target}")
+    return path
+
+
+def task_rows(text):
+    """The index/backlog tables contain task rows, one header and Markdown separators."""
+    for line in text.splitlines():
+        if "|" not in line:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if cells[0] == "ID" or re.fullmatch(r"[-: ]+", cells[0]):
+            continue
+        if not re.fullmatch(ID, cells[0]):
+            raise ValueError("malformed task ID")
+        yield cells
+
+
+def check():
+    index = ROOT / "work/STATUS.md"
+    text = read(index)
+    for target in LINK.findall(text):
+        local_target(index, target)
+    rows = {}
+    for cells in task_rows(text):
+        if len(cells) < 3:
+            raise ValueError("malformed index task row")
+        task, state, link = cells[:3]
+        if task in rows:
+            raise ValueError(f"duplicate index ID: {task}")
+        targets = LINK.findall(link)
+        if len(targets) != 1:
+            raise ValueError(f"one plan link required: {task}")
+        rows[task] = (state, local_target(index, targets[0]))
+    plans = {}
+    for plan in sorted((ROOT / "work").rglob("plan.md")):
+        body = read(plan)
+        if not re.search(r"^[ \t]*Task-ID[ \t]*:", body, re.M):
+            continue
+        values = {}
+        for key in ("Task-ID", "State", "Blockers", "Owner"):
+            found = re.findall(r"^[ \t]*" + key + r"[ \t]*:(.*)$", body, re.M)
+            if len(found) != 1 or not found[0].strip():
+                raise ValueError(f"one nonempty {key} required: {plan.relative_to(ROOT)}")
+            values[key] = found[0].strip()
+        task, state = values["Task-ID"], values["State"]
+        if not re.fullmatch(ID, task) or task in plans:
+            raise ValueError(f"invalid or duplicate plan ID: {task}")
+        plans[task] = plan.resolve()
+        if state not in ("in-progress", "blocked", "verified", "done"):
+            raise ValueError(f"invalid plan state: {task}")
+        archived = plan.is_relative_to(ROOT / "work/completed")
+        if (state == "done") != archived:
+            raise ValueError(f"done/archive mismatch: {task}")
+        if state == "done":
+            if values["Blockers"] != "none":
+                raise ValueError(f"done with blockers: {task}")
+        elif rows.get(task) != (state, plan.resolve()):
+            raise ValueError(f"active plan/index mismatch: {task}")
+        if state == "blocked" and values["Blockers"] == "none":
+            raise ValueError(f"blocked without reason: {task}")
+    for task, (_, path) in rows.items():
+        if plans.get(task) != path or path.is_relative_to(ROOT / "work/completed"):
+            raise ValueError(f"index has no active plan: {task}")
+    backlog_ids = set()
+    for cells in task_rows(read(ROOT / "backlog.md")):
+        if len(cells) < 2:
+            raise ValueError("malformed backlog task row")
+        task, state = cells[:2]
+        if task in backlog_ids or task in plans:
+            raise ValueError(f"duplicate task ID: {task}")
+        backlog_ids.add(task)
+        if state not in ("proposed", "ready"):
+            raise ValueError(f"backlog is for unstarted work: {task}")
+
+
+try:
+    check()
+except (OSError, UnicodeError, ValueError) as error:
+    sys.exit(f"check-state: {error}")
+print("check-state: task index consistent")
