@@ -1,13 +1,14 @@
 # Project state
 
-Reconciled: 2026-11-03. Finalization starts at `d68d2f0` on `dev`; verification belongs to the
-linked plan and its state manifest, not this date. Windows preparation; Mac is not configured.
+Reconciled: 2026-11-03. The current capability-check continuation starts at `4b04185` on `dev`;
+verification belongs to the linked plan. Earlier finalization manifests remain dated evidence.
+Windows preparation; Mac is not configured.
 
 ## Now
 
 | ID | State | Plan | Owner / scope | Current step / next check |
 |---|---|---|---|---|
-| SYS-001 | blocked | [Engineering system](engineering-system-modernization/plan.md) | Astra; agent instructions, checks, task state | Windows fixes and separately approved staged-scope review complete; RT-01/02 and Mac acceptance pending |
+| SYS-001 | blocked | [Engineering system](engineering-system-modernization/plan.md) | Astra; agent instructions, checks, task state | A–D evidence checked; cross-version eval gap fixed; bounded EVAL-01 pilot awaits allowance; RT-01/02 and Mac pending |
 
 ## Blocked / waiting for Mac
 

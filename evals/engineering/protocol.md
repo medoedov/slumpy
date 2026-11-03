@@ -13,6 +13,7 @@ Run from the repository root with Python 3 and its standard library:
 python -I evals/engineering/acceptance.py evals/engineering/reference.py --stage initial
 python -I evals/engineering/acceptance.py evals/engineering/reference.py
 python -I evals/engineering/acceptance.py evals/engineering/faulty.py
+python -I evals/engineering/test_acceptance.py
 ```
 
 Expected: initial tests pass (follow-up tests explicitly skipped), all ten reference tests pass,
@@ -21,6 +22,20 @@ crash/retry, conflicting-operation and invalid-input cases fail. Each action sta
 all databases live in disposable directories under `evals/engineering/.tmp/`. This location is
 used because this Windows sandbox's OS temp directory was inaccessible to child processes.
 No repository checkout is copied.
+
+For a real initial -> follow-up sequence, freeze the accepted initial executable (and any local
+implementation dependencies) before revealing the new requirement. The required follow-up command is:
+
+```
+python -I evals/engineering/acceptance.py <followup.py> --initial-candidate <frozen-initial.py>
+```
+
+This creates each old store using the frozen executable, then opens it with the new one; all
+subsequent retries use the new executable. Preserve both artifact hashes. The default command
+uses one executable for both stages: **even ten passes do not establish upgrade compatibility**.
+The runner prints that scope. Its `--stage initial` switch selects a contract, not a historical
+version. The bounded Astra pilot and fixed prompts are in [pilot.md](pilot.md); model runs await
+EVAL-01 approval. No new model runner or orchestration layer is introduced.
 
 Candidate contract: a Python executable receives `database`, JSON request, `--stage initial` or
 `--stage followup`, and optional `--crash-before-commit`. It prints a JSON response and exits 0 on

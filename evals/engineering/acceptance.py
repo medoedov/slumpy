@@ -9,9 +9,12 @@ import unittest
 
 PARSER = argparse.ArgumentParser()
 PARSER.add_argument("candidate", type=Path)
+PARSER.add_argument("--initial-candidate", type=Path,
+                    help="frozen initial executable that creates the pre-upgrade stores")
 PARSER.add_argument("--stage", choices=("initial", "followup"), default="followup")
 ARGS = PARSER.parse_args()
 CANDIDATE = ARGS.candidate.resolve(strict=True)
+INITIAL_CANDIDATE = (ARGS.initial_candidate or ARGS.candidate).resolve(strict=True)
 TEMP_ROOT = Path(__file__).resolve().parent / ".tmp"
 if TEMP_ROOT.is_symlink() or TEMP_ROOT.resolve().parent != Path(__file__).resolve().parent:
     raise SystemExit("fixture temporary root must stay beside acceptance.py")
@@ -26,8 +29,8 @@ class Acceptance(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.database = str(Path(self.directory.name) / "sessions.sqlite")
 
-    def call(self, request, *, stage="followup", crash=False, fail=False):
-        command = [sys.executable, "-I", str(CANDIDATE), self.database, json.dumps(request), "--stage", stage]
+    def call(self, request, *, stage="followup", crash=False, fail=False, candidate=CANDIDATE):
+        command = [sys.executable, "-I", str(candidate), self.database, json.dumps(request), "--stage", stage]
         if crash:
             command.append("--crash-before-commit")
         result = subprocess.run(command, capture_output=True, text=True, timeout=10)
@@ -44,6 +47,11 @@ class Acceptance(unittest.TestCase):
 
     def state(self):
         return self.call({"op": "list"}, stage=ARGS.stage)
+
+    def seed(self):
+        self.call({"op": "finish", "id": "s1", "seconds": 600},
+                  stage="initial", candidate=INITIAL_CANDIDATE)
+        self.assertEqual(self.state(), {"s1": 600}, "follow-up must open the initial store")
 
     def test_initial_retry_survives_reopen(self):
         self.finish()
@@ -66,7 +74,7 @@ class Acceptance(unittest.TestCase):
 
     @unittest.skipIf(ARGS.stage == "initial", "follow-up contract")
     def test_followup_preserves_previous_store_and_retry(self):
-        self.finish()
+        self.seed()
         correction = {"op": "correct", "id": "c1", "session": "s1", "delta": -60}
         self.call(correction)
         self.call(correction)
@@ -76,7 +84,7 @@ class Acceptance(unittest.TestCase):
 
     @unittest.skipIf(ARGS.stage == "initial", "follow-up contract")
     def test_followup_crash_then_retry_applies_once(self):
-        self.finish()
+        self.seed()
         correction = {"op": "correct", "id": "c1", "session": "s1", "delta": 60}
         self.call(correction, crash=True)
         self.call(correction)
@@ -84,14 +92,14 @@ class Acceptance(unittest.TestCase):
 
     @unittest.skipIf(ARGS.stage == "initial", "follow-up contract")
     def test_followup_rejects_conflicting_retry(self):
-        self.finish()
+        self.seed()
         self.call({"op": "correct", "id": "c1", "session": "s1", "delta": 60})
         self.call({"op": "correct", "id": "c1", "session": "s1", "delta": 120}, fail=True)
         self.assertEqual(self.state(), {"s1": 660})
 
     @unittest.skipIf(ARGS.stage == "initial", "follow-up contract")
     def test_followup_completion_identity_survives_correction(self):
-        self.finish()
+        self.seed()
         self.call({"op": "correct", "id": "c1", "session": "s1", "delta": 60})
         self.call({"op": "finish", "id": "s1", "seconds": 660}, stage="initial", fail=True)
         self.assertEqual(self.state(), {"s1": 660})
@@ -103,7 +111,7 @@ class Acceptance(unittest.TestCase):
         for index, delta in enumerate((1.5, True, "1", None)):
             with self.subTest(delta=delta):
                 self.database = str(Path(self.directory.name) / f"invalid-{index}.sqlite")
-                self.finish()
+                self.seed()
                 operation = {"op": "correct", "id": f"c{index}", "session": "s1", "delta": delta}
                 self.call(operation, fail=True)
                 self.assertEqual(self.state(), {"s1": 600})
@@ -113,11 +121,15 @@ class Acceptance(unittest.TestCase):
 
     @unittest.skipIf(ARGS.stage == "initial", "follow-up contract")
     def test_followup_rejects_missing_and_negative(self):
-        self.finish()
+        self.seed()
         self.call({"op": "correct", "id": "c1", "session": "missing", "delta": 60}, fail=True)
         self.call({"op": "correct", "id": "c2", "session": "s1", "delta": -601}, fail=True)
         self.assertEqual(self.state(), {"s1": 600})
 
 
 if __name__ == "__main__":
+    if ARGS.initial_candidate is None:
+        print("Scope: same-version contract checks; no frozen earlier executable, so no upgrade evidence.", flush=True)
+    else:
+        print(f"Scope: initial stores from {INITIAL_CANDIDATE}; follow-up with {CANDIDATE}.", flush=True)
     unittest.main(argv=[sys.argv[0]], verbosity=2)

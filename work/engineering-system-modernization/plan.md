@@ -5,6 +5,73 @@ State: blocked
 Blockers: deferred.md (live client and Mac acceptance)
 Owner: Astra
 
+## Owner-authorized publication — 2026-11-04
+
+The owner approved the three AGENTS routing clarifications, then explicitly requested a full
+commit including the previously uncommitted A–D/evaluation work, followed by a push to `dev`.
+Task base remains `4b0418592990e025a4c9ff2fdd03c95c6fc4ee5d`. The earlier no-publication statement
+below describes the authorization at that time. The comparative pilot is still not authorized.
+
+AGENTS now separates general code/test/debugging from Swift rules, routes final acceptance to
+the existing verification contract, and prioritizes current plan state over unrelated history.
+Ledger row 27 records these routing clarifications; no new rule, role or review round was added.
+The acceptance/regression/reference/faulty source hashes still match the successful A–D runs
+below; only documentation changed afterward. Reuse those scoped results without another suite.
+Run `SLUMPY_CHECK_BASE=<task base>` with `python scripts/check --final` before and after commit,
+check whitespace and the exact staged scope, then verify the pushed remote SHA and clean tree.
+
+## Targeted engineering-capability check — 2026-11-03
+
+Task-base: `4b0418592990e025a4c9ff2fdd03c95c6fc4ee5d`, clean `dev` at start. This is the
+owner-requested A/B/C/D continuation of SYS-001, not a new general audit or product feature.
+
+- T1 because the only code change is a reversible correction to the existing local acceptance
+  fixture; no new schema decision for the app, model runner, role or permanent instruction.
+  Boundary: external CLI evaluation must open data produced by the actual initial executable,
+  not recreate that history using the follow-up executable. Candidate artifacts remain separate
+  from evaluator-owned criteria. Existing same-version checks retain their narrower scope.
+- Read current core-process/core-code, engineering-design, reviewer and the existing engineering
+  protocol, source and recorded results. The owner's explicit no-new-agents constraint controls
+  this continuation; no review or model run was launched. Earlier independent reviews remain
+  evidence only for their recorded revisions/scopes.
+- Red reproduction: a new implementation redirects the database to `.v2` without migration.
+  Old acceptance reports **10/10 pass**, 15.050s; opening the true initial store through the new
+  implementation returns `{}` instead of `{"s1": 600}`. The independent assertion fails for data
+  loss, not setup. Reproduction is retained as a positive/negative test in test_acceptance.py.
+- Fix: `--initial-candidate` creates old stores with a frozen executable, then tests current
+  behavior, including delayed original completion retries. Without this argument the runner
+  explicitly prints **no upgrade evidence**. No reference/faulty behavior or thresholds changed.
+- Final regression: `python -I evals/engineering/test_acceptance.py`: **2/2 pass**, 44.360s.
+  It executes three full acceptance suites: compatible frozen/current **10 pass**; incompatible
+  current-only **10 pass**; incompatible frozen/current **behavioral failure detected**. Snapshot
+  bytes stay unchanged; setup errors do not satisfy the negative assertion. An earlier iteration
+  passed in 41.334s before the output-scope assertion was added; the later run owns final evidence.
+- `python -I evals/engineering/acceptance.py evals/engineering/reference.py --stage initial`:
+  **4 pass, 6 explicit skips**, 3.055s. `python -I evals/engineering/acceptance.py
+  evals/engineering/faulty.py --initial-candidate evals/engineering/reference.py`: expected exit 1,
+  four failing methods/six assertions, 23.499s; crash/retry still produces 720 instead of 660.
+  These are deterministic local harness results, not model-quality or latency measurements.
+- The targeted findings/report are appended to [audit.md](audit.md#targeted-engineering-capabilities-2026-11-03).
+  [Frozen pilot](../../evals/engineering/pilot.md) defines identical facts/requirements, two arms,
+  stage boundaries and external outcomes. Proposed allowance: two sequences, at most six task
+  submissions total, no repeats; **not approved or executed**. CLI help was inspected without a
+  model call; native context isolation remains a preflight condition. No token/dollar cap claimed.
+- No added checks under scripts/, so the previous 373-case/full/scoped script history is not
+  rerun or relabeled. No push/commit is authorized in this continuation. SYS-001 remains blocked
+  on the same EVAL/RT/MAC dependencies; after this check, stop optimization and resume normal
+  product work when requested.
+- Final document acceptance: `SLUMPY_CHECK_BASE=4b0418592990e025a4c9ff2fdd03c95c6fc4ee5d`
+  with `python scripts/check --final`: all six checks pass; `git diff --check` passes. Scope is
+  base=HEAD plus seven modified tracked files and two new files, no staged paths or index/worktree
+  mismatch. Git remains at the task base; the earlier finalization manifest is not overwritten.
+- Frozen SHA256 for this pilot preparation (re-freeze both arms if any input changes):
+  `acceptance.py` = `3a5d6f27af46f2f2820f5bf4deb058b622032a317771799badf4eedfaf0c229c`;
+  `pilot.md` = `5635be48f52cd6a694155eedcd4502c2d81f6f36a746d26f5f7b67d8dc489aa6`;
+  `protocol.md` = `80fa45058644e864456bda6a7a4c6c28825d69954234682511e5d12f4af8ecb3`;
+  `test_acceptance.py` = `b95ae060123cc5076739d59eedffcc7d6dfb927d8207624700c0e3c2f7af6ca7`.
+  All four paths are under `evals/engineering/`. Process-overlay sources are unchanged from the
+  task-base commit. Reference/faulty sources are unchanged; no comparison result is recorded.
+
 ## Separately authorized staged-scope closeout — 2026-11-03
 
 The owner explicitly approved one additional narrow Astra review, then commit/push to `dev`.

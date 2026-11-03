@@ -11,7 +11,9 @@ for older Claude Code installations; do not generate a second copy of these inst
 
 Read `.claude/rules/core-process.md` and `.claude/rules/platform.md` at the start of project work
 unless already loaded. The `.claude/` paths below hold shared content, not a second methodology.
-Read `work/STATUS.md` at start/resume, then the linked plan for the assigned task.
+Read `work/STATUS.md` at start/resume, then the assigned plan's current scope,
+state, latest verification and next step. Read historical sections only for
+a relevant unresolved question.
 Use this project's workflow where a generic installed skill prescribes a different workflow;
 do not run the former Claude-to-Codex converter on this repository.
 
@@ -22,7 +24,8 @@ Load only the additional context needed by the task:
 - Product requirements with open decisions: `.claude/skills/product-spec/SKILL.md`.
 - Feature design and new hard-to-reverse technical choices:
   `.claude/skills/engineering-design/SKILL.md`.
-- Swift work: `.claude/rules/core-code.md` and `.claude/rules/swift.md`.
+- Code and test changes, or debugging: `.claude/rules/core-code.md`.
+- Swift work: `.claude/rules/swift.md`.
 - Agent-system changes: `.claude/rules/core-agent-system.md`.
 - Independent checks, when the process calls for them: `.claude/agents/reviewer.md`.
 
@@ -40,10 +43,10 @@ Codex model routing: `docs/agent-system.md`, Model policy. Task-state convention
   Concurrent code).
 - Default branch: `dev`. Backlog: `backlog.md`.
 - External actions: push or merge to `main`, App Store Connect, TestFlight, publications.
-- Check command: `python scripts/check` (`python3 scripts/check` on hosts with that executable).
-  It runs document checks now; application build and tests await the Xcode skeleton.
-- Script verification levels, scoped mutations and full-run triggers:
-  `docs/agent-system.md`, Verification budget. Report the cases covered and remaining gaps.
+- Local document check: `python scripts/check` (`python3 scripts/check` on hosts with that executable).
+  Application build and tests await the Xcode skeleton.
+- Final task acceptance, script verification levels and mutation budgets:
+  [Verification budget](docs/agent-system.md#verification-budget). Report the cases covered and remaining gaps.
 - The owner's language: Russian.
 - Where secrets live: Project Knowledge, `deployment.md`, Secrets.
 - `.githooks/` remains frozen and disabled; its old hooks call files outside the repository.

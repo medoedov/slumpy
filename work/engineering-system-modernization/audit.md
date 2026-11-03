@@ -1,5 +1,53 @@
 # Runtime and mechanism audit — 2026-11-03
 
+## Targeted engineering capabilities, 2026-11-03
+
+Continuation at `4b0418592990e025a4c9ff2fdd03c95c6fc4ee5d`, following the owner's separate
+A–D request. This section is a bounded evidence check, not a new general audit. Current local
+verification and the concrete data-loss reproduction are in the latest plan section.
+
+| Ability | Existing mechanism | Demonstrated evidence | Still unverified |
+|---|---|---|---|
+| A: challenge a premise | core-process decision rights; engineering-design material-unknown research and explicit assumptions; reviewer verifies claims | Historical v2 wrong-premise probe rejected response caching and diagnosed non-atomic effect/marker writes; current examination rejected the fixture's claim that a stage switch establishes an old version | That probe supplied the two failed fixes. It did not show autonomous recovery from the agent's own two failures, nor a matched Astra benefit over native baseline |
+| B: systemic consequences | design data model/identity/ownership, also-affected readers/writers and migrations; concurrent-code transaction boundary; old-store test in core-process | Actual SYS-001 review found index/worktree/ignored-restoration effects outside the apparent document payload. Current cross-version counterexample demonstrates another missed boundary: ten same-version passes can hide loss of all old records; frozen initial acceptance now detects it | Real app data migration, Swift actors/reentrancy/cancellation, power-loss durability and future-change cost; no app skeleton/Mac evidence |
+| C: revise own decisions | core-code first-cause repair and direct premise test after two failed fixes; reviewer repeated-class/rethink verdict; bounded review history | SYS-001 recorded two rounds, a recurring staging class, source correction and separately authorized narrow clean closeout with ten independent probes. Earlier acceptance integer-coercion and immutable-ID defects were corrected after external findings | No controlled longitudinal model run. That history required extra owner authorization for review and does not prove the policy caused better reasoning, automatic convergence or cost savings |
+| D: external correctness | caller-visible/behavioral tests in core-code, fresh-context reviewer, immutable external acceptance in engineering protocol | Prior independent probes found defects after the author's checks. Current direct old-store assertion fails while the old ten-test suite passes; updated acceptance distinguishes compatible and incompatible versions without changing candidate requirements | This task's new test was written/checked by the same main executor under the explicit no-new-agents constraint, not freshly independently reviewed. One public fixture is not broad independent correctness or Swift competence |
+
+Inspected actual sources and historical trace `evals/results/selfreview-final/20261028T221826Z/`:
+the metadata says Claude 2.1.312 / Opus 5.5, ablation `none`, two text answers, not current Astra.
+The first t1 response explicitly says its Swift was not compiled. Its recorded durations/costs
+(575s / $1.6070638 and 156s / $0.4471476, excluding separate judge cost) are historical telemetry,
+not a present with/without comparison. Role/skill invocation and generated code are not execution
+evidence. The v2 wrong-premise observation is retained in the plan; this continuation did not
+rerun that reviewer or manufacture a new independent verdict from the old one.
+
+**Demonstrated weakness and disposition:** the evaluator used the follow-up executable to create
+its alleged initial database. A candidate redirecting every database path to `.v2` passed all
+ten checks but opened an actual previous-version store as empty. This justified one tool fix:
+`--initial-candidate`, a visible same-version scope label, and two regression tests. They preserve
+the original ten contract tests and reject the concrete incompatible-upgrade candidate. Frozen
+initial dependencies must also be preserved; copying a wrapper around mutable code is insufficient.
+
+No added always-loaded rule, role, review round, abstraction mandate, research requirement or
+product change is justified by this evidence. The existing A–D rubrics already cover the intended
+behaviors. Global strengthening of Clean Code/SOLID/DRY/KISS would add unmeasured prompt cost.
+The only measured improvement is the local acceptance boundary: a known data-loss implementation
+changes from false green to red; a compatible frozen/current pair stays green. The final regression
+run took 44.360s across three acceptance suites. There were zero new model comparison calls and
+zero new agent calls; model quality/token/dollar deltas are unavailable, not zero-cost evidence.
+
+The [pilot](../../evals/engineering/pilot.md) is ready as fixed prompts, observable criteria and
+executable acceptance, with a proposed two-sequence/six-submission allowance. Native baseline
+context isolation and subscription execution remain unverified. No paid/subscription budget was
+found in the new request or current EVAL-01 record; permission for the previous Git push/review
+does not authorize this matrix. A C opportunity may not occur in a small successful pilot.
+
+Mac work remains MAC-01..06 and DEV-01 under the single [registry](deferred.md), especially actual
+Swift/toolchain, real persisted-store upgrade and concurrency tests, simulator/04:00/DST/travel
+and device boundaries. RT-01/02 remains live-client acceptance. No further methodology optimization
+or new audit is required by this report; stop after the available checks and resume product work
+when requested.
+
 ## Evidence boundaries
 
 This is a coordinated tooling/policy correction, not an experiment demonstrating a stronger
