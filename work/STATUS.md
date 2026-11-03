@@ -1,13 +1,13 @@
 # Project state
 
-Reconciled: 2026-11-03. HEAD at reconciliation / task base: `9366805` on `dev`; verification belongs to the
+Reconciled: 2026-11-03. Finalization starts at `d68d2f0` on `dev`; verification belongs to the
 linked plan and its state manifest, not this date. Windows preparation; Mac is not configured.
 
 ## Now
 
 | ID | State | Plan | Owner / scope | Current step / next check |
 |---|---|---|---|---|
-| SYS-001 | blocked | [Engineering system](engineering-system-modernization/plan.md) | Astra; agent instructions, checks, task state | Windows implementation verified; next: RT-01/02 live-client acceptance, then Mac prerequisites |
+| SYS-001 | blocked | [Engineering system](engineering-system-modernization/plan.md) | Astra; agent instructions, checks, task state | Windows fixes and separately approved staged-scope review complete; RT-01/02 and Mac acceptance pending |
 
 ## Blocked / waiting for Mac
 

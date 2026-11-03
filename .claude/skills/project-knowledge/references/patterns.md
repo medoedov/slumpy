@@ -40,13 +40,9 @@ features only after a review audit; until then there is no house pattern to copy
   plan/index links and completion blockers; conventions in `work/STATUS.md`). The
   self-test `scripts/test-checks` runs on demand. Planned on the Mac: build, package and app tests,
   lint, format, gate-bypass scan.
-- For task acceptance, capture the task-start commit before edits and set `SLUMPY_CHECK_BASE` to
-  that SHA when running `scripts/check`. This includes already committed task changes on `dev`
-  as well as staged, unstaged and untracked files; an invalid/non-ancestor base fails. The default
-  merge-base is a convenience, not a task-history record. Record HEAD, dirty state and actual
-  command output together; rerun after changes. A risk evidence line checks presence, not whether
-  the stated review actually happened. Runtime Stop integration and limitations:
-  [agent system](../../../../docs/agent-system.md#runtime-loading).
+- Task acceptance and check costs: [agent system](../../../../docs/agent-system.md#verification-budget).
+  Risk evidence format: `scripts/risk-paths`. Runtime Stop integration and limitations:
+  [runtime loading](../../../../docs/agent-system.md#runtime-loading).
 - Planned gates once code exists, each a new dev tool through an ADR (tool facts as of
   2026-10-27): Periphery for dead code with the first targets (open source up to 3.8.0, then
   commercial with the repository archived: check the license before the ADR; paying is an owner

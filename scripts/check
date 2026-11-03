@@ -3,11 +3,12 @@
 
 Runs the document checks and prints what ran and what did not. A check that cannot read its input
 fails; nothing reports success on input it did not read. Build, tests, and lint are not wired in
-yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-checks`, and
-`scripts/test-checks --mutants` after a change to scripts/.
+yet (skeleton ADR). Verification levels and mutation scope: docs/agent-system.md.
+
+--final requires SLUMPY_CHECK_BASE and a nonempty task range. The default is a local check.
 
 --hook  Stop hook, with no record of its own. When the change set (`check-risk --changed`) is
-        empty, the turn changed nothing and the hook exits; otherwise it runs the checks. A
+        empty, report skipped checks and exit; otherwise run the checks. A
         failure keeps the session working through `additionalContext` (shown as hook feedback,
         not as a hook error); while the session is already continuing because of this hook, it
         shows the failures as a system message instead. A crash of the hook itself is a real
@@ -15,7 +16,7 @@ yet (skeleton ADR). The self-test of the checks is on demand: `scripts/test-chec
         for the self-test of that path. Overdue upkeep is a system-message reminder only;
         it never asks the agent to continue the current task.
 
---codex-hook uses the same checks with Codex Stop JSON: an empty object on success, a block
+--codex-hook uses the same checks with Codex Stop JSON: a scoped report on success, a block
         decision on the first failure, and a system message on a repeated Stop. Neither hook's
         bounded continuation is acceptance; a failed explicit check still exits nonzero.
         Each subprocess is limited to 45 seconds so the seven-call hook fits its 360-second budget.
@@ -43,7 +44,10 @@ def run_checks():
         p = script(name)
         out = (p.stdout + p.stderr).strip()
         last = out.splitlines()[-1] if out else ""
-        ok = p.returncode == 0
+        ok = p.returncode == 0 and bool(out)
+        if not out:
+            out = "unavailable: check returned no report"
+            last = out
         status, summary = ("ok" if ok else "FAIL"), last.removeprefix(name + ": ")
         if ok and summary.startswith("reminder:"):
             status = "note"
@@ -70,9 +74,9 @@ def hook(continuing, codex=False):
         raise Exception("crash requested by the self-test")
     changed = script("check-risk", "--changed")
     if changed.returncode == 0 and not changed.stdout:
-        if codex:
-            print("{}")
-        return 0  # the change set is empty: this turn changed nothing
+        print(json.dumps({"systemMessage": "No changed files in the local comparison; checks skipped. "
+                          "This is not task acceptance; use scripts/check --final with the task-start base."}))
+        return 0  # no local input was checked; this is not acceptance
     failed, report = run_checks()
     if changed.returncode != 0:
         failed.insert(0, "change set: " + changed.stderr.strip())  # a failure prints to stderr only
@@ -80,11 +84,9 @@ def hook(continuing, codex=False):
         respond("scripts/check failed; fix before finishing:\n" + "\n".join(report) + "\n\n"
                 + "\n\n".join(failed) + "\nUnresolved checks mean incomplete acceptance; report a blocker if they cannot run.", continuing, codex=codex)
     else:
-        reminders = [line for line in report if line.startswith("[note]")]
-        if reminders:
-            print(json.dumps({"systemMessage": "\n".join(reminders)}))
-        elif codex:
-            print("{}")
+        print(json.dumps({"systemMessage": "Document checks passed for the local comparison only. "
+                          "Task acceptance requires scripts/check --final with the task-start base.\n"
+                          + "\n".join(report)}))
     return 0
 
 
@@ -107,6 +109,29 @@ def main():
         return run_hook(codex=True)
     if "--hook" in sys.argv:
         return run_hook()
+    if "--final" in sys.argv:
+        if not os.environ.get("SLUMPY_CHECK_BASE"):
+            print("[unavailable] final acceptance: SLUMPY_CHECK_BASE required (task-start commit)")
+            return 1
+        scope = script("check-risk", "--scope")
+        if scope.returncode != 0:
+            print("[unavailable] final acceptance: " + (scope.stdout + scope.stderr).strip())
+            return 1
+        try:
+            details = json.loads(scope.stdout)
+            print("[scope] " + json.dumps(details, sort_keys=True))
+            if details["index_worktree_mismatch"]:
+                print("[unavailable] final acceptance: index/worktree differ for staged paths; "
+                      "align these snapshots or unstage before acceptance")
+                return 1
+            if not details["tracked"] and not details["untracked"]:
+                print("[unavailable] final acceptance: empty change set; verify the task-start base")
+                return 1
+        except (ValueError, KeyError, TypeError):
+            print("[unavailable] final acceptance: invalid change-set report")
+            return 1
+    else:
+        print("[local] document checks only; use --final with SLUMPY_CHECK_BASE for task acceptance")
     failed, report = run_checks()
     print("\n".join(report))
     if failed:

@@ -15,9 +15,11 @@ each written mutant in MUTANTS and each mutant generated from the code of the ch
 mutated script, must fail on each. A surviving mutant is logic no case observes, unless EQUIVALENT
 gives the reason it cannot change what the check reports. A written mutant whose text no longer
 occurs exactly once, or an EQUIVALENT entry that matches no generated mutant, is stale and fails
-the run. Run it after every change to scripts/ (on demand: about 20 minutes).
+the run. --match REGEX selects mutation labels; --list-mutants previews the same selection.
+Both validate the complete inventory. Scoped execution retains the full ordinary baseline and
+never claims a full score. Verification levels and full-run triggers: docs/agent-system.md.
 """
-import ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, time
+import argparse, ast, concurrent.futures, datetime, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 COPY = ["AGENTS.md", "CLAUDE.md", "README.md", "backlog.md", ".claude", ".agents", "docs", "work", "scripts"]
@@ -410,6 +412,94 @@ def state_cases():
             for name, edits, expect in tests]
 
 
+def finalization_cases():
+    """End-to-end acceptance against one frozen task start, including committed dev work."""
+    active = "work/acceptance-fixture/plan.md"
+    archived = "work/completed/acceptance-fixture/plan.md"
+    body = "Task-ID: FIX-001\nState: in-progress\nBlockers: none\nOwner: Astra\n"
+    index = "| FIX-001 | in-progress | [plan](acceptance-fixture/plan.md) | Astra |\n"
+    setup = [("work/engineering-system-modernization/plan.md", "", "delete"),
+             ("work/STATUS.md", index, "write"), (active, body + T1_LINE + SEC_LINE, "write"), PKG, KEYCHAIN]
+    verified = [(active, ("in-progress", "verified"), "replace"),
+                ("work/STATUS.md", ("in-progress", "verified"), "replace")]
+    finish = [(active, "", "delete"), (archived, body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write"),
+              ("work/STATUS.md", "[completed](completed/acceptance-fixture/plan.md)\n", "write")]
+    cases = []
+    for label, commit, stage in (("untracked", False, []), ("staged", False, [["add", "-A"]]),
+                                  ("committed", True, [])):
+        runs = [dict(edits=setup, commit=commit, git=stage),
+                dict(edits=verified, commit=commit, git=stage),
+                dict(edits=finish, commit=commit, git=stage), dict()]
+        cases.append(("finalization: lifecycle " + label, dict(script=["check", "--final"],
+                      env={"SLUMPY_CHECK_BASE": "task-start"}, runs=[dict(runs[0], git_before=[["checkout", "-q", "dev"], ["tag", "task-start"]])] + runs[1:],
+                      expect=lambda o: all(p.returncode == 0 and "[scope]" in p.stdout for p in o))))
+    cases.extend([
+        ("finalization: plain evidence lines are accepted", dict(script=["check-risk"],
+            runs=one([PKG, KEYCHAIN, (active, body + T1_LINE.removeprefix("- ") + SEC_LINE.removeprefix("- "), "write")]), expect=passes)),
+        ("review: staged deletion restored as untracked is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"},
+            runs=one([(".claude/rules/core-code.md", (ROOT / ".claude/rules/core-code.md").read_text(encoding="utf-8"), "write")],
+                     git_before=[["rm", "-q", ".claude/rules/core-code.md"]]), expect=fails_with("index/worktree differ"))),
+        ("review: staged rename restored at old path is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"},
+            runs=one([(".claude/rules/core-code.md", (ROOT / ".claude/rules/core-code.md").read_text(encoding="utf-8"), "write")],
+                     git_before=[["mv", ".claude/rules/core-code.md", "core-code-copy.md"]]), expect=fails_with("index/worktree differ"))),
+        ("review: ignored restored staged deletion is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"},
+            runs=one([(".claude/rules/core-code.md", (ROOT / ".claude/rules/core-code.md").read_text(encoding="utf-8"), "write"),
+                      (".git/info/exclude", "\n.claude/rules/core-code.md\n", "append")],
+                     git_before=[["rm", "-q", ".claude/rules/core-code.md"]]), expect=fails_with("index/worktree differ"))),
+        ("review: aligned staged deletion passes", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"},
+            base=[("notes/obsolete.md", "obsolete fixture\n", "write")],
+            runs=one(git_before=[["rm", "-q", "notes/obsolete.md"]]), expect=passes)),
+        ("review: renamed old archive does not authorize new risk", dict(script=["check-risk"],
+            base=[(archived, body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write")],
+            runs=one([(archived, "", "delete"), ("work/completed/renamed/plan.md", body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write"), PKG, KEYCHAIN]),
+            expect=fails_with("security-pass trigger"))),
+        ("review: ambiguous historical IDs fail closed", dict(script=["check-risk"],
+            base=[(active, body, "write"), (archived, body.replace("in-progress", "done"), "write")],
+            runs=one([PKG, KEYCHAIN, (active, T1_LINE + SEC_LINE, "append")]), expect=fails_with("duplicate historical Task-ID"))),
+        ("review: malformed historical ID fails closed", dict(script=["check-risk"],
+            base=[(active, body + "Task-ID: FIX-002\n", "write")],
+            runs=one([PKG, (active, T1_LINE, "append")]), expect=fails_with("ambiguous plan Task-ID"))),
+        ("review: completed task moved back to active fails", dict(script=["check-state"], env={"SLUMPY_CHECK_BASE": "dev"},
+            base=[(archived, body.replace("in-progress", "done"), "write")],
+            runs=one([(archived, "", "delete"), (active, body, "write"),
+                      ("work/STATUS.md", index, "write"), ("work/engineering-system-modernization/plan.md", "", "delete")]),
+            expect=fails_with("completed task reactivated"))),
+        ("review: staged risk hidden by worktree is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"},
+            base=[("App/Store.swift", "let safe = 1\n", "write")],
+            runs=[dict(edits=[KEYCHAIN], git=[["add", "App/Store.swift"]]),
+                  dict(edits=[("App/Store.swift", "let safe = 1\n", "write"), ("notes/review.md", "note\n", "write")])],
+            expect=lambda o: o[0].returncode != 0 and "security-pass trigger" in o[0].stdout
+                            and o[1].returncode != 0 and "index/worktree differ" in o[1].stdout)),
+        ("review: committed resurrection still fails at task base", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "task-start"},
+            base=[(archived, body.replace("in-progress", "done"), "write")],
+            runs=one([(archived, "", "delete"), (active, body, "write"), ("work/STATUS.md", index, "write"),
+                      ("work/engineering-system-modernization/plan.md", "", "delete")], commit=True,
+                     git_before=[["checkout", "-q", "dev"], ["tag", "task-start"]]), expect=fails_with("completed task reactivated"))),
+        ("finalization: empty child report is unavailable", dict(script=["check"],
+            runs=one([("scripts/check-lessons", "# no report\n", "write")]), expect=fails_with("check returned no report"))),
+        ("finalization: archive keeps current evidence", dict(script=["check-risk"], env={"SLUMPY_CHECK_BASE": "task-start"},
+            runs=[dict(edits=setup, git_before=[["tag", "task-start"]]), dict(edits=finish)], expect=lambda o: all(p.returncode == 0 for p in o))),
+        ("finalization: historical evidence moved to archive is not new", dict(script=["check-risk"], base=[(active, body + T1_LINE + SEC_LINE, "write")],
+            runs=one([(active, "", "delete"), (archived, body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write"), PKG, KEYCHAIN]), expect=fails_with("security-pass trigger"))),
+        ("finalization: existing task keeps newly added evidence after archive", dict(script=["check-risk"], base=[(active, body, "write")],
+            runs=[dict(edits=[(active, T1_LINE + SEC_LINE, "append"), PKG, KEYCHAIN]),
+                  dict(edits=[(active, "", "delete"), (archived, body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write")])],
+            expect=lambda o: all(p.returncode == 0 for p in o))),
+        ("finalization: old archive cannot cover unrelated risk", dict(script=["check-risk"], base=[(archived, body.replace("in-progress", "done") + T1_LINE + SEC_LINE, "write")],
+            runs=one([PKG, KEYCHAIN, (archived, "\nHistorical typo.\n", "append")]), expect=fails_with("T2 signal"))),
+        ("finalization: unindexed plan without ID fails", dict(script=["check-state"], runs=one([("work/new-task/plan.md", "# New work\n", "write")]), expect=fails_with("Task-ID required"))),
+        ("finalization: new archived plan without ID fails", dict(script=["check-state"], runs=one([("work/completed/new-task/plan.md", "# New work\n", "write")]), expect=fails_with("Task-ID required"))),
+        ("finalization: no base after dev commit fails", dict(script=["check", "--final"], runs=one([PKG], commit=True, git_before=[["checkout", "-q", "dev"]]), expect=fails_with("SLUMPY_CHECK_BASE required"))),
+        ("finalization: empty scope is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "dev"}, expect=fails_with("empty change set"))),
+        ("finalization: nonancestor is unavailable", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "side"},
+            runs=one([("notes/side.txt", "side\n", "write")], commit=True, git=[["branch", "side"], ["reset", "--soft", "dev"]]), expect=fails_with("git failed"))),
+        ("finalization: committed risk fails then same-task evidence passes", dict(script=["check", "--final"], env={"SLUMPY_CHECK_BASE": "task-start"},
+            runs=[dict(edits=[PKG, KEYCHAIN], commit=True, git_before=[["checkout", "-q", "dev"], ["tag", "task-start"]]), dict(edits=setup, commit=True)],
+            expect=lambda o: o[0].returncode != 0 and "T2 signal" in o[0].stdout and o[1].returncode == 0 and "[scope]" in o[1].stdout)),
+    ])
+    return cases
+
+
 def check_cases():
     src = (ROOT / "scripts/check").read_text(encoding="utf-8")
     checks = next(ast.literal_eval(node.value) for node in ast.walk(ast.parse(src))
@@ -608,10 +698,10 @@ STATIC = [
     ("a paragraph after the upkeep table passes", dict(runs=one([upkeep_doc(f"| Task | Every | Last done | How |\n|---|---|---|---|\n| A | 30 days | {TODAY} | x |\n\nA note after the table.\n")]), script=["check-upkeep"], expect=passes)),
     ("no Upkeep section", dict(runs=one([(UPKEEP, "# Agent system\n\n## Other\n", "write")]), script=["check-upkeep"], expect=fails)),
     # scripts/check and the hook
-    ("codex hook clean state emits JSON", dict(runs=one(stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: passes(o) and json.loads(o[-1].stdout) == {})),
-    ("codex hook passing change emits JSON", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: passes(o) and json.loads(o[-1].stdout) == {})),
+    ("codex hook clean state reports skipped checks", dict(runs=one(stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]) and "checks skipped" in o[-1].stdout and "not task acceptance" in o[-1].stdout)),
+    ("codex hook passing change reports document scope", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]) and "Document checks passed" in o[-1].stdout and "[not run] build" in o[-1].stdout)),
     ("codex hook requests continuation on failed check", dict(runs=one([CORE_BAD], stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_error(o[-1], "check-layers"))),
-    ("codex hook failure then correction", dict(runs=[dict(edits=[CORE_BAD], stdin=HOOK), dict(edits=[(".claude/rules/core-process.md", (CORE_BAD[1], ""), "replace")], stdin=CONTINUING)], script=["check", "--codex-hook"], expect=lambda o: is_error(o[0]) and json.loads(o[1].stdout) == {})),
+    ("codex hook failure then correction", dict(runs=[dict(edits=[CORE_BAD], stdin=HOOK), dict(edits=[(".claude/rules/core-process.md", (CORE_BAD[1], ""), "replace")], stdin=CONTINUING)], script=["check", "--codex-hook"], expect=lambda o: is_error(o[0]) and is_message(o[1]) and "checks skipped" in o[1].stdout)),
     ("codex hook bounds repeat continuation", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]) and "incomplete acceptance" in o[-1].stdout)),
     ("codex hook reports a crash", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--codex-hook"], expect=lambda o: is_error(o[-1], "crashed"))),
     ("codex hook bounds repeated crashes", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--codex-hook"], expect=lambda o: is_message(o[-1]))),
@@ -622,17 +712,17 @@ STATIC = [
     ("the hook blocks when a check crashes", dict(runs=one([("docs/lessons.md", ("## Entries", "## Items"), "replace")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_block(o[-1], "check-lessons"))),
     ("the hook reports its own crash as an error", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "scripts/check --hook crashed:\nTraceback") and is_error(o[-1], "Exception: crash requested by the self-test"))),
     ("the hook reports its own crash as a message while continuing", dict(env={"SLUMPY_TEST_HOOK_CRASH": "1"}, runs=one(stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "crashed" in o[-1].stdout)),
-    ("scripts/check reports a check that prints nothing", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: \n" in o[-1].stdout)),
+    ("scripts/check reports a check that prints nothing", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: unavailable: check returned no report\n" in o[-1].stdout)),
     ("scripts/check reports a check's error output", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit('broken lessons')\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: broken lessons\n" in o[-1].stdout)),
     ("a failing check cannot downgrade itself with reminder text", dict(runs=one([("scripts/check-lessons", "import sys\nsys.exit('reminder: broken lessons')\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: reminder: broken lessons\n" in o[-1].stdout)),
-    ("ordinary output mentioning a reminder does not create a hook reminder", dict(runs=one([("scripts/check-lessons", "print('done; reminder: none [note]')\n", "write")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
+    ("ordinary output mentioning a reminder does not create a hook reminder", dict(runs=one([("scripts/check-lessons", "print('done; reminder: none [note]')\n", "write")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "[note] check-lessons" not in o[-1].stdout)),
     ("scripts/check summarizes a check by its last line", dict(runs=one([("scripts/check-lessons", "import sys\nprint('first')\nprint('last')\nprint()\nprint()\nsys.exit(1)\n", "write")]), script=["check"], expect=lambda o: fails(o) and "[FAIL] check-lessons: last\n" in o[-1].stdout)),
     ("the hook reports JSON stdin that is not an object as its own crash", dict(runs=one(stdin="[]"), script=["check", "--hook"], expect=lambda o: is_error(o[-1], "crashed"))),
     ("scripts/check run from a subfolder", dict(runs=one(cwd="docs"), script=["check"], expect=lambda o: passes(o) and "[ok] check-pointers: all section pointers resolve" in o[-1].stdout)),
     ("the hook reads stdin that is not JSON as not continuing", dict(runs=one([CORE_BAD], stdin="not json"), script=["check", "--hook"], expect=lambda o: is_block(o[-1]))),
     ("the hook gives a message while continuing", dict(runs=one([CORE_BAD], stdin=CONTINUING), script=["check", "--hook"], expect=lambda o: is_message(o[-1]))),
-    ("the hook stays silent when nothing changed", dict(base=[OVERDUE], runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
-    ("the hook stays silent on a passing change", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_silent(o[-1]))),
+    ("the hook reports no checked files when nothing changed", dict(base=[OVERDUE], runs=one(stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "checks skipped" in o[-1].stdout)),
+    ("the hook reports document scope on a passing change", dict(runs=one([("notes/a.txt", "a\n", "write")], stdin=HOOK), script=["check", "--hook"], expect=lambda o: is_message(o[-1]) and "Document checks passed" in o[-1].stdout and "[not run] build" in o[-1].stdout)),
 ]
 
 
@@ -640,6 +730,19 @@ STATIC = [
 # Rule lines in scripts/risk-paths and entries of CHECKS are covered by the data-driven cases;
 # deleting one is a reviewed change to the rules, not a silent break, and is not listed here.
 MUTANTS = [
+    ("check-risk", r'r"work/(?:completed/)?[^/]+/plan\.md"', r'r"work/[^/]+/plan\.md"', "finalization archive evidence ignored"),
+    ("check-risk", "    if identity:\n        before = next", "    if False:\n        before = next", "finalization historical rename treated as new evidence"),
+    ("check-state", "            if plan.relative_to(ROOT).as_posix() not in LEGACY:", "            if False:", "finalization unidentified new plans accepted"),
+    ("check", '        if not os.environ.get("SLUMPY_CHECK_BASE"):', '        if False:', "finalization missing base accepted"),
+    ("check", '            if not details["tracked"] and not details["untracked"]:', '            if False:', "finalization empty scope accepted"),
+    ("check", '        if scope.returncode != 0:', '        if False:', "finalization scope failure ignored"),
+    ("check", 'ok = p.returncode == 0 and bool(out)', 'ok = p.returncode == 0', "finalization empty child report accepted"),
+    ("check", '            if details["index_worktree_mismatch"]:', '            if False:', "finalization staged divergence ignored"),
+    ("check-state", '        if state != "done" and task in completed:', '        if False:', "finalization completed task reactivated"),
+    ("check-risk", '        if identity and identity in identities:', '        if False:', "finalization ambiguous history accepted"),
+    ("check-risk", '(unstaged | restored)', 'unstaged', "finalization restored staged deletion ignored"),
+    ("check-risk", 'staged = names("diff", "--cached", "--no-renames", "--name-only")', 'staged = names("diff", "--cached", "--name-only")', "finalization staged rename source hidden"),
+    ("check-risk", 'deleted = names("diff", "--cached", "--no-renames", "--diff-filter=D", "--name-only")', 'deleted = names("diff", "--cached", "--diff-filter=D", "--name-only")', "finalization renamed deletion hidden"),
     ("check", 'CompletedProcess(command, 124,', 'CompletedProcess(command, 0,', "timeout reported as success"),
     ("check", 'CompletedProcess(command, 127,', 'CompletedProcess(command, 0,', "missing executable reported as success"),
     ("check", "    if changed.returncode == 0 and not changed.stdout:", "    if True:", "the hook never runs the checks"),
@@ -655,7 +758,7 @@ MUTANTS = [
     ("check-risk", r'r"\s*(-\s+)?T1 because\b"', r'r".*T1 because\b"', "T1 line unanchored"),
     ("check-risk", '"--diff-filter=A"', '"--diff-filter=AM"', "edited ADR accepted"),
     ("check-risk", 'new_files = set(names("diff", "--name-only", "--no-renames", "--diff-filter=A", b)) | set(untracked)', "new_files = set(untracked)", "committed ADR ignored"),
-    ("check-risk", r'r"work/[^/]+/plan\.md"', r'r".+\.md"', "evidence from any Markdown file"),
+    ("check-risk", r'r"work/(?:completed/)?[^/]+/plan\.md"', r'r".+\.md"', "evidence from any Markdown file"),
     ("check-risk", '    for ref in ("origin/dev", "dev"):', '    for ref in ("dev",):', "origin/dev ignored"),
     ("check-risk", "files = sorted(set(tracked) | set(untracked))\n", "files = sorted(f for f in set(tracked) | set(untracked) if (ROOT / f).is_file())\n", "deleted files ignored"),
     ("check-risk", '    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "', '    return "HEAD"\n    raise SystemExit("check-risk: no base: no merge base with origin/dev or dev; "', "no base falls back to HEAD"),
@@ -694,7 +797,7 @@ def all_cases():
     rules = json.loads(p.stdout)
     if len(rules) != rule_lines():
         return None, [f"check-risk --rules returned {len(rules)} rules for {rule_lines()} rule lines"]
-    return STATIC + rule_cases(rules) + check_cases() + state_cases(), []
+    return finalization_cases() + STATIC + rule_cases(rules) + check_cases() + state_cases(), []
 
 
 def run_cases():
@@ -705,6 +808,7 @@ def run_cases():
     if not only:
         try:
             test_process_cleanup()
+            test_mutation_results()
         except Exception as error:
             return 0, [f"process-tree cleanup regression failed: {error}"]
     if only:
@@ -731,7 +835,7 @@ def run_cases():
                         for other in futures:
                             other.cancel()
                         break
-    return len(cases) + (not only), failures
+    return len(cases) + 2 * (not only), failures
 
 
 def test_process_cleanup():
@@ -776,6 +880,7 @@ MATCHERS = ("fullmatch", "match", "search")
 STRING_METHODS = ("strip", "lstrip", "rstrip", "lower", "upper", "casefold")
 NONE_EXIT = "the function's value becomes the exit code, and None exits with 0 as 0 does"
 EQUIVALENT = {
+    ("check-risk", "plan_lines", "2 to 1 at column 13", 'return [line[2:] for line in difflib.ndiff(before, after) if line.startswith("+ ")]'): "ndiff added lines start with '+ '; keeping its one space only adds leading whitespace. The sole consumers match T1/Security evidence after arbitrary leading whitespace, so every risk verdict is unchanged",
     ("check", "run_hook", "argument 4 dropped at column 0", 'respond("scripts/check --hook crashed:\\n" + traceback.format_exc(), continuing, error=True, codex=codex)'): "error=True already selects the block response for either client; continuing selects systemMessage before testing either flag, so codex cannot change any CLI result in this call",
     # script() has only two callers: run_checks and hook. They consume returncode only as
     # == 0 / != 0; no exact internal code is printed or returned by the CLI. These four
@@ -889,6 +994,29 @@ def key(m):
     return script, function, what, line
 
 
+def mutation_result(p, name):
+    """Only a completed behavioral assertion failure kills a mutant."""
+    if p.returncode == 0:
+        return f"surviving mutant: {name}"
+    output = p.stdout + p.stderr
+    if ("(case error:" in output or "Traceback (most recent call last)" in output
+            or not re.search(r"test-checks: [1-9]\d* of \d+ cases failed", p.stdout)):
+        return f"unavailable mutant (setup/crash, not killed): {name}\n{output}"
+    return None
+
+
+def test_mutation_results():
+    for code, stdout, stderr, expected in (
+            (0, "test-checks: 3 cases pass", "", "surviving"),
+            (1, "test-checks: 1 of 3 cases failed", "", None),
+            (1, "probe (case error: timeout)\ntest-checks: 1 of 3 cases failed", "", "unavailable"),
+            (1, "", "Traceback (most recent call last)", "unavailable"),
+            (1, "", "setup unavailable", "unavailable"),
+            (1, "test-checks: 0 of 3 cases failed", "", "unavailable")):
+        result = mutation_result(subprocess.CompletedProcess([], code, stdout, stderr), "probe")
+        assert result is None if expected is None else result.startswith(expected), (expected, result)
+
+
 def run_copy(mutant=None, now=None):
     with tempfile.TemporaryDirectory() as tmp:
         d = pathlib.Path(tmp) / "copy"
@@ -917,33 +1045,59 @@ def run_copy(mutant=None, now=None):
             return f"self-test timed out: {name if mutant else 'baseline'}"
         if mutant is None:
             return None if p.returncode == 0 else "baseline fails; mutants not measured:\n" + p.stdout
-        return None if p.returncode != 0 else f"surviving mutant: {name}"
+        return mutation_result(p, name)
 
 
 def main():
-    if "--mutants" in sys.argv:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mutants", action="store_true")
+    parser.add_argument("--match", help="regex over mutant labels; scoped evidence only")
+    parser.add_argument("--list-mutants", action="store_true")
+    args = parser.parse_args()
+    if args.match and not (args.mutants or args.list_mutants):
+        parser.error("--match needs --mutants or --list-mutants")
+    pattern = re.compile(args.match) if args.match else None
+    if args.mutants or args.list_mutants:
         # One instant for the whole run, so a date that falls due mid-run cannot fail the cases.
         now = os.environ.get("SLUMPY_NOW") or datetime.datetime.now(datetime.timezone.utc).isoformat()
-        baseline = run_copy(now=now)
-        if baseline:
-            print(baseline)
-            return 1
         generated = generated_mutants()
         count = {}
         for m in generated:
             count[key(m)] = count.get(key(m), 0) + 1
         stale = [f"EQUIVALENT entry matches {count.get(k, 0)} mutants, not one: {k}"
                  for k in EQUIVALENT if count.get(k, 0) != 1]
+        for script, old, new, label in MUTANTS:
+            occurrences = (ROOT / "scripts" / script).read_text(encoding="utf-8").count(old)
+            if occurrences != 1:
+                stale.append(f"stale written mutant ({occurrences} matches): {label}")
         todo = MUTANTS + [m for m in generated if key(m) not in EQUIVALENT]
+        def label(m):
+            return f"{m[0]}: {m[3]}" if len(m) == 4 else f"{m[0]}, {m[6]}: {m[4]}: {m[5]}"
+        if pattern:
+            todo = [m for m in todo if pattern.search(label(m))]
+        if not todo:
+            stale.append("no mutants selected; no result")
+        if stale:
+            print("\n".join(stale))
+            return 1
+        scope = "scoped" if pattern else "full"
+        if args.list_mutants:
+            print("\n".join(label(m) for m in todo))
+            print(f"test-checks: {scope} inventory {len(todo)}; all stale/equivalent keys validated")
+            return 0
+        baseline = run_copy(now=now)
+        if baseline:
+            print(baseline)
+            return 1
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            problems = stale + [r for r in pool.map(lambda m: run_copy(m, now), todo) if r]
+            problems = [r for r in pool.map(lambda m: run_copy(m, now), todo) if r]
         total = len(MUTANTS) + len(generated)
         if problems:
             print("\n".join(problems))
-            print(f"test-checks: {len(problems)} of {total} mutants survive or are stale")
+            print(f"test-checks: {len(problems)} of {len(todo)} {scope} mutants survive or are unavailable")
             return 1
-        print(f"test-checks: all {len(todo)} mutants killed ({len(MUTANTS)} written, "
-              f"{len(generated)} generated, {len(generated) + len(MUTANTS) - len(todo)} equivalent)")
+        print(f"test-checks: all {len(todo)} {scope} mutants killed (inventory: {len(MUTANTS)} written, "
+              f"{len(generated)} generated, {len(EQUIVALENT)} equivalent)")
         return 0
     total, failures = run_cases()
     if failures:

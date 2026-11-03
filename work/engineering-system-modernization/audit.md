@@ -106,3 +106,48 @@ No app feature is added by this audit. Apply the following when its first implem
 | Resources | Use realistic launch/list/storage workloads and measured memory/energy; no numerical extension budget from anecdote |
 | Network/accounts | Deferred in architecture; contract/offline/retry/auth/data-egress checks before first integration |
 | Release | Deferred until skeleton/delivery; signing, privacy, diagnostics and compatibility evidence before TestFlight/store action |
+
+## Ledger wording archived during finalization — 2026-11-03
+
+Historical snapshots below preserve the prior measurements and reasons. Current rules
+are only in docs/agent-system.md and the sources its ledger names.
+
+### 2026-11-03 corrections to existing entries
+
+These update the rows below; earlier measurements remain historical. No same-model behavior/cost
+comparison was run for this coordinated migration. Policy changes stay pending the named measures,
+not as measured improvements.
+
+- **1, 21, 27:** core-process explicitly owns technical completeness and preserves goal, rationale,
+  task base and verification state at handoff. Measure omitted technical obligations, false
+  completion and repeated research in the engineering cases; revert/narrow if no benefit at equal
+  correctness or cost exceeds the existing +25% policy. Shared adapters/descriptions unchanged.
+- **6, 8:** reviewer checks affected callers/invariants after fixes and allows a demonstrated old
+  defect to block acceptance of the changed scenario. Two-call limit retained. Kept by correctness
+  policy until follow-up-change cases test escaped regressions; unrelated old defects do not block.
+- **17:** tool availability is observed, not inferred from “cloud”; extension memory reports are
+  explicitly not a guaranteed limit. Updated toolchain source observation, not full platform audit.
+- **19:** explicit task-start base supplements the default comparison. It is a record-presence gate,
+  not proof of substantive decision/security review. Measure committed-dev/feature and dirty cases.
+- **20:** Codex adapter uses the same checks with separate JSON feedback; native trust and fresh
+  Stop dispatch still unverified. Measure pass/fail/fix/crash/timeout/empty/repeated Stop; no acceptance
+  from exhausted continuation. Keep explicit verification for unsupported surfaces.
+- **26:** new deterministic regression and protocol cases supplement historical operators. Final
+  self-test/mutation counts and execution limitations are in the current plan; no score inflation
+  from unexecuted or skipped cases.
+
+
+### Superseded row evidence
+
+| # | Mechanism | Where | Error it targets | Kind | Known so far | Pilot measure | Remove or change if |
+|---|---|---|---|---|---|---|---|
+| 31 | One task index with checked transitions | `work/STATUS.md`; `scripts/check-state`; `scripts/test-checks` | Duplicate IDs, orphan plans, forgotten blockers and completed work reappearing | gate plus semantic handoff | SYS-001 v2: 347 total cases pass; composite mutation evidence and fresh Astra handoff in active plan; semantic truth, unmarked legacy plans and remote consistency are outside the lint | Fresh agent restores ID/decision/last evidence/next step; blocked-to-completed fixture; false positives | A real transition bypasses a check or >1 false positive in 5 changes: repair/narrow, no task database |
+| 1 | Decision rights, product questions with recommendations | core-process; `product-spec` | Owner turned into a tech lead | prose | 2026-11-02: questions are batched at five per message; material decisions stay open until answered. The new multi-turn stopping rule is not yet measured. P1–P3: recommendations and product-only questions 6/6 and 30/30 (sections 8, 16) | Technical questions to the owner per feature; owner minutes per feature | A technical question reaches the owner in more than 1 of 10 features |
+| 6 | Reviewer, code mode | `reviewer`; core-process T1 trigger | Defects the author misses; a tier stated lower than the change | prose trigger | 2026-11-02: engineering-design loads only when needed to check a design contract. Not launched in R1–R9; mandatory on T1 failed on cost (section 10) | Findings confirmed by a test or later bug; escaped defects with and without | Fewer than 1 confirmed blocking finding per 3 reviews, or more than 3 USD per confirmed blocking finding |
+| 8 | Bounded review and rechecks | `reviewer` (verdicts); core-process (author's side) | Repeated reviews without new evidence | prose | 2026-11-02: at most two calls per original mode, rechecks included; revising the approach does not reset the budget. Historical two changes used four rounds each. New limit not yet measured end to end | Calls per mode, escaped defects, parts left unfinished | The limit repeatedly prevents resolution of a demonstrated blocking risk: revisit with those cases |
+| 17 | Platform facts and design questions | `platform.md`; `swift.md`; Upkeep above | Outdated or wrong platform knowledge | prose; compiler later; recheck date reminded by `check-upkeep` | R8 at ceiling | Deprecation and availability errors from the compiler; wrong facts found | Facts never used in a brief or review are removed at the next major Xcode |
+| 19 | Risk evidence check | `check-risk`; `scripts/risk-paths` | Risky change without a decision record | gate | Self-test only; paths provisional until the skeleton | Blocks that found a real gap against noise | More than 1 false block per feature: narrow the paths |
+| 20 | Stop hook running `scripts/check` | `.claude/settings.json`; `work/agent-system-gates/plan.md` | Checks skipped because nobody remembered | gate | 2026-11-02: overdue maintenance is reported without a continuation request; actual validation failures keep their existing feedback path. Codex runs the same check explicitly; its host does not inherit this hook | Blocked stops that fixed a real issue against noise | More noise than real issues over 10 features |
+| 21 | Owner report format | core-process | Owner cannot judge the result | prose | — | Owner follow-up questions per report | Owner asks for the same missing item twice |
+| 26 | Generated mutants | `scripts/test-checks`, `GENERATED_FROM`, `EQUIVALENT`; test seams `SLUMPY_TEST_HOOK_CRASH`, `SLUMPY_NOW` | Self-test cases that miss logic in the checks | prose (AGENTS.md says when to run it); blocks when run | First run: 133 of 602 survived. After review round 2 (`rethink approach`): `EQUIVALENT` keeps only mutants equivalent on every input, unreachable code got test seams, logic with no observable effect was deleted. Fresh round 1: 19 of 20 reviewer mutants survived (string predicates, regex functions, string methods, call arguments); those operators were added. Fresh round 2: 11 of 75 reviewer mutants survived, all of kinds the generator does not make (`docs/tech-debt.md`, self-test gaps) On 2026-11-02, after the shared-entry/advisory-upkeep changes: 246 cases pass; all 846 executable mutants killed (36 written, 819 generated, 9 existing equivalents). This validates the listed cases and operators, not arbitrary future mutants or model behavior. | Reviewers' own mutants that survive | A reviewer's mutant survives: add its operator to the generator |
+| 27 | Shared entry point and runtime adapters | AGENTS.md; Runtime loading above | Divergent Claude and Codex workflows and stale generated instructions | prose routing; native discovery | Owner-approved 2026-11-02; old project copies removed; live model behavior not yet compared | Fresh-session loading and outcome/cost on each runtime separately | A source is skipped or rules diverge: fix the adapter, not a second copy of the methodology |

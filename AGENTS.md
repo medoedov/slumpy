@@ -42,8 +42,8 @@ Codex model routing: `docs/agent-system.md`, Model policy. Task-state convention
 - External actions: push or merge to `main`, App Store Connect, TestFlight, publications.
 - Check command: `python scripts/check` (`python3 scripts/check` on hosts with that executable).
   It runs document checks now; application build and tests await the Xcode skeleton.
-- After changing `scripts/`, run `python scripts/test-checks` and
-  `python scripts/test-checks --mutants`; report what their listed cases cover and any gaps.
+- Script verification levels, scoped mutations and full-run triggers:
+  `docs/agent-system.md`, Verification budget. Report the cases covered and remaining gaps.
 - The owner's language: Russian.
 - Where secrets live: Project Knowledge, `deployment.md`, Secrets.
 - `.githooks/` remains frozen and disabled; its old hooks call files outside the repository.

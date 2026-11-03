@@ -5,6 +5,154 @@ State: blocked
 Blockers: deferred.md (live client and Mac acceptance)
 Owner: Astra
 
+## Separately authorized staged-scope closeout — 2026-11-03
+
+The owner explicitly approved one additional narrow Astra review, then commit/push to `dev`.
+This continues the review history below; neither earlier call is reset or relabeled. Source,
+full diff and index hashes matched the finalization manifest before starting. `git fetch origin`
+confirmed HEAD and origin/dev both at `d68d2f03dc60a6590e861605a18ea78ac714770e`; hooks remain
+disabled at `/dev/null`. No unrelated changes were present.
+
+- Independent fresh Astra, code/security T1, **one separately approved closeout: clean**.
+  Scope only: index/working snapshot comparison, `--no-renames`, restored index-deleted paths
+  including ignored files, the `--final` consumer and corresponding regressions.
+- Ten independent minimal Git scenarios passed: hidden staged modification; restored deletion
+  and rename (including ignored restorations); staged addition removed from the working tree;
+  aligned staged deletion/rename/modification; unrelated unstaged edits. Real `check-risk` and
+  `check --final` ran; unrelated document checks were stubbed to isolate this boundary. A first
+  fixture setup error was corrected before this ten-case result; it was not counted as a pass.
+- Production and index SHA256 matched before/after. Reviewer tools were write-capable under a
+  no-source-edit instruction, not an enforced read-only profile. No production fix was needed;
+  existing 373-case and mutation evidence still covers these unchanged scripts.
+- Only the formal staged-scope review blocker is closed. Runtime, Mac/device and comparative
+  model evidence remain in the same [deferred registry](deferred.md). No full audit, full
+  mutation run, native hook acceptance or iOS acceptance was added by this review.
+- [The manifest](finalization-state.json) records the reviewed source, independent outputs and
+  pre-commit acceptance snapshot. The committed checkpoint is obtained with
+  `git log -1 --format=%H -- work/engineering-system-modernization/finalization-state.json`;
+  a file cannot contain its own future commit SHA. Verify after commit against the original
+  task base below, then publish only an ordinary fast-forward `dev` push as authorized.
+- Next: the existing RT/MAC acceptance dependencies, not another source-review round.
+
+## Finalization continuation — 2026-11-03
+
+Task-base: d68d2f03dc60a6590e861605a18ea78ac714770e
+
+The owner authorized the attached finalization guide after the external audit. This is the same
+SYS-001; earlier v2 evidence and review rounds below remain historical. One Astra executor owns
+this bounded scope. Start: clean `dev` at Task-base above; no product or global settings changes,
+push at that stage, paid model comparison, additional checkout or new deferred registry.
+
+- T1 because these are reversible local acceptance fixes inside the existing tooling boundary.
+- Scenarios: preserve current-task risk evidence through verified/archive/recheck; reject old
+  moved evidence, new unidentified plans, and final acceptance without a reliable nonempty range.
+  Stop feedback must distinguish document success, no changed input, and unavailable checks.
+- Mechanism: compare evidence by stable Task-ID across active/archive paths; four explicit legacy
+  paths; reject reactivated completed IDs from the task base. `check --final` requires an explicit
+  ancestor base and refuses divergent index/working snapshots. Ordinary check stays local.
+- Verification: failing regression first, complete fast suite, scoped mutations with full
+  inventory validation; no unbudgeted multi-hour full run. Fresh Astra code/security review has
+  its own maximum two calls for this new audit scope; fresh handoff after commit and archive.
+- At the end of that stage, additional independent closeout required separate agreement. The
+  owner-approved follow-up and its result are recorded above; the original review history follows.
+
+### Pre-authorization handoff (historical)
+
+Windows implementation and available direct checks are complete. Final ordinary suite: **373
+cases pass**, 124.071s. Source/dirty-range identity and command output:
+[finalization-state.json](finalization-state.json). HEAD remains the Task-base above; no project
+commit, push or global configuration change. Final acceptance is document/tooling scope only.
+
+The last independent verdict is **rethink approach**, not clean. Both calls are exhausted.
+All concrete findings were reproduced and corrected with direct tests; the final staged-scope
+correction, additive coverage and order-only test change did not receive a third independent
+review. `core-process.md`, Review and lessons, says: “`rethink approach` or a blocking risk those
+checks cannot resolve leaves the affected part unfinished” and “A revision requiring further
+independent review is separate agreed work.” The literal formal closeout therefore remains open;
+the remaining action is independent acceptance of this bounded correction if separately agreed,
+not another known implementation defect. The accepted guide authorized the local fixes; their
+execution and evidence do not relabel the independent verdict. No further review is launched.
+
+### Finalization evidence
+
+- Before production changes, 12 new acceptance cases plus the preserved 347 ran: **9 of 359
+  failed**, 221.615s. Direct failures reproduce archive evidence loss, new active/archived plans
+  without ID, missing final base after a dev commit, empty final scope, and the three full
+  lifecycle variants. Historical evidence rejection and non-ancestor tests already passed.
+  Initial sandbox attempts could not execute the process-cleanup regression; no test result
+  inferred from those attempts. Authorized local execution supplied the red run above.
+- First post-fix run: **360/361 passed**, 125.059s. Remaining failure was the old empty-error
+  formatting assertion; updated to require the new explicit unavailable report (same failure
+  exit preserved). Six hook expectations now require scoped messages rather than silence/{}.
+- Found a related runner defect: any nonzero harness exit counted as killed. The outcome
+  classifier now requires an actual completed assertion-failure summary and rejects setup/case
+  errors or harness traceback. Timeout remains unavailable. Six deterministic result probes
+  guard the boundary. Mutation generation and fixture/process cleanup are unchanged.
+- Fast final check at this intermediate tree: all six document checks passed; 10 changed
+  tracked files, zero staged/untracked. App build/tests/lint remain explicitly not run.
+- Fresh committed-fixture handoff: read STATUS -> plan -> facts/Git. Astra recovered FIX-001,
+  owner, verified state, base `82429f9356ecd8cd7cb51f58011ab6f5a4de1b8a`, checked commit
+  `5857914b7a2ec3c23114fbadf3876d1577dce813`, scope limits and archive/recheck next step.
+  No new task/owner question, unchanged clean fixture. This is a minimal synthetic Git fixture,
+  not another project checkout or live root-client compaction. The archived handoff follows.
+- Archived handoff: a second fresh Astra read STATUS -> archived plan -> facts/Git, recovered
+  done/no blockers/no pending work and did not reactivate FIX-001. HEAD/tag matched
+  `736ac359d2ff30c66e7ed317ddb16e1ba2acf4b1`; risk/state reacceptance passed at the same original
+  base. Both agents distinguished persisted execution claims from their own observed Git refs.
+  Both fixture trees stayed clean. These handoffs used the pre-round-1 checker candidate; they
+  establish recovery from those persisted records, not a full new-session client launch.
+- Review scope: finalization diff from d68d2f0 only, code T1 plus security/test pass; v2 calls
+  below are historical. Call 1: **changes needed**. Reviewer independently reproduced an old
+  archive renamed to another folder authorizing new risk, a risky staged payload hidden by the
+  working snapshot, and a completed ID moved back to active. All three are within the accepted
+  guide and were fixed. Diff-file hashes before/after review matched (11 files); the reviewer had
+  write-capable tools under a no-edit instruction, not an enforced read-only sandbox.
+- All three review regressions failed first (5.700s). After fixes, all three passed (6.778s).
+  An intermediate run had two failures because Git's -z followed the -- path delimiter; fixing
+  the shared names helper placed options before paths. Added ambiguous-history and committed
+  resurrection cases. No blind retry or weakening of the assertion.
+- Stopped the obsolete 21-mutant candidate run after 94.647s when review established blockers;
+  no mutation score retained. Revalidated runner PID/parent/command and stopped only its tree.
+  No mutation score retained; no multi-hour full run.
+- Code T1 call 2, fresh Astra security/test review: **rethink approach**, repeated index/working
+  snapshot class. Staged deletion and rename followed by restoring the old path escaped the
+  initial mismatch calculation. Reviewer found no further concrete issue in historical Task-ID
+  binding/completed state, confirmed the ndiff whitespace equivalent and six outcome-classifier
+  probes. All 12 diff-file hashes matched before/after review; no root index changes.
+- Within the authorized local fix scope, read staged and deleted paths with `--no-renames`, and
+  detect restored index-deleted paths on disk even if ignored. No index rewrite. Deletion,
+  rename and ignored restoration failed before; aligned staged deletion passed. All **10 review
+  regressions passed** after (18.555s), then **372 ordinary cases passed** (102.829s).
+  A superseded scoped run was stopped at 178.077s, no score retained. Taskkill reported already
+  disappearing children; the following CIM query found zero remaining Python processes.
+- Final scoped run on that production: **27/28 killed**, exit **1**, **1615.141s (26m55s)**.
+  The survivor was `check-risk, plan_lines: 2 to 3 at column 13`: removing the first character
+  from a bullet evidence line leaves accepted whitespace. This is not universally equivalent:
+  valid plain `T1 because` / `Security pass:` lines break. Added one positive plain-evidence case;
+  the same candidate is now **killed**, 17.397s, through unchanged `run_copy`.
+- Retained all **370 prior fixture scenarios**, including expectation bytecode/defaults/closures,
+  edit contents, environment and Git steps; added only the plain-evidence scenario. Moved the
+  existing finalization block first. Before/after ordering have the identical **371-scenario**
+  multiset SHA256 `46e9648fd21d35b87cb4239cf444c194bffb5e3b7badf19b62e12b3273ee5a7e`.
+  Fixtures are independent: per-case copies and Git state; shared template read-only; the sole
+  outside sentinel belongs to one case and has no other consumer. Both infrastructure checks
+  remain, making the final ordinary total **373**. No assertion or exclusion was removed.
+- Paired one-candidate measurement, same production/scenarios/clock and one worker using
+  `run_copy`: archive-evidence-ignored **killed in 74.708s before**, **18.393s after** ordering.
+  This measures one fail-fast candidate, not every mutation or model performance. The full
+  28-candidate run was not repeated: evidence is **27 prior kills + 1 addressed survivor** at the
+  explicit unchanged-production/retained-scenarios boundary, not a fabricated new green full run.
+  All 14 old equivalence reasons remain; one narrow ndiff extra-leading-space equivalent was
+  added and independently confirmed. Empty mutation selection fails with “no result”.
+- Costs: final six-document check 3.928s (earlier intermediate check 9.206s); ordinary suite 124.071s;
+  scoped old order 26m55s; paired/archive and survivor costs above. Historical full 102m29.6s
+  remains historical and was not repeated. Fast/scoped/full triggers now have one canonical
+  owner in docs/agent-system.md; timing is not coverage or an Astra quality score.
+- Available runtime facts repeated: Codex CLI 0.145.0, Claude 2.1.220; user config requests
+  Astra/high. Explicit Astra helper launches are not proof of the root client's effective model.
+  Three discovery adapters still route to the shared skills; native trust/Stop dispatch and
+  root-client compaction remain unverified. Existing RT/MAC/DEV/EVAL rows own those dependencies.
+
 ## v2 continuation — 2026-11-03
 
 Continue the existing modernization at clean `dev` HEAD `9366805`, not a second refactor.

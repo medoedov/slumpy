@@ -1,0 +1,287 @@
+{
+  "captured_at_utc": "2026-11-03T20:29:28.141578+00:00",
+  "base": "d68d2f03dc60a6590e861605a18ea78ac714770e",
+  "head": "d68d2f03dc60a6590e861605a18ea78ac714770e",
+  "range": "Pre-commit base..HEAD plus index/worktree/untracked snapshot; source hashes are the reviewed payload",
+  "hooks_path": "/dev/null",
+  "index_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "worktree_diff_sha256": "6b082be7bfabd3e63c6765408134acbe7e52b3081e8c0323b3af73a736a9f09c",
+  "changed_files_sha256": {
+    ".claude/skills/project-knowledge/references/patterns.md": "e5ffa350a99933dd1ac0688dd50f936f0a4ca0d586ccb31c292ab466b9ef3130",
+    "AGENTS.md": "6be97d03b1f8362a6645ec9492e03db69e6fa66cbc6e29d145b41915b0438258",
+    "docs/agent-system.md": "edb9d3feac7296b6767d00f51b699a21a63d18ff1abb08044a7c4a444ddf6bf6",
+    "scripts/check": "046605db40e30971e422ea22077bf9e2d9253b28de6809d75e00fdf2892f7227",
+    "scripts/check-risk": "4e56370c69dc2c2fde55b7992adc4b0d755ba1fd8178a20ea0cd3699cb6009c0",
+    "scripts/check-state": "b21ae1580e9c832023b6ffd18366daa5683ef06574aa2bd14652aa13d2ad0373",
+    "scripts/risk-paths": "ce3733838b8ca47f5db4844fc83a0c83714a9719d7addd0595c15f5698e72551",
+    "scripts/test-checks": "222aa588c7cd14857e7bcbf4730766605297fdfb391a8ffe60517ad50d3c7f25",
+    "work/STATUS.md": "a401081ada0b7acc7e9db0c39940cecf7ba287092fa07c2afaba0cc3af64a6da",
+    "work/engineering-system-modernization/audit.md": "b441e8faeae1c915877da42b94f9241fa50441c94c3a745a8c6fd2a4b19896ef",
+    "work/engineering-system-modernization/deferred.md": "360df624582e763ebbe8b6d69eeb86c54d0f9252455771bd164b96e216ac4ed7",
+    "work/engineering-system-modernization/plan.md": "a9e4cd05ded6769930f6a987cabf3ab7b97d6b6ad998e0c2d6f9ed90bc410c7c"
+  },
+  "excludes": [
+    "this manifest itself; ignored disposable fixtures/logs; unchanged tracked inputs are identified by base"
+  ],
+  "ordinary_suite": {
+    "command": "python scripts/test-checks",
+    "prior_order": {
+      "result": "372 cases pass",
+      "seconds": 102.8287017
+    },
+    "final_order": {
+      "result": "373 cases pass",
+      "seconds": 124.0705238
+    }
+  },
+  "scoped_mutation": {
+    "command": "python scripts/test-checks --mutants --match 'finalization|check-risk, plan_lines: condition|check-risk, plan_lines: 2 to|check-state, check: condition always.*LEGACY|check, main: condition always.*SLUMPY_CHECK_BASE|check, main: condition always.*details'",
+    "seconds": 1615.141482,
+    "exit": 1,
+    "output": "surviving mutant: check-risk, plan_lines: 2 to 3 at column 13: return [line[2:] for line in difflib.ndiff(before, after) if line.startswith(\"+ \")]\ntest-checks: 1 of 28 scoped mutants survive or are unavailable\n",
+    "boundary": "27 of 28 killed before the plain-evidence case and order-only change; this exit-1 run is not relabeled as success"
+  },
+  "ordering_and_survivor_supplement": {
+    "candidate": "finalization archive evidence ignored",
+    "clock": "2026-11-03T15:37:42.629123+00:00",
+    "inventory": {
+      "cases": 371,
+      "names_and_scenarios_multiset_sha256": "46e9648fd21d35b87cb4239cf444c194bffb5e3b7badf19b62e12b3273ee5a7e"
+    },
+    "before": {
+      "seconds": 74.70848789997399,
+      "result": "killed"
+    },
+    "after": {
+      "seconds": 18.39326759998221,
+      "result": "killed"
+    },
+    "survivor_recheck": {
+      "candidate": "('check-risk', 'plan_lines', '2 to 3 at column 13', 'return [line[2:] for line in difflib.ndiff(before, after) if line.startswith(\"+ \")]')",
+      "seconds": 17.397264699917287,
+      "result": "killed"
+    }
+  },
+  "pre_supplement_runner_sha256": "4052061710476ecd56110847c2da81fccde8cf54f360e47171f0ffe3a92d7a34",
+  "document_check_output": "[scope] {\"base\": \"d68d2f03dc60a6590e861605a18ea78ac714770e\", \"head\": \"d68d2f03dc60a6590e861605a18ea78ac714770e\", \"index_worktree_mismatch\": [], \"staged\": [], \"tracked\": [\".claude/skills/project-knowledge/references/patterns.md\", \"AGENTS.md\", \"docs/agent-system.md\", \"scripts/check\", \"scripts/check-risk\", \"scripts/check-state\", \"scripts/risk-paths\", \"scripts/test-checks\", \"work/STATUS.md\", \"work/engineering-system-modernization/audit.md\", \"work/engineering-system-modernization/deferred.md\", \"work/engineering-system-modernization/plan.md\"], \"untracked\": [\"work/engineering-system-modernization/finalization-state.json\"]}\n[ok] check-layers: 7 core files clean; platform pack and AGENTS.md bind names only\n[ok] check-pointers: all section pointers resolve\n[ok] check-risk: 13 changed files, evidence present where needed\n[ok] check-lessons: 3 entries, none overdue\n[ok] check-upkeep: 4 tasks, none due\n[ok] check-state: task index consistent\n[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)\n[not run] test-checks: on demand\n",
+  "independent_review": {
+    "round_1": "changes needed",
+    "round_2": "rethink approach",
+    "limit": "Original two calls preserved; one additional narrowly scoped call explicitly authorized by owner on 2026-11-03",
+    "disposition": "All concrete findings fixed; separately authorized staged-scope closeout clean; formal source-review blocker removed; runtime/Mac/model evidence remains deferred",
+    "authorized_closeout": {
+      "mode": "code/security",
+      "tier": "T1",
+      "verdict": "clean",
+      "scope": "staged/index/worktree comparison, no-renames, restored deleted paths including ignored paths, --final consumer and corresponding regressions",
+      "execution_limit": "Write-capable tools under no-source-edit instruction; unrelated fixture document checks stubbed; no native hooks/iOS/full-suite rerun claimed",
+      "evidence": {
+        "before": {
+          "scripts/check-risk": "4e56370c69dc2c2fde55b7992adc4b0d755ba1fd8178a20ea0cd3699cb6009c0",
+          "scripts/check": "046605db40e30971e422ea22077bf9e2d9253b28de6809d75e00fdf2892f7227",
+          "scripts/test-checks": "222aa588c7cd14857e7bcbf4730766605297fdfb391a8ffe60517ad50d3c7f25",
+          ".git/index": "39c39409fd0ab10d3ace83e5467743e16ec1114c622df089bd263225e36bf787"
+        },
+        "after": {
+          "scripts/check-risk": "4e56370c69dc2c2fde55b7992adc4b0d755ba1fd8178a20ea0cd3699cb6009c0",
+          "scripts/check": "046605db40e30971e422ea22077bf9e2d9253b28de6809d75e00fdf2892f7227",
+          "scripts/test-checks": "222aa588c7cd14857e7bcbf4730766605297fdfb391a8ffe60517ad50d3c7f25",
+          ".git/index": "39c39409fd0ab10d3ace83e5467743e16ec1114c622df089bd263225e36bf787"
+        },
+        "results": [
+          {
+            "case": "modified-hidden",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": [
+                ".claude/rules/core-code.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\".claude/rules/core-code.md\"], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [], \"untracked\": []}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "delete-restored",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "index_worktree_mismatch": [
+                ".claude/rules/core-code.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\".claude/rules/core-code.md\"], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [\".claude/rules/core-code.md\"], \"untracked\": [\".claude/rules/core-code.md\"]}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "rename-restored",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "untracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "index_worktree_mismatch": [
+                ".claude/rules/core-code.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\".claude/rules/core-code.md\"], \"staged\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"tracked\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"untracked\": [\".claude/rules/core-code.md\"]}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "ignored-delete-restored",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": [
+                ".claude/rules/core-code.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\".claude/rules/core-code.md\"], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [\".claude/rules/core-code.md\"], \"untracked\": []}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "ignored-rename-restored",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": [
+                ".claude/rules/core-code.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\".claude/rules/core-code.md\"], \"staged\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"tracked\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"untracked\": []}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "aligned-delete",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": []
+            },
+            "final_exit": 0,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [\".claude/rules/core-code.md\"], \"untracked\": []}\n[ok] check-layers: fixture document check passed\n[ok] check-pointers: fixture document check passed\n[ok] check-risk: 1 changed files, evidence present where needed\n[ok] check-lessons: fixture document check passed\n[ok] check-upkeep: fixture document check passed\n[ok] check-state: fixture document check passed\n[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)\n[not run] test-checks: on demand\n"
+          },
+          {
+            "case": "aligned-rename",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md",
+                "renamed.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": []
+            },
+            "final_exit": 0,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [], \"staged\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"tracked\": [\".claude/rules/core-code.md\", \"renamed.md\"], \"untracked\": []}\n[ok] check-layers: fixture document check passed\n[ok] check-pointers: fixture document check passed\n[ok] check-risk: 2 changed files, evidence present where needed\n[ok] check-lessons: fixture document check passed\n[ok] check-upkeep: fixture document check passed\n[ok] check-state: fixture document check passed\n[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)\n[not run] test-checks: on demand\n"
+          },
+          {
+            "case": "aligned-modified",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": []
+            },
+            "final_exit": 0,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [\".claude/rules/core-code.md\"], \"untracked\": []}\n[ok] check-layers: fixture document check passed\n[ok] check-pointers: fixture document check passed\n[ok] check-risk: 1 changed files, evidence present where needed\n[ok] check-lessons: fixture document check passed\n[ok] check-upkeep: fixture document check passed\n[ok] check-state: fixture document check passed\n[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)\n[not run] test-checks: on demand\n"
+          },
+          {
+            "case": "staged-add-removed",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [],
+              "staged": [
+                "added.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": [
+                "added.md"
+              ]
+            },
+            "final_exit": 1,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [\"added.md\"], \"staged\": [\"added.md\"], \"tracked\": [], \"untracked\": []}\n[unavailable] final acceptance: index/worktree differ for staged paths; align these snapshots or unstage before acceptance\n"
+          },
+          {
+            "case": "unrelated-unstaged",
+            "scope": {
+              "base": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "head": "8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d",
+              "tracked": [
+                ".claude/rules/core-code.md",
+                "other.txt"
+              ],
+              "staged": [
+                ".claude/rules/core-code.md"
+              ],
+              "untracked": [],
+              "index_worktree_mismatch": []
+            },
+            "final_exit": 0,
+            "final_output": "[scope] {\"base\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"head\": \"8cddd200a6ca252ca4c3782c80ba2c9a9f92a84d\", \"index_worktree_mismatch\": [], \"staged\": [\".claude/rules/core-code.md\"], \"tracked\": [\".claude/rules/core-code.md\", \"other.txt\"], \"untracked\": []}\n[ok] check-layers: fixture document check passed\n[ok] check-pointers: fixture document check passed\n[ok] check-risk: 2 changed files, evidence present where needed\n[ok] check-lessons: fixture document check passed\n[ok] check-upkeep: fixture document check passed\n[ok] check-state: fixture document check passed\n[not run] build, tests, lint: not wired into scripts/check yet (skeleton ADR)\n[not run] test-checks: on demand\n"
+          }
+        ]
+      }
+    }
+  },
+  "claim_limit": "Windows source/protocol/fixture checks only; native Stop, actual root session recovery, Mac/iOS and matched-model outcome comparison remain unverified in deferred.md",
+  "checkpoint_lookup": "git log -1 --format=%H -- work/engineering-system-modernization/finalization-state.json"
+}

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Validate the small Markdown task index, including untracked plans.
 
-This checks declared state, not truth of evidence or semantic duplicates. Legacy plans without
-Task-ID are historical; new work uses the metadata described in work/STATUS.md.
+This checks declared state, not truth of evidence or semantic duplicates. Only the explicitly
+listed pre-ID plans are historical; new work uses the metadata described in work/STATUS.md.
 """
-import pathlib, re, sys
+import json, os, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ID = r"[A-Z]+-\d{3}"
 LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+# Existing pre-ID records at d68d2f0; a new path never inherits a historical exemption.
+LEGACY = {"work/agent-system-self-review/plan.md", "work/agent-system-layers/plan.md",
+          "work/agent-system-gates/plan.md", "work/completed/agent-system-unified/plan.md"}
 
 
 def read(path):
@@ -36,6 +39,13 @@ def task_rows(text):
 
 
 def check():
+    # Reuse the risk check's base validation and historical plan reader; no second state store.
+    result = subprocess.run([sys.executable, "-I", str(ROOT / "scripts/check-risk"), "--completed"],
+                            capture_output=True, text=True, timeout=15,
+                            env=dict(os.environ, SLUMPY_CHECK_BASE=os.environ.get("SLUMPY_CHECK_BASE") or "HEAD"))
+    if result.returncode != 0:
+        raise ValueError("historical task state unavailable: " + (result.stdout + result.stderr).strip())
+    completed = set(json.loads(result.stdout))
     index = ROOT / "work/STATUS.md"
     text = read(index)
     for target in LINK.findall(text):
@@ -55,6 +65,8 @@ def check():
     for plan in sorted((ROOT / "work").rglob("plan.md")):
         body = read(plan)
         if not re.search(r"^[ \t]*Task-ID[ \t]*:", body, re.M):
+            if plan.relative_to(ROOT).as_posix() not in LEGACY:
+                raise ValueError(f"Task-ID required: {plan.relative_to(ROOT)}")
             continue
         values = {}
         for key in ("Task-ID", "State", "Blockers", "Owner"):
@@ -63,6 +75,8 @@ def check():
                 raise ValueError(f"one nonempty {key} required: {plan.relative_to(ROOT)}")
             values[key] = found[0].strip()
         task, state = values["Task-ID"], values["State"]
+        if state != "done" and task in completed:
+            raise ValueError(f"completed task reactivated: {task}; use a new task ID")
         if not re.fullmatch(ID, task) or task in plans:
             raise ValueError(f"invalid or duplicate plan ID: {task}")
         plans[task] = plan.resolve()
@@ -95,6 +109,6 @@ def check():
 
 try:
     check()
-except (OSError, UnicodeError, ValueError) as error:
+except (OSError, UnicodeError, ValueError, subprocess.TimeoutExpired) as error:
     sys.exit(f"check-state: {error}")
 print("check-state: task index consistent")
